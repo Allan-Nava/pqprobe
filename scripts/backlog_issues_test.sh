@@ -233,6 +233,47 @@ else
 	echo "ok   a malformed backlog stops the sync"
 fi
 
+# ---------------------------------------------------------------------------
+# The labels `--apply` bootstraps have to be exactly the vocabulary the linter
+# enforces. They were not: ensure_labels was carried over from a sibling project
+# and still offered `parser` and `check`, so the first real sync created thirteen
+# labels, then failed with "could not add label: 'probe' not found" — after
+# creating a milestone, which is the worst place to stop.
+#
+# Compared textually, because the alternative is discovering it against a public
+# repository with half a plan applied.
+# ---------------------------------------------------------------------------
+# The vocabulary: the one `labels=` assignment the linter reads.
+awk '
+	/^labels="/ {
+		i = index($0, "\""); rest = substr($0, i + 1)
+		j = index(rest, "\""); v = substr(rest, 1, j - 1)
+		n = split(v, a, " ")
+		for (k = 1; k <= n; k++) print a[k]
+		exit
+	}
+' "$script" | sort > "$tmp/lint-labels.txt"
+
+# The names ensure_labels knows how to create, priorities excluded: prio-* are
+# not item labels.
+awk '
+	/^ensure_labels\(\)/ { inside = 1 }
+	inside && /^}/ { exit }
+	inside && /^\t\t[a-z-]+\)[ \t]+colour=/ {
+		name = $1; sub(/\)$/, "", name)
+		if (name ~ /^prio-/) next
+		print name
+	}
+' "$script" | sort > "$tmp/bootstrap-labels.txt"
+
+checks=$((checks + 1))
+if diff -u "$tmp/lint-labels.txt" "$tmp/bootstrap-labels.txt" >"$tmp/labeldiff" 2>&1; then
+	echo "ok   every label lint accepts is one --apply knows how to create"
+else
+	fail "the vocabulary and the labels --apply knows how to create disagree"
+	sed 's/^/       /' "$tmp/labeldiff" >&2
+fi
+
 echo
 if [ "$failures" -gt 0 ]; then
 	echo "$failures of $checks checks failed" >&2

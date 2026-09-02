@@ -28,6 +28,12 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 backlog="${BACKLOG_FILE:-$root/BACKLOG.md}"
 roadmap="${ROADMAP_FILE:-$root/ROADMAP.md}"
 
+# The label vocabulary, defined once. The linter rejects anything outside it and
+# `issues --apply` creates exactly these on a repository that has none — two
+# copies of this list is how the first real sync failed with "could not add
+# label: 'probe' not found", after it had already created a milestone.
+labels="probe profile verdict inventory output cli delivery integration tests docs release project"
+
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/pqprobe-backlog.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT INT HUP TERM
 
@@ -147,14 +153,17 @@ fi
 
 # ---------------------------------------------------------------------------
 lint() {
-	awk -F'\t' '
+	awk -F'\t' -v vocab="$labels" '
 	function err(msg) { print "BACKLOG.md: " msg > "/dev/stderr"; bad++ }
 
 	BEGIN {
 		split("high med low", p, " ");    for (i in p) okprio[p[i]] = 1
 		split("S M L XL", s, " ");        for (i in s) oksize[s[i]] = 1
 		split("shipped now next later ongoing", f, " "); for (i in f) okphase[f[i]] = 1
-		split("probe profile verdict inventory output cli delivery integration tests docs release project", l, " ")
+		# Not `labels`: further down that name holds the label field of the item
+		# being read, and a shadowed vocabulary would accept anything silently.
+		# (No apostrophes in here either — the awk program is single-quoted.)
+		split(vocab, l, " ")
 		for (i in l) oklabel[l[i]] = 1
 	}
 
@@ -544,25 +553,33 @@ ensure_milestone() {
 # labels silently dropped.
 ensure_labels() {
 	gh label list --limit 200 --json name --jq '.[].name' >"$tmp/labels.txt" 2>/dev/null || : >"$tmp/labels.txt"
-	# Keep in step with the vocabulary lint enforces, plus the priorities.
-	for spec in \
-		"parser|1d76db|Segment and manifest readers" \
-		"check|0e8a16|An analysis over the parsed events" \
-		"output|5319e7|Renderers: terminal, JSON, markdown" \
-		"cli|fbca04|Flags, exit codes, usage" \
-		"delivery|c2e0c6|Docker image, packaging, install" \
-		"integration|bfd4f2|Using pqprobe from other systems" \
-		"tests|d4c5f9|Test coverage and test tooling" \
-		"docs|0075ca|Documentation and the Pages site" \
-		"release|b60205|Tagging, artefacts, signing" \
-		"project|6a737d|Backlog, roadmap, repo hygiene" \
-		"prio-high|b60205|High priority in BACKLOG.md" \
-		"prio-med|fbca04|Medium priority in BACKLOG.md" \
-		"prio-low|c2e0c6|Low priority in BACKLOG.md"; do
-		name=${spec%%|*}
-		rest=${spec#*|}
-		colour=${rest%%|*}
-		desc=${rest#*|}
+
+	# The names come from $labels, so the vocabulary cannot drift from the one the
+	# linter enforces; this only decides how each one looks. A label with no
+	# appearance here is a hard error rather than a label created grey and
+	# undescribed — and rather than a sync that dies halfway through.
+	for name in $labels prio-high prio-med prio-low; do
+		case "$name" in
+		probe)       colour=1d76db; desc="One handshake, and how it ended" ;;
+		profile)     colour=5319e7; desc="Client shapes: key exchange groups and TLS versions" ;;
+		verdict)     colour=d93f0b; desc="The class, and the findings that explain it" ;;
+		inventory)   colour=0e8a16; desc="Target lists: arguments, files, Ansible inventories" ;;
+		output)      colour=c5def5; desc="Renderers: text, JSON, findings" ;;
+		cli)         colour=fbca04; desc="Flags, exit codes, usage" ;;
+		delivery)    colour=c2e0c6; desc="Docker image, packaging, install" ;;
+		integration) colour=bfd4f2; desc="Using pqprobe from other systems" ;;
+		tests)       colour=d4c5f9; desc="Test coverage and test tooling" ;;
+		docs)        colour=0075ca; desc="Documentation and the Pages site" ;;
+		release)     colour=b60205; desc="Tagging, artefacts, attestation" ;;
+		project)     colour=6a737d; desc="Backlog, roadmap, repository hygiene" ;;
+		prio-high)   colour=b60205; desc="High priority in BACKLOG.md" ;;
+		prio-med)    colour=fbca04; desc="Medium priority in BACKLOG.md" ;;
+		prio-low)    colour=c2e0c6; desc="Low priority in BACKLOG.md" ;;
+		*)
+			echo "backlog.sh: no colour or description for label \`$name\` — add one to ensure_labels" >&2
+			exit 1
+			;;
+		esac
 		if ! grep -qxF "$name" "$tmp/labels.txt"; then
 			gh label create "$name" --color "$colour" --description "$desc" >/dev/null
 			echo "  created label $name"

@@ -44,6 +44,25 @@ fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
   covers the gate against fixtures — it is what found both of those.
 - **Backlog to issues, automatically** (PQ-31) — the existing planner now runs
   on a push that touches `BACKLOG.md`, one direction only.
+
+### Fixed
+
+- **`issues --apply` could not create the labels it needs** (PQ-31) —
+  `ensure_labels` had been carried over from a sibling project and still offered
+  `parser` and `check` while the linter enforced `probe`, `profile`, `verdict`
+  and `inventory`. The first real sync created thirteen labels and a milestone,
+  then died on `could not add label: 'probe' not found`. There is now **one**
+  vocabulary, `labels=` in `scripts/backlog.sh`, read by the linter and by the
+  label bootstrap alike; a label with no colour or description is a hard error;
+  and `backlog_issues_test.sh` compares the two lists so they cannot drift
+  again.
+- **The Repo metadata workflow failed for a state it could not change** (PQ-30)
+  — the default `GITHUB_TOKEN` cannot edit repository metadata
+  (`administration` is not a grantable workflow permission), so a drift check on
+  every push was permanently red. It now applies the file when a
+  `REPO_META_TOKEN` secret exists and proves it converged; without one, drift is
+  a warning with the fix in it. A job that is red for something it cannot fix is
+  a job people learn to ignore — the same reason the tool exits 0 on a WARN.
 - **A freshness gate for the rendered assets** (PQ-29) —
   `scripts/render-assets.sh --check` compares the SVGs against the checksums
   recorded when the PNGs were rendered, so an edited logo cannot ship with last

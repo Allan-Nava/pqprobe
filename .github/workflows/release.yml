@@ -10,6 +10,12 @@ name: Release
 # its release pipeline has no dependencies either. `scripts/release.sh` prepares
 # the tag locally; pushing it is the maintainer's decision and this is what
 # happens next.
+#
+# Every job checks out the **tag**, not the branch, so a release is built from
+# exactly what was tagged. The consequence: this pipeline can only publish tags
+# whose tree already contains it — v0.1.0 predates it and is not re-publishable
+# from here, which is why the dispatch input asks for an existing tag rather
+# than offering to make one.
 
 on:
   push:
@@ -167,7 +173,7 @@ jobs:
           sha256sum -- pqprobe_* | sort -k2 > SHA256SUMS
           cat SHA256SUMS
 
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/pqprobe_*
 
@@ -214,7 +220,7 @@ jobs:
             ghcr.io/allan-nava/pqprobe:${{ needs.gates.outputs.version }}
             ghcr.io/allan-nava/pqprobe:latest
 
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/allan-nava/pqprobe
           subject-digest: ${{ steps.push.outputs.digest }}

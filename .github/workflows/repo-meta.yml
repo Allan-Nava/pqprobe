@@ -3,18 +3,18 @@ name: Repo metadata
 # PQ-30: the GitHub "About" box — description, homepage, topics — is data in
 # .github/repo-meta, and this is what puts it on GitHub.
 #
-# Two modes, deliberately different:
+# The constraint that shapes this workflow: **the default GITHUB_TOKEN cannot
+# edit repository metadata.** `administration` is not one of the permissions a
+# workflow token can be granted, so `gh repo edit` needs a fine-grained PAT with
+# "Administration: read and write" as the REPO_META_TOKEN secret. So:
 #
-#   * on a push that touches the file: **check only**. It reports drift and
-#     fails, so the run says out loud that GitHub and the repository disagree.
-#   * on workflow_dispatch with apply=true: writes it. A maintainer starts it,
-#     the same way a push is a maintainer's decision.
+#   * with REPO_META_TOKEN — it applies the file and then proves it converged.
+#     Drift after that is a real failure.
+#   * without it — it reports drift as a **warning**, because nothing here can
+#     fix it and a job that is red for a state it cannot change is a job people
+#     learn to ignore. Same reason the tool itself exits 0 on a WARN.
 #
-# Editing repository settings is beyond what the default GITHUB_TOKEN is given
-# in most organisations. If `apply` fails with 403, add a fine-grained PAT with
-# "Administration: read and write" as the REPO_META_TOKEN secret, or run
-# `scripts/repo-meta.sh apply` locally — the script and the workflow do exactly
-# the same thing.
+# `lint` always fails hard: that is a mistake in the file, and it is ours.
 
 on:
   push:
@@ -25,8 +25,8 @@ on:
       - ".github/workflows/repo-meta.yml"
   workflow_dispatch:
     inputs:
-      apply:
-        description: "Write .github/repo-meta to GitHub (otherwise only compare)"
+      strict:
+        description: "Fail on drift even when no token can fix it"
         type: boolean
         required: false
         default: false
@@ -41,11 +41,18 @@ concurrency:
 jobs:
   meta:
     runs-on: ubuntu-latest
+    env:
+      # `secrets` cannot be read in a step `if`, so the decision is made once here.
+      HAS_PAT: ${{ secrets.REPO_META_TOKEN != '' && 'true' || 'false' }}
+      STRICT: ${{ inputs.strict && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Lint
+      - name: Lint the file
         run: ./scripts/repo-meta.sh lint
+
+      - name: The gate itself
+        run: sh scripts/repo-meta_test.sh
 
       - name: What it would apply
         run: |
@@ -56,14 +63,28 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Compare with GitHub
-        if: github.event.inputs.apply != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.REPO_META_TOKEN || secrets.GITHUB_TOKEN }}
-        run: ./scripts/repo-meta.sh check
-
       - name: Apply
-        if: github.event.inputs.apply == 'true'
+        if: env.HAS_PAT == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.REPO_META_TOKEN }}
+        run: ./scripts/repo-meta.sh apply
+
+      # Always runs: with a token this proves the apply landed, without one it is
+      # the only thing this workflow can usefully say.
+      - name: Compare with GitHub
         env:
           GH_TOKEN: ${{ secrets.REPO_META_TOKEN || secrets.GITHUB_TOKEN }}
-        run: ./scripts/repo-meta.sh apply
+        run: |
+          if ./scripts/repo-meta.sh check; then
+            exit 0
+          fi
+          if [ "$HAS_PAT" = "true" ] || [ "$STRICT" = "true" ]; then
+            echo "::error::GitHub does not match .github/repo-meta"
+            exit 1
+          fi
+          echo "::warning::GitHub does not match .github/repo-meta. The default GITHUB_TOKEN cannot edit repository metadata: run \`scripts/repo-meta.sh apply\` locally, or add a fine-grained PAT with Administration: read and write as the REPO_META_TOKEN secret."
+          {
+            echo '> [!WARNING]'
+            echo '> GitHub does not match .github/repo-meta. Run scripts/repo-meta.sh apply'
+            echo '> locally, or add a REPO_META_TOKEN secret so this workflow can.'
+          } >> "$GITHUB_STEP_SUMMARY"
