@@ -170,9 +170,16 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	case havePref && !pref.OK && haveClassic && classic.OK:
 		if pref.Kind.Abrupt() {
 			rep.Class = PQIntolerant
+			// Say it reproduced only when it did. A clause that is always there
+			// stops being read, and this one is the difference between a finding
+			// a vendor accepts and one they ask you to re-run.
+			confirmed := ""
+			if pref.Reproduced {
+				confirmed = ", reproduced on a second dial"
+			}
 			rep.Finding = append(rep.Finding, verdictFinding(target, rep.Class, fmt.Sprintf(
-				"the classical client connected and the post-quantum-capable one was cut off (%s): every client that merely *offers* ML-KEM fails here — Chrome and Edge 131+, Firefox 132+, a CDN with post-quantum enabled — while curl and your existing health checks keep passing",
-				pref.Kind)))
+				"the classical client connected and the post-quantum-capable one was cut off (%s%s): every client that merely *offers* ML-KEM fails here — Chrome and Edge 131+, Firefox 132+, a CDN with post-quantum enabled — while curl and your existing health checks keep passing",
+				pref.Kind, confirmed)))
 		} else {
 			rep.Class = PQRefusing
 			rep.Finding = append(rep.Finding, verdictFinding(target, rep.Class,
@@ -309,10 +316,21 @@ func handshakeFinding(target string, r probe.Result) finding.Finding {
 		}
 		f.Value = finding.Num(float64(r.Elapsed.Milliseconds()))
 		f.Unit = "ms"
+		// A handshake that needed a second dial is a third state (PQ-23): the
+		// endpoint works and it is unstable. Silence would file it as healthy,
+		// and the class would file it as a wall — both are wrong.
+		if r.Flapped {
+			f.Status = finding.WARN
+			f.Message += fmt.Sprintf(" — but only on the second attempt (the first ended %s)", r.FirstKind)
+			f.Hint = "this endpoint is flapping, not walled: the same hello was cut off and then accepted a moment later. Look for a node being drained, a load balancer mid-reconfiguration or a stale connection-tracking entry — and re-run before concluding anything"
+		}
 		return f
 	}
 	f.Status = finding.WARN
 	f.Message = fmt.Sprintf("no handshake (%s): %s", r.Kind, r.Err)
+	if r.Reproduced {
+		f.Message += " — twice"
+	}
 	if r.Kind.Abrupt() {
 		f.Hint = "an abrupt end means the peer never sent a TLS alert: it choked on the ClientHello rather than declining it"
 	}

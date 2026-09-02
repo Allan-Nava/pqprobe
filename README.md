@@ -57,6 +57,12 @@ shapes, and reads the *shape of the refusal*:
 | serves TLS 1.2 and nothing newer | `no-tls13` | post-quantum key exchange is a 1.3 feature; a ceiling, not a setting |
 | answers nothing | `unreachable` | not a grade — fix reachability first |
 
+An abrupt failure is dialled **a second time** before any of this is decided:
+`pq-intolerant` is the finding somebody takes to a vendor, and one reset is also
+what a drained node looks like. Both dials cut off reads as *reproduced*; cut
+off then connected reads as *flapping, not walled*, and never as `BAD`. An alert
+is never re-dialled — it is an answer.
+
 The alert-versus-reset distinction is the whole tool. A peer that says no
 politely is negotiating; a peer that disappears mid-hello is broken for every
 client that offers ML-KEM, whether or not that client would have been perfectly

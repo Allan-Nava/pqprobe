@@ -245,3 +245,85 @@ func TestNoGroupFindingWhenNoGroupWasProbed(t *testing.T) {
 		}
 	}
 }
+
+// PQ-23. A flap is a third state: the endpoint works, and it is unstable. It
+// must not be graded as the wall it looked like on the first dial, and it must
+// not be silent either.
+func TestAFlapIsReportedButDoesNotCondemn(t *testing.T) {
+	flapped := ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true)
+	flapped.Attempts = 2
+	flapped.FirstKind = probe.KindReset
+	flapped.Flapped = true
+
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		flapped,
+		ok("pq-only", "TLS 1.3", "X25519MLKEM768", true),
+	}, opts())
+
+	if rep.Class != PQReady {
+		t.Fatalf("class = %s, want %s — it connected, on the second dial", rep.Class, PQReady)
+	}
+
+	var hs finding.Finding
+	for _, f := range rep.Finding {
+		if f.Check == "handshake" && strings.Contains(f.Target, "pq-preferred") {
+			hs = f
+		}
+	}
+	if hs.Status != finding.WARN {
+		t.Errorf("status = %s, want WARN: a connection that needed two attempts is not OK", hs.Status)
+	}
+	if !strings.Contains(hs.Message, "second") {
+		t.Errorf("the message has to say it took a second attempt: %q", hs.Message)
+	}
+	if !strings.Contains(hs.Hint, "flap") && !strings.Contains(hs.Hint, "unstable") {
+		t.Errorf("the hint has to name the state: %q", hs.Hint)
+	}
+}
+
+// The wall, confirmed: the verdict is the same BAD it always was, and the hint
+// says the refusal reproduced — because that is the sentence that survives
+// being forwarded to whoever owns the middlebox.
+func TestAConfirmedWallSaysItReproduced(t *testing.T) {
+	wall := fail("pq-preferred", probe.KindReset)
+	wall.Attempts = 2
+	wall.FirstKind = probe.KindReset
+	wall.Reproduced = true
+	only := fail("pq-only", probe.KindReset)
+	only.Attempts = 2
+	only.Reproduced = true
+
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		wall, only,
+	}, opts())
+
+	if rep.Class != PQIntolerant {
+		t.Fatalf("class = %s, want %s", rep.Class, PQIntolerant)
+	}
+	v := find(t, rep, "verdict")
+	if !strings.Contains(v.Hint, "twice") && !strings.Contains(v.Hint, "reproduced") {
+		t.Errorf("the hint has to say the refusal reproduced: %q", v.Hint)
+	}
+}
+
+// One dial and no confirmation: nothing about attempts belongs in the output,
+// or every finding grows a clause that means nothing.
+func TestASingleAttemptSaysNothingAboutAttempts(t *testing.T) {
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		fail("pq-preferred", probe.KindReset),
+		fail("pq-only", probe.KindReset),
+	}, opts())
+
+	v := find(t, rep, "verdict")
+	if strings.Contains(v.Hint, "twice") || strings.Contains(v.Hint, "reproduced") {
+		t.Errorf("nothing was confirmed, so the hint must not claim it was: %q", v.Hint)
+	}
+	for _, f := range rep.Finding {
+		if strings.Contains(f.Message, "second attempt") {
+			t.Errorf("a single-dial result mentions a second attempt: %+v", f)
+		}
+	}
+}

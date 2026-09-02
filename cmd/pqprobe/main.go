@@ -85,6 +85,8 @@ flags:
   --sni NAME               server name for every target (overrides per-target =sni)
   --alpn a,b               ALPN protocols to offer (default none)
   --timeout D              per-handshake timeout (default 10s)
+  --confirm                re-dial an abrupt failure once before believing it
+                           (default true; --confirm=false to dial once)
   --concurrency N          endpoints in flight (default 8)
   --json                   full report, every profile result included
   --findings               flat findings array (the toolchain contract)
@@ -131,6 +133,7 @@ func cmdProbe(args []string) int {
 		sni         = fs.String("sni", "", "server name for every target")
 		alpn        = fs.String("alpn", "", "ALPN protocols")
 		timeout     = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
+		confirm     = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
 		concurrency = fs.Int("concurrency", 8, "endpoints in flight")
 		asJSON      = fs.Bool("json", false, "full JSON report")
 		asFindings  = fs.Bool("findings", false, "flat findings array")
@@ -175,7 +178,7 @@ func cmdProbe(args []string) int {
 		sel = append(sel, clientprofile.GroupProbes()...)
 	}
 
-	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn)}
+	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn), Confirm: *confirm}
 	opt := verdict.DefaultOptions()
 	opt.ExpiryWarnDays, opt.ExpiryBadDays = *expWarn, *expBad
 	opt.Now = time.Now()
@@ -230,7 +233,7 @@ func run(ctx context.Context, d probe.Dialer, targets []probe.Target, profiles [
 			defer func() { <-sem }()
 			var results []probe.Result
 			for _, p := range profiles {
-				results = append(results, d.Do(ctx, t, p))
+				results = append(results, d.DoConfirmed(ctx, t, p))
 			}
 			reps[i] = verdict.Evaluate(t.String(), results, opt)
 		}(i, t)

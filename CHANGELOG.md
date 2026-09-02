@@ -6,6 +6,23 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.5.0] - 2026-09-02
+
+### Added
+
+- **Confirm before condemning** (PQ-23) — an abrupt failure is now dialled a
+  second time before the class is assigned, because `pq-intolerant` is the
+  finding somebody takes to a CDN vendor and one reset is also what a stale
+  connection-tracking entry, a load balancer mid-reconfiguration or a node being
+  drained looks like. Three outcomes, three different readings: both dials cut
+  off is `no handshake (reset) — twice` with *reproduced on a second dial* in the
+  verdict hint; cut off and then connected is a WARN saying *only on the second
+  attempt* and names the state — **flapping, not walled** — while the class is
+  still decided by the handshake that worked; and an alert is never re-dialled,
+  because it is an answer the peer chose to give. So a healthy fleet pays no
+  extra connections at all. `--confirm=false` dials once. The results carry
+  `attempts`, `first_kind`, `reproduced` and `flapped` in `--json`.
+
 ## [0.4.0] - 2026-09-02
 
 ### Added
@@ -181,6 +198,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.5.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.4.0
 [0.3.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.2.0

@@ -45,6 +45,19 @@ func TestValidStatus(t *testing.T) {
 	}
 }
 
+// PQ-23. --confirm is a boolean too, and it defaults to on: the second dial
+// only ever happens on an abrupt failure, so a healthy fleet pays nothing for
+// it, and a BAD verdict nobody can reproduce costs an afternoon.
+func TestConfirmIsABooleanFlag(t *testing.T) {
+	if takesValue("--confirm") {
+		t.Fatal("--confirm takes no value; it is turned off with --confirm=false")
+	}
+	got := permute([]string{"--confirm", "example.com"})
+	if len(got) != 2 || got[1] != "example.com" {
+		t.Fatalf("permute = %v, want the target kept as an operand", got)
+	}
+}
+
 // PQ-22. --per-group is a boolean, so permute must not eat the target after it:
 // `pqprobe probe --per-group example.com` has to stay a probe of example.com,
 // not a probe of nothing with a value of "example.com".
@@ -67,7 +80,7 @@ func TestUsageDocumentsEveryFlagTheProbeAccepts(t *testing.T) {
 	for _, flag := range []string{
 		"--profile", "--per-group", "--inventory", "--group", "--list", "--port",
 		"--sni", "--alpn", "--timeout", "--concurrency", "--json", "--findings",
-		"--min-severity", "--exit-on", "--expiry-warn", "--expiry-bad",
+		"--min-severity", "--exit-on", "--expiry-warn", "--expiry-bad", "--confirm",
 	} {
 		if !strings.Contains(b.String(), flag) {
 			t.Errorf("%s is not in --help", flag)

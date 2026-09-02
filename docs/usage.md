@@ -31,6 +31,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--sni NAME` | — | server name for every target |
 | `--alpn a,b` | none | ALPN protocols to offer |
 | `--timeout D` | `10s` | per-handshake timeout |
+| `--confirm` | on | re-dial an abrupt failure once before believing it (`--confirm=false` to dial once) |
 | `--concurrency N` | `8` | endpoints in flight (profiles of one endpoint are sequential) |
 | `--json` | — | full report, every profile result included |
 | `--findings` | — | flat findings array |

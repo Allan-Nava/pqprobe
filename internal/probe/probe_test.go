@@ -12,6 +12,7 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -328,5 +329,141 @@ func TestGroupProbesReadTheAcceptedSetOffTheWire(t *testing.T) {
 		if r := got[clientprofile.GroupProbeName(id)]; r.OK {
 			t.Errorf("%s completed against a server pinned to X25519", clientprofile.GroupName(id))
 		}
+	}
+}
+
+// flakyServer drops the first `bad` connections without a word and serves TLS
+// normally afterwards. A half-closed conntrack entry, a load balancer being
+// reconfigured and a genuinely intolerant middlebox all look identical on one
+// dial; they stop looking identical on two.
+func flakyServer(t *testing.T, cfg *tls.Config, bad int) Target {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	var mu sync.Mutex
+	seen := 0
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			seen++
+			n := seen
+			mu.Unlock()
+			go func() {
+				if n <= bad {
+					// A reset rather than a polite close: no alert, nothing to log.
+					if tc, ok := c.(*net.TCPConn); ok {
+						_ = tc.SetLinger(0)
+					}
+					c.Close()
+					return
+				}
+				defer c.Close()
+				srv := tls.Server(c, cfg)
+				_ = srv.HandshakeContext(context.Background())
+				srv.Close()
+			}()
+		}
+	}()
+	return targetOf(t, ln.Addr().String())
+}
+
+// PQ-23. pq-intolerant is the finding somebody takes to a CDN vendor. One reset
+// can also be a stale conntrack entry, so an abrupt result is dialled a second
+// time before it is believed — and when the second dial connects, the endpoint
+// is flapping, not walled.
+func TestAnAbruptResultIsConfirmedBeforeItIsBelieved(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := flakyServer(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}, 1)
+
+	p, _ := clientprofile.ByName("pq-preferred")
+	d := Dialer{Timeout: 5 * time.Second, Confirm: true}
+	res := d.DoConfirmed(context.Background(), tg, p)
+
+	if !res.OK {
+		t.Fatalf("the second dial should have connected: %s (%s)", res.Err, res.Kind)
+	}
+	if res.Attempts != 2 {
+		t.Errorf("attempts = %d, want 2", res.Attempts)
+	}
+	if !res.Flapped {
+		t.Error("a result that failed abruptly and then connected has to say so: this is a flap, not a wall")
+	}
+	if res.FirstKind != KindReset && res.FirstKind != KindEOF {
+		t.Errorf("first kind = %q, want the abrupt failure that was retried", res.FirstKind)
+	}
+}
+
+// The wall: both dials end the same way, and the result says the refusal
+// reproduced — which is what makes it quotable.
+func TestAReproducibleWallSaysSo(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := intolerantServer(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}, 400)
+
+	p, _ := clientprofile.ByName("pq-preferred")
+	d := Dialer{Timeout: 5 * time.Second, Confirm: true}
+	res := d.DoConfirmed(context.Background(), tg, p)
+
+	if res.OK {
+		t.Fatal("the hybrid hello is over the limit; it must not complete")
+	}
+	if res.Attempts != 2 {
+		t.Errorf("attempts = %d, want 2", res.Attempts)
+	}
+	if !res.Reproduced {
+		t.Error("both dials failed abruptly, so the refusal reproduced and the finding has to say it")
+	}
+	if res.Flapped {
+		t.Error("nothing flapped here")
+	}
+}
+
+// A civil refusal is a decision the peer made, not a network event: re-dialling
+// it would double the connections against every endpoint with a policy, and
+// prove nothing.
+func TestACivilRefusalIsNotRetried(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := serveTLS(t, &tls.Config{
+		Certificates:     []tls.Certificate{cert},
+		MinVersion:       tls.VersionTLS13,
+		CurvePreferences: []tls.CurveID{tls.X25519},
+	})
+
+	p, _ := clientprofile.ByName("pq-only")
+	d := Dialer{Timeout: 5 * time.Second, Confirm: true}
+	res := d.DoConfirmed(context.Background(), tg, p)
+
+	if res.OK {
+		t.Fatal("a server without ML-KEM must not complete pq-only")
+	}
+	if res.Attempts != 1 {
+		t.Errorf("attempts = %d, want 1 — an alert is an answer, not a flap", res.Attempts)
+	}
+	if res.Reproduced {
+		t.Error("nothing was reproduced: there was one dial")
+	}
+}
+
+// Off by default is not the question — the question is that it can be turned
+// off, for a run where a second connection per abrupt result is not welcome.
+func TestConfirmCanBeTurnedOff(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := flakyServer(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}, 1)
+
+	p, _ := clientprofile.ByName("pq-preferred")
+	d := Dialer{Timeout: 5 * time.Second}
+	res := d.DoConfirmed(context.Background(), tg, p)
+
+	if res.OK {
+		t.Fatal("without confirmation the first dial is the answer, and it failed")
+	}
+	if res.Attempts != 1 {
+		t.Errorf("attempts = %d, want 1", res.Attempts)
 	}
 }

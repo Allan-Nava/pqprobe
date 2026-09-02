@@ -121,6 +121,18 @@ type Result struct {
 	// roots, done here rather than by the dialler — see clientprofile.TLSConfig.
 	ChainVerified bool   `json:"chain_verified"`
 	ChainError    string `json:"chain_error,omitempty"`
+	// Attempts is how many handshakes this result is based on: two when an
+	// abrupt failure was re-dialled to confirm it. See DoConfirmed.
+	Attempts int `json:"attempts,omitempty"`
+	// FirstKind is how the first attempt ended, when there was more than one.
+	FirstKind Kind `json:"first_kind,omitempty"`
+	// Reproduced is true when both attempts ended abruptly: the refusal is a
+	// wall rather than a flap, and the finding may say so.
+	Reproduced bool `json:"reproduced,omitempty"`
+	// Flapped is true when the first attempt ended abruptly and the second
+	// connected. The endpoint works and is unstable, which is a third state and
+	// must not render as either of the other two.
+	Flapped bool `json:"flapped,omitempty"`
 	// PeerChainLen is how many certificates the peer sent. One means the peer
 	// sent the leaf alone: browsers with a cached intermediate will be fine and
 	// a fresh client will not, which is the most confusing class of bug there
@@ -133,8 +145,62 @@ type Result struct {
 type Dialer struct {
 	Timeout time.Duration
 	ALPN    []string
+	// Confirm re-dials an abrupt failure once before it is believed. See
+	// DoConfirmed.
+	Confirm bool
+	// ConfirmDelay is the pause between the two dials. Zero means a short
+	// default; tests set it to nothing.
+	ConfirmDelay time.Duration
 	// Now is the clock used for expiry arithmetic; tests set it.
 	Now func() time.Time
+}
+
+// DoConfirmed dials once and, when the failure was abrupt and Confirm is set,
+// dials a second time before the result is believed.
+//
+// pq-intolerant is the finding somebody takes to a CDN vendor, and one reset is
+// not only a middlebox: it is also a stale conntrack entry, a load balancer
+// mid-reconfiguration, a node that had just been drained. Those flap; a wall
+// does not. So the second dial decides which word the report gets to use, and
+// the result carries both attempts either way — Reproduced when the refusal
+// happened twice, Flapped when the retry connected.
+//
+// Only abrupt failures are retried. An alert is an answer the peer chose to
+// give, and re-dialling it would double the connections against every endpoint
+// with a group policy while proving nothing.
+func (d Dialer) DoConfirmed(ctx context.Context, t Target, p clientprofile.Profile) Result {
+	first := d.Do(ctx, t, p)
+	first.Attempts = 1
+	if !d.Confirm || first.OK || !first.Kind.Abrupt() {
+		return first
+	}
+
+	// A pause, because the failure being ruled out is often a connection state
+	// that clears in milliseconds. Immediately reusing the same four-tuple is
+	// the one way to reproduce it on purpose.
+	delay := d.ConfirmDelay
+	if delay == 0 {
+		delay = 250 * time.Millisecond
+	}
+	select {
+	case <-ctx.Done():
+		return first
+	case <-time.After(delay):
+	}
+
+	second := d.Do(ctx, t, p)
+	second.Attempts = 2
+	second.FirstKind = first.Kind
+	if second.OK {
+		// The endpoint answered the same hello a moment later: real, and not the
+		// wall the first dial looked like.
+		second.Flapped = true
+		return second
+	}
+	// Still gone. Report the second failure — it is the one that was confirmed —
+	// and say that it reproduced, which is what makes it quotable.
+	second.Reproduced = second.Kind.Abrupt()
+	return second
 }
 
 // Do dials target with profile and reports what happened.

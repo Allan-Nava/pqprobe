@@ -59,6 +59,22 @@ planned against, instead of "some hybrid handshake worked". The two refusals
 stay apart here too — `declined with an alert` is a policy, `cut off` is the
 failure this tool exists for, and on the hybrid group it is also a size signal.
 
+## Confirmed, or flapping
+
+An abrupt failure is dialled a second time before the class is assigned, because
+`pq-intolerant` is the finding somebody takes to a CDN vendor and one reset is
+also what a stale connection-tracking entry or a node being drained looks like.
+An alert is never re-dialled: it is an answer the peer chose to give.
+
+| What the two dials did | How it reads |
+|---|---|
+| both cut off | `no handshake (reset) — twice`, and the verdict hint says *reproduced on a second dial* |
+| cut off, then connected | a `WARN` handshake finding: *only on the second attempt* — the endpoint is **flapping, not walled** |
+| an alert | one dial, and nothing about attempts in the output |
+
+A flap never becomes a `BAD` class: the endpoint connected, so it is graded on
+that, and the instability is reported next to it. `--confirm=false` dials once.
+
 ## Alert versus reset
 
 The two BAD classes look identical from a browser and are different work:

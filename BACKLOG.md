@@ -199,12 +199,14 @@ how the answer reaches a pull request without a second tool.
   peer actually supports. The single-group profiles are held out of the verdict:
   no real client dials that way, and grading on it would call a peer intolerant
   for declining P-521. <!-- pq: prio=high size=M labels=probe,profile ver=0.3.0 -->
-- [ ] **PQ-23 — Confirm before condemning**: `pq-intolerant` is the finding an
-  operator will take to a CDN vendor, and a single reset can also be a
-  half-closed conntrack entry. Re-dial an abrupt result once before the class is
-  assigned, record both attempts, and say in the finding whether the refusal
-  reproduced. A flap and a wall must not render identically.
-  <!-- pq: prio=high size=S labels=probe,verdict -->
+- [x] **PQ-23 — Confirm before condemning**: an abrupt result is re-dialled
+  once before the class is assigned (`Dialer.DoConfirmed`, `--confirm`, on by
+  default), both attempts are recorded, and the three outcomes read differently:
+  *reproduced on a second dial* for a wall, *only on the second attempt* plus a
+  WARN for a flap — which is graded on the handshake that worked, never as BAD —
+  and nothing at all for a civil refusal, which is not re-dialled because an
+  alert is an answer the peer chose to give. A healthy fleet therefore pays no
+  extra connections. <!-- pq: prio=high size=S labels=probe,verdict ver=0.5.0 -->
 - [ ] **PQ-24 — Baseline diff**: `--baseline run.json` compares this run against
   a stored one and reports the *transitions* — `pq-ready` → `pq-intolerant` is
   the finding, and an endpoint that was already broken yesterday is not news at
