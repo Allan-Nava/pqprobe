@@ -81,10 +81,14 @@ jobs:
       # right and the social card is last month's.
       - name: The PNGs are in step with their SVGs
         run: sh scripts/render-assets.sh --check
+      - name: The freshness gate itself
+        run: sh scripts/assets_test.sh
       # The About box is data here, and a description GitHub would reject is a
       # silently ignored API call rather than an error.
       - name: The repository metadata is valid
         run: ./scripts/repo-meta.sh lint
+      - name: The metadata gate itself
+        run: sh scripts/repo-meta_test.sh
 
   release-tooling:
     runs-on: ubuntu-latest

@@ -64,6 +64,8 @@ jobs:
           sh scripts/backlog_test.sh
           sh scripts/docs_test.sh
           sh scripts/release_test.sh
+          sh scripts/repo-meta_test.sh
+          sh scripts/assets_test.sh
 
       # The notes are the CHANGELOG section for this version. No section means no
       # release: an empty release body is worse than a failed workflow, because

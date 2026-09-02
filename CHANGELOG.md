@@ -37,14 +37,19 @@ fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 - **The About box as data** (PQ-30) — the repository description, homepage and
   topics live in [.github/repo-meta](.github/repo-meta).
   `scripts/repo-meta.sh` lints them in CI (GitHub's 350-character limit, the
-  topic charset, and the homepage agreeing with the published page's canonical
-  URL), `check` reports drift against GitHub and `apply` writes it.
+  topic charset, no repeated topic, and the homepage agreeing with the published
+  page's canonical URL), `check` reports drift against GitHub and `apply` writes
+  it. The topic list is read line by line: a topic containing a space is a
+  finding, not two topics silently sent to GitHub. `scripts/repo-meta_test.sh`
+  covers the gate against fixtures — it is what found both of those.
 - **Backlog to issues, automatically** (PQ-31) — the existing planner now runs
   on a push that touches `BACKLOG.md`, one direction only.
 - **A freshness gate for the rendered assets** (PQ-29) —
   `scripts/render-assets.sh --check` compares the SVGs against the checksums
   recorded when the PNGs were rendered, so an edited logo cannot ship with last
-  month's social card.
+  month's social card. It needs no browser, which is what lets CI run it, and
+  `scripts/assets_test.sh` asserts exactly that along with each way the check
+  has to fail.
 - **M5 — Make the verdict actionable** (PQ-22…PQ-28) planned in
   [BACKLOG.md](BACKLOG.md): a per-group capability map, a re-dial before an
   abrupt result is condemned, `--baseline` transitions, ALPN as a variable,

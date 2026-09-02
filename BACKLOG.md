@@ -121,7 +121,9 @@ prints what to pick up.
   outside git by default, which is how they end up eighteen months stale. `lint`
   is a CI gate — a description over 350 characters or a topic GitHub will not
   accept is a silently ignored API call, not an error — and it fails when the
-  homepage disagrees with the canonical URL of the published page.
+  homepage disagrees with the canonical URL of the published page. Fixtures
+  first: the test suite is what found the word-splitting bug that would have
+  sent `post quantum` to GitHub as two topics.
   <!-- pq: prio=med size=S labels=project,delivery ver=unreleased -->
 - [x] **PQ-31 — Backlog to issues, automatically**: the existing planner runs on
   a push that touches `BACKLOG.md`, so the issues are a view of the backlog
@@ -139,8 +141,9 @@ prints what to pick up.
   client class arrives, the oversized hybrid hello is cut off before the wall —
   as `logo.svg`, `favicon.svg`, a wordmark and a 1200×630 social card, with
   `scripts/render-assets.sh` rasterising the two places SVG is not accepted and
-  `--check` failing CI when a PNG is older than its SVG. Hand-written SVG: an
-  icon is not worth a dependency.
+  `--check` failing CI when a PNG is older than its SVG — asserted against a
+  fixture, browser-free, because a gate CI cannot run is a gate that gets
+  deleted. Hand-written SVG: an icon is not worth a dependency.
   <!-- pq: prio=med size=S labels=docs,project ver=unreleased -->
 - [x] **PQ-21 — Intent document**: [INTENT.md](INTENT.md) — why the tool
   exists, the goals in priority order, the non-goals as decisions rather than

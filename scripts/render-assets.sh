@@ -21,7 +21,9 @@
 set -eu
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-assets="$root/docs/assets"
+# ASSETS_DIR exists so the freshness gate can be tested against a fixture. Left
+# unset it is the real directory, which is the only thing CI ever checks.
+assets="${ASSETS_DIR:-$root/docs/assets}"
 
 # ---------------------------------------------------------------------------
 # The checksum record: `<sha256>  <file>` for each source SVG.

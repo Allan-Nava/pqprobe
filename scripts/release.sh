@@ -84,7 +84,9 @@ sh scripts/backlog_test.sh >/dev/null && echo "backlog tests OK"
 sh scripts/docs_test.sh >/dev/null && echo "docs tests OK"
 sh scripts/release_test.sh >/dev/null && echo "release tests OK"
 ./scripts/repo-meta.sh lint
+sh scripts/repo-meta_test.sh >/dev/null && echo "metadata tests OK"
 sh scripts/render-assets.sh --check
+sh scripts/assets_test.sh >/dev/null && echo "asset tests OK"
 
 [ "${RELEASE_DRY_RUN:-0}" = 1 ] && { say "dry run — nothing was rewritten"; exit 0; }
 

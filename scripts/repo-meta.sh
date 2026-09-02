@@ -20,8 +20,10 @@
 # metadata workflow, which a maintainer starts by hand.
 #
 # POSIX sh and awk only — this repository has no dependencies, and neither does
-# its tooling. REPO_META and REPO override the data file and the repository, so
-# the gate can be tested against a fixture.
+# its tooling. REPO_META, DOCS_HTML and REPO override the data file, the
+# published page and the repository, so the gate can be tested against a
+# fixture rather than against this repository — where every case would pass or
+# fail for the reason the real files give it.
 
 set -eu
 
@@ -52,6 +54,12 @@ lint() {
 	bad=0
 	err() { printf '.github/repo-meta: %s\n' "$1" >&2; bad=$((bad + 1)); }
 
+	# A pipeline runs in a subshell, so a counter incremented inside one never
+	# reaches this scope. The topic checks write their findings to a file, and
+	# this scope counts them.
+	badfile=$(mktemp "${TMPDIR:-/tmp}/pqprobe-meta.XXXXXX")
+	trap 'rm -f "$badfile"' EXIT INT HUP TERM
+
 	len=$(printf '%s' "$description" | wc -c | tr -d ' ')
 	[ -n "$description" ] || err "no description"
 	[ "$len" -le 350 ] || err "the description is $len characters — GitHub's limit is 350"
@@ -61,7 +69,7 @@ lint() {
 
 	# The published page states its own canonical URL. Two answers to "where does
 	# this live" is how the link in the About box outlives the site it points at.
-	html="$root/docs/index.html"
+	html="${DOCS_HTML:-$root/docs/index.html}"
 	if [ -f "$html" ]; then
 		canon=$(awk '/rel="canonical"/ { i = index($0, "href=\""); if (i) {
 			r = substr($0, i + 6); j = index(r, "\""); print substr(r, 1, j - 1); exit } }' "$html")
@@ -73,12 +81,26 @@ lint() {
 	n=$(printf '%s\n' "$topics" | grep -c . || :)
 	[ "$n" -ge 1 ] || err "no topics"
 	[ "$n" -le 20 ] || err "$n topics — GitHub keeps at most 20"
-	for t in $topics; do
+
+	# Read line by line rather than `for t in $topics`: word splitting would turn
+	# `post quantum` into two acceptable topics and send both to GitHub.
+	printf '%s\n' "$topics" | while IFS= read -r t; do
+		[ -n "$t" ] || continue
 		case "$t" in
-		*[!a-z0-9-]*) err "topic \`$t\` is not lowercase letters, digits and hyphens" ;;
-		-*|*-)        err "topic \`$t\` starts or ends with a hyphen" ;;
+		*[!a-z0-9-]*) printf 'topic `%s` is not lowercase letters, digits and hyphens\n' "$t" ;;
+		-*|*-)        printf 'topic `%s` starts or ends with a hyphen\n' "$t" ;;
 		esac
-	done
+	done > "$badfile"
+
+	# GitHub de-duplicates silently, so a repeated topic is a wasted slot out of
+	# twenty and a drift `check` would report for ever.
+	printf '%s\n' "$topics" | sort | uniq -d | while IFS= read -r t; do
+		[ -n "$t" ] && printf 'topic `%s` appears twice\n' "$t"
+	done >> "$badfile"
+
+	while IFS= read -r line; do
+		[ -n "$line" ] && err "$line"
+	done < "$badfile"
 
 	if [ "$bad" -gt 0 ]; then
 		printf '\n%d problem(s) in .github/repo-meta\n' "$bad" >&2
@@ -132,7 +154,13 @@ apply() {
 	lint >/dev/null
 	repo=$(repo_arg)
 	set -- gh repo edit "$repo" --description "$description" --homepage "$homepage"
-	for t in $topics; do set -- "$@" --add-topic "$t"; done
+	# Line by line, for the same reason lint checks it that way.
+	oldifs=$IFS; IFS='
+'
+	for t in $topics; do
+		[ -n "$t" ] && set -- "$@" --add-topic "$t"
+	done
+	IFS=$oldifs
 	"$@" >/dev/null
 	printf 'applied to %s:\n\n' "$repo"
 	show

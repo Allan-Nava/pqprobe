@@ -202,6 +202,11 @@ Everything else that can be a script is one, and CI runs all of them:
 | `scripts/release-notes.sh` | a release's notes come out of `CHANGELOG.md`, never retyped |
 | `scripts/release.sh` | a release runs every gate, tags — and never pushes |
 
+Each of those has a fixture test that runs in CI — `backlog_test.sh`,
+`backlog_issues_test.sh`, `docs_test.sh`, `assets_test.sh`,
+`repo-meta_test.sh`, `release_test.sh` — because a gate nobody tests is a gate
+that passes for the wrong reason.
+
 `BACKLOG.md` is the single source of truth for planned work and
 [ROADMAP.md](ROADMAP.md) is generated from it. Why the tool exists and what is
 deliberately out of scope: [INTENT.md](INTENT.md). Contributor brief:
