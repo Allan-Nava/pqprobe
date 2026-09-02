@@ -144,6 +144,8 @@ flags:
   --per-group              also dial each key exchange group on its own and
                            report the accepted set (one extra handshake per
                            group, in sequence)
+  --alpn-check             also dial the same client with h2,http/1.1 and report
+                           when the ALPN bytes change the answer
   --size-sweep             also grow the ClientHello in steps and report the
                            size at which the peer stops answering (stops at the
                            first size that fails)
@@ -201,6 +203,7 @@ func cmdProbe(args []string) int {
 		profiles    = fs.String("profile", strings.Join(clientprofile.Default, ","), "client profiles to dial")
 		perGroup    = fs.Bool("per-group", false, "also dial each key exchange group on its own")
 		sizeSweep   = fs.Bool("size-sweep", false, "also grow the ClientHello in steps and report the limit")
+		alpnCheck   = fs.Bool("alpn-check", false, "also dial the same client with h2,http/1.1")
 		perAddress  = fs.Bool("per-address", false, "probe every A/AAAA record of each name")
 		invFile     = fs.String("inventory", "", "Ansible INI inventory")
 		groups      = fs.String("group", "", "inventory groups")
@@ -256,6 +259,9 @@ func cmdProbe(args []string) int {
 	}
 	if *sizeSweep {
 		sel = append(sel, clientprofile.SizeProbes()...)
+	}
+	if *alpnCheck {
+		sel = append(sel, clientprofile.ALPNProbe())
 	}
 
 	// The names are kept, so the pool can be reported per name after the run.

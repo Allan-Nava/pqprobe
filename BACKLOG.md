@@ -240,12 +240,15 @@ how the answer reaches a pull request without a second tool.
   it is a diff nobody reads. A file that is not a pqprobe document is an error
   rather than an empty comparison: one that silently parsed as nothing would
   report "no changes" for ever. <!-- pq: prio=high size=M labels=output,cli ver=0.8.0 -->
-- [ ] **PQ-25 — ALPN as a variable**: ALPN is bytes in the same hello, and a CDN
-  offers `h2,http/1.1` where a health check offers nothing. Dial `pq-preferred`
-  both ways and report when the answer differs — an endpoint that takes a hybrid
-  hello bare and drops it with ALPN is size-intolerant with a threshold in
-  between, and today that reads as a flap.
-  <!-- pq: prio=med size=S labels=probe,verdict -->
+- [x] **PQ-25 — ALPN as a variable**: `--alpn-check` dials `pq-preferred` a
+  second time carrying `h2,http/1.1` and one `alpn` finding compares the two,
+  with both measured hello sizes, because the smallness of the difference is the
+  point — eighteen bytes between working and not means a threshold sits in
+  between, every browser and CDN fails, and a bare health check keeps saying the
+  endpoint is fine. The pair is *derived* from `pq-preferred` so the ALPN list
+  is the only variable: the first version pinned TLS 1.3, offered fewer cipher
+  suites and produced a **smaller** hello, which the offline test caught.
+  <!-- pq: prio=med size=S labels=probe,verdict ver=0.11.0 -->
 - [x] **PQ-26 — mTLS is not a refusal**: the peer's `CertificateRequest` is
   recorded during the handshake, through `GetClientCertificate` — the only
   reliable signal, since on TLS 1.2 the alert that follows is indistinguishable

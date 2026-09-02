@@ -120,12 +120,15 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	// is not the question the class answers — no realistic client dials that
 	// way, and grading on it would call a peer intolerant for declining P-521.
 	var client, groups, sizes []probe.Result
-	for _, r := range results {
+	var alpnPair *probe.Result
+	for i, r := range results {
 		switch {
 		case clientprofile.IsGroupProbe(r.Profile):
 			groups = append(groups, r)
 		case clientprofile.IsSizeProbe(r.Profile):
 			sizes = append(sizes, r)
+		case clientprofile.IsALPNProbe(r.Profile):
+			alpnPair = &results[i]
 		default:
 			client = append(client, r)
 		}
@@ -152,6 +155,14 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	}
 	if f, ok := sizeFinding(target, sizes); ok {
 		rep.Finding = append(rep.Finding, f)
+	}
+
+	if alpnPair != nil {
+		if bare, ok := by["pq-preferred"]; ok {
+			if f, ok := alpnFinding(target, bare, *alpnPair); ok {
+				rep.Finding = append(rep.Finding, f)
+			}
+		}
 	}
 
 	classic, haveClassic := by["classic"]
@@ -426,6 +437,58 @@ func addressOf(target string) string {
 		return target[:i]
 	}
 	return target
+}
+
+// alpnFinding compares the same client with and without an ALPN list (PQ-25).
+//
+// ALPN is a couple of dozen bytes in the same ClientHello — nothing, unless the
+// peer has a threshold in between. Then the endpoint takes the hybrid hello
+// bare and drops it with ALPN, every browser and CDN fails while a bare probe
+// says the endpoint is fine, and without the pair the two results look like a
+// flap. The measured sizes are in the message because the smallness of the
+// difference is the point.
+func alpnFinding(target string, bare, withALPN probe.Result) (finding.Finding, bool) {
+	sizes := ""
+	if bare.HelloBytes > 0 && withALPN.HelloBytes > 0 {
+		sizes = fmt.Sprintf(" (%d B against %d B)", bare.HelloBytes, withALPN.HelloBytes)
+	}
+
+	switch {
+	case bare.OK && !withALPN.OK:
+		diff := withALPN.HelloBytes - bare.HelloBytes
+		return finding.Finding{
+			Check:   "alpn",
+			Target:  target,
+			Status:  finding.BAD,
+			Message: fmt.Sprintf("the same client connects without ALPN and is refused with h2,http/1.1%s", sizes),
+			Value:   finding.Num(float64(diff)),
+			Unit:    "bytes",
+			Hint: fmt.Sprintf("%d bytes of ALPN is the difference between working and not, so this peer has a size threshold sitting between the two — every browser and every CDN sends ALPN, and a bare probe like a health check will keep saying the endpoint is fine. Run --size-sweep to find where the threshold is",
+				diff),
+		}, true
+
+	case !bare.OK && withALPN.OK:
+		return finding.Finding{
+			Check:   "alpn",
+			Target:  target,
+			Status:  finding.WARN,
+			Message: fmt.Sprintf("the same client is refused without ALPN and connects with h2,http/1.1%s", sizes),
+			Hint:    "that is the opposite of a size problem: the peer appears to require an ALPN list, which some terminators do when they route by protocol. Worth knowing before a health check without one is trusted",
+		}, true
+
+	case bare.OK && withALPN.OK:
+		return finding.Finding{
+			Check:   "alpn",
+			Target:  target,
+			Status:  finding.OK,
+			Message: fmt.Sprintf("ALPN makes no difference%s", sizes),
+			Hint:    "the answer does not depend on whether the client offers a protocol list, which is one fewer thing between a health check and a browser",
+		}, true
+	}
+
+	// Both failed: the verdict already says what happened, and a second sentence
+	// about ALPN would be a claim nobody measured.
+	return finding.Finding{}, false
 }
 
 // sizeFinding brackets the ClientHello size at which the peer stopped

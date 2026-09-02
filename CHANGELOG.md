@@ -6,6 +6,25 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.11.0] - 2026-09-02
+
+### Added
+
+- **ALPN as a variable** (PQ-25) — `--alpn-check` dials the same client a second
+  time carrying `h2,http/1.1`, the list a browser or CDN actually sends, and one
+  `alpn` finding compares the two with both measured hello sizes: `ALPN makes no
+  difference (1495 B against 1513 B)`, or `the same client connects without ALPN
+  and is refused with h2,http/1.1`. Eighteen bytes is nothing unless the peer has
+  a threshold in between — and then every browser and every CDN fails while a
+  bare probe keeps calling the endpoint healthy, which without the pair reads as
+  a flap.
+
+  The two profiles are identical apart from the ALPN list, and a test keeps them
+  that way. The first version of the probe pinned TLS 1.3 while its pair allows
+  1.2, so it offered fewer cipher suites and sent a *smaller* hello — a
+  comparison of two variables, which is a comparison of nothing. The offline
+  test caught it.
+
 ## [0.10.0] - 2026-09-02
 
 ### Added
@@ -312,6 +331,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.11.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.11.0
 [0.10.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.10.0
 [0.9.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.9.0
 [0.8.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.8.1

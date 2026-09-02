@@ -202,3 +202,67 @@ func TestUnpaddedProfilesKeepTheirALPN(t *testing.T) {
 		t.Fatalf("NextProtos = %v, want exactly what was passed", cfg.NextProtos)
 	}
 }
+
+// PQ-25. ALPN is bytes in the same hello, and a CDN offers h2,http/1.1 where a
+// health check offers nothing. If a peer takes the hybrid hello bare and drops
+// it with ALPN, it is size-intolerant with a threshold in between — and today
+// that reads as a flap.
+func TestTheALPNProbePinsItsProtocolList(t *testing.T) {
+	p := ALPNProbe()
+
+	if !IsALPNProbe(p.Name) {
+		t.Errorf("%s is not recognisable as the ALPN probe", p.Name)
+	}
+	if !p.OffersPQ {
+		t.Error("the question is about the hybrid hello, so it has to offer the hybrid group")
+	}
+	if len(p.ALPN) == 0 {
+		t.Fatal("the probe exists to carry an ALPN list")
+	}
+
+	// A profile that pins its ALPN pins it: the caller's list would make the
+	// comparison meaningless, since the difference *is* the variable.
+	cfg := p.TLSConfig("origin.example", []string{"whatever-the-caller-said"})
+	if len(cfg.NextProtos) != len(p.ALPN) || cfg.NextProtos[0] != p.ALPN[0] {
+		t.Fatalf("NextProtos = %v, want the pinned list %v", cfg.NextProtos, p.ALPN)
+	}
+	if cfg.NextProtos[0] != "h2" {
+		t.Errorf("the realistic list starts with h2, not %q", cfg.NextProtos[0])
+	}
+
+	// The bare profile it is compared against must not carry ALPN of its own.
+	bare, _ := ByName("pq-preferred")
+	if len(bare.ALPN) != 0 {
+		t.Error("pq-preferred has to stay bare, or there is nothing to compare")
+	}
+	for _, x := range All {
+		if IsALPNProbe(x.Name) {
+			t.Errorf("%s reads as the ALPN probe", x.Name)
+		}
+	}
+}
+
+// One variable. The first ALPN probe pinned TLS 1.3 while pq-preferred allows
+// 1.2, so it offered fewer cipher suites and produced a *smaller* hello: the
+// pair measured two differences at once, which measures nothing. This asserts
+// the shapes stay identical apart from the ALPN list.
+func TestTheALPNProbeDiffersFromItsPairInExactlyOneWay(t *testing.T) {
+	bare, _ := ByName("pq-preferred")
+	probe := ALPNProbe()
+
+	if probe.MinVersion != bare.MinVersion || probe.MaxVersion != bare.MaxVersion {
+		t.Errorf("version window differs: %x-%x against %x-%x",
+			probe.MinVersion, probe.MaxVersion, bare.MinVersion, bare.MaxVersion)
+	}
+	if len(probe.Groups) != len(bare.Groups) {
+		t.Fatalf("group list differs: %v against %v", probe.Groups, bare.Groups)
+	}
+	for i := range probe.Groups {
+		if probe.Groups[i] != bare.Groups[i] {
+			t.Errorf("group %d differs: %v against %v", i, probe.Groups[i], bare.Groups[i])
+		}
+	}
+	if probe.OffersPQ != bare.OffersPQ || probe.RequiresPQ != bare.RequiresPQ || probe.Pad != bare.Pad {
+		t.Error("the flags have to match: the ALPN list is the only variable")
+	}
+}

@@ -732,3 +732,68 @@ func TestNoSizeFindingWithoutASweep(t *testing.T) {
 		}
 	}
 }
+
+// PQ-25. When ALPN is what tips the peer over, say it in those words and with
+// both measured sizes — "flapping" would send somebody looking at the wrong
+// thing entirely.
+func TestALPNTippingThePeerOverIsNamed(t *testing.T) {
+	bare := ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true)
+	bare.HelloBytes = 1495
+	withALPN := fail("pq-preferred+alpn", probe.KindTimeout)
+	withALPN.HelloBytes = 1512
+
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		bare, withALPN,
+	}, opts())
+
+	f := find(t, rep, "alpn")
+	if f.Status != finding.BAD {
+		t.Errorf("status = %s, want BAD: every browser and CDN sends ALPN", f.Status)
+	}
+	if !strings.Contains(f.Message, "1495") || !strings.Contains(f.Message, "1512") {
+		t.Errorf("both measured sizes belong in the message: %q", f.Message)
+	}
+	if !strings.Contains(f.Hint, "17 bytes") && !strings.Contains(f.Hint, "threshold") {
+		t.Errorf("the hint has to make the smallness of the difference the point: %q", f.Hint)
+	}
+	// The class is still decided by the realistic client, which connected.
+	if rep.Class == PQIntolerant {
+		t.Error("the bare hybrid client connected; the class must not say intolerant")
+	}
+}
+
+// Both ways working is the normal case, and it is worth one quiet line: it
+// means the answer does not depend on which client asked.
+func TestALPNMakingNoDifferenceIsStatedQuietly(t *testing.T) {
+	bare := ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true)
+	bare.HelloBytes = 1495
+	withALPN := ok("pq-preferred+alpn", "TLS 1.3", "X25519MLKEM768", true)
+	withALPN.HelloBytes = 1512
+
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false), bare, withALPN,
+	}, opts())
+
+	f := find(t, rep, "alpn")
+	if f.Status != finding.OK {
+		t.Errorf("status = %s, want OK", f.Status)
+	}
+	if !strings.Contains(f.Message, "no difference") {
+		t.Errorf("message = %q", f.Message)
+	}
+}
+
+// Without the pair there is nothing to compare, and a finding about it would be
+// a statement nobody measured.
+func TestNoALPNFindingWithoutThePair(t *testing.T) {
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true),
+	}, opts())
+	for _, f := range rep.Finding {
+		if f.Check == "alpn" {
+			t.Fatalf("unexpected alpn finding: %+v", f)
+		}
+	}
+}

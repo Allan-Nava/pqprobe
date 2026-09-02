@@ -28,6 +28,7 @@ not an endpoint that passed, and an operator has to see it first.
 | `addresses` | the name | with `--per-address`: how many addresses the name has, and which one answers differently |
 | `transition` | `host:port` | with `--baseline`: the class changed since a stored run, or the endpoint is new or gone |
 | `size-limit` | `host:port` | with `--size-sweep`: the ClientHello sizes the peer answered and the first it did not |
+| `alpn` | `host:port` | with `--alpn-check`: whether offering `h2,http/1.1` changes the answer |
 | `tls-version` | `host:port` | TLS 1.3 did not complete while 1.2 did |
 
 A failed handshake is a `WARN` on its own, never a `BAD`: whether it matters is
@@ -79,6 +80,24 @@ An alert is never re-dialled: it is an answer the peer chose to give.
 
 A flap never becomes a `BAD` class: the endpoint connected, so it is graded on
 that, and the instability is reported next to it. `--confirm=false` dials once.
+
+## When ALPN is the difference
+
+`--alpn-check` dials `pq-preferred` a second time carrying `h2,http/1.1` — the
+list a browser or a CDN actually sends — and compares the two:
+
+```console
+OK   alpn   ALPN makes no difference (1495 B against 1513 B)
+BAD  alpn   the same client connects without ALPN and is refused with h2,http/1.1 (1495 B against 1512 B)
+```
+
+Eighteen bytes is nothing, unless the peer has a threshold in between. Then
+every browser and every CDN fails while a bare probe — a health check, or
+pqprobe without this flag — keeps saying the endpoint is fine, and the two
+results look like a flap. The `--size-sweep` finding is where to go next.
+
+The two profiles are identical apart from the ALPN list, deliberately and with a
+test to keep it that way: one variable, or the comparison means nothing.
 
 ## How big is too big
 

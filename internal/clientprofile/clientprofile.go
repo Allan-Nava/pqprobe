@@ -38,6 +38,11 @@ type Profile struct {
 	// RequiresPQ is true when *only* post-quantum groups are offered, so a peer
 	// without ML-KEM has no fallback and must refuse.
 	RequiresPQ bool
+	// ALPN, when set, is the protocol list this profile pins — it replaces
+	// whatever the caller asked for. A profile that exists to ask a question
+	// about ALPN has to control that field, or the difference it is measuring
+	// is not the difference being tested.
+	ALPN []string
 	// Pad is roughly how many bytes of filler to add to the ClientHello, for
 	// the size sweep. See TLSConfig: the filler is ALPN, because Go exposes no
 	// padding extension and in TLS 1.3 the cipher list is fixed.
@@ -52,6 +57,9 @@ type Profile struct {
 // true. The chain is verified separately, from the certificates the peer
 // actually sent, so an expiry problem is reported as an expiry problem.
 func (p Profile) TLSConfig(serverName string, alpn []string) *tls.Config {
+	if len(p.ALPN) > 0 {
+		alpn = p.ALPN
+	}
 	if p.Pad > 0 {
 		alpn = append(append([]string{}, alpn...), padProtos(p.Pad)...)
 	}
@@ -175,6 +183,39 @@ func GroupProbes() []Profile {
 		})
 	}
 	return out
+}
+
+// ALPNProbeName is the profile that carries a realistic ALPN list.
+const ALPNProbeName = "pq-preferred+alpn"
+
+// IsALPNProbe reports whether a name is that profile. Like the group and size
+// probes it stays out of the classification: it is a paired measurement, not a
+// client class.
+func IsALPNProbe(name string) bool { return name == ALPNProbeName }
+
+// ALPNProbe is `pq-preferred` with the ALPN list a browser or a CDN actually
+// sends (PQ-25).
+//
+// ALPN is bytes in the same ClientHello. A health check offers none, a CDN
+// offers h2 and http/1.1, and the difference is a couple of dozen bytes — which
+// is nothing, unless the peer has a threshold in between. Then the endpoint
+// takes the hybrid hello bare and drops it with ALPN, and without this pair the
+// result looks like a flap.
+func ALPNProbe() Profile {
+	// Derived from pq-preferred rather than written out, so the only difference
+	// between the two hellos is the ALPN list. The first version of this pinned
+	// TLS 1.3 and therefore offered fewer cipher suites, which made the "with
+	// ALPN" hello *smaller* than the bare one — a comparison of two variables,
+	// which is a comparison of nothing.
+	p, ok := ByName("pq-preferred")
+	if !ok {
+		panic("clientprofile: pq-preferred is missing")
+	}
+	p.Name = ALPNProbeName
+	p.Summary = "pq-preferred, carrying the ALPN list a browser or CDN sends"
+	p.Clients = "Chrome, Edge, Firefox and any CDN speaking HTTP/2 — the same capability class as pq-preferred, a slightly larger hello"
+	p.ALPN = []string{"h2", "http/1.1"}
+	return p
 }
 
 // SizePrefix marks a profile that exists to make the ClientHello a given size.

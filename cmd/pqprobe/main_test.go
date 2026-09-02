@@ -45,6 +45,18 @@ func TestValidStatus(t *testing.T) {
 	}
 }
 
+// PQ-25. --alpn-check is a boolean: it adds exactly one handshake, the same
+// client carrying a realistic protocol list.
+func TestALPNCheckIsABooleanFlag(t *testing.T) {
+	if takesValue("--alpn-check") {
+		t.Fatal("--alpn-check takes no value")
+	}
+	got := permute([]string{"--alpn-check", "origin.example"})
+	if len(got) != 2 || got[1] != "origin.example" {
+		t.Fatalf("permute = %v, want the target kept as an operand", got)
+	}
+}
+
 // PQ-11. --size-sweep is a boolean, and the sweep stops at the first size the
 // peer will not answer: the bracket is the answer, and dialling four more sizes
 // past a wall proves nothing.
@@ -119,7 +131,7 @@ func TestUsageDocumentsEveryFlagTheProbeAccepts(t *testing.T) {
 		"--profile", "--per-group", "--inventory", "--group", "--list", "--port",
 		"--sni", "--alpn", "--timeout", "--concurrency", "--json", "--findings",
 		"--min-severity", "--exit-on", "--expiry-warn", "--expiry-bad", "--confirm",
-		"--per-address", "--baseline", "--size-sweep",
+		"--per-address", "--baseline", "--size-sweep", "--alpn-check",
 	} {
 		if !strings.Contains(b.String(), flag) {
 			t.Errorf("%s is not in --help", flag)

@@ -792,3 +792,39 @@ func TestTheSizeSweepBracketsARealLimit(t *testing.T) {
 		t.Errorf("the limit is %d and the bracket is %d..%d, which does not contain it", limit, lastOK, firstBad)
 	}
 }
+
+// PQ-25, against a real listener with a threshold between the two hellos: bare
+// connects, the same client carrying h2,http/1.1 does not. Without the pair
+// this is indistinguishable from a flap, which is why the two are dialled
+// together.
+func TestALPNBytesCanBeWhatTipsAPeerOver(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	cfg := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}
+
+	// Measure the bare hybrid hello first, then plant the limit just above it.
+	bareSize := dial(t, serveTLS(t, cfg), "pq-preferred").HelloBytes
+	if bareSize == 0 {
+		t.Fatal("no hello size measured")
+	}
+	tg := intolerantServer(t, cfg, bareSize+4)
+
+	d := Dialer{Timeout: 5 * time.Second}
+	pref, _ := clientprofile.ByName("pq-preferred")
+	bare := d.Do(context.Background(), tg, pref)
+	withALPN := d.Do(context.Background(), tg, clientprofile.ALPNProbe())
+
+	if !bare.OK {
+		t.Fatalf("the bare hello is under the limit and must connect: %s (%s)", bare.Err, bare.Kind)
+	}
+	if withALPN.OK {
+		t.Fatalf("the ALPN list pushed the hello to %d bytes, over the limit of %d, and it must not connect",
+			withALPN.HelloBytes, bareSize+4)
+	}
+	if !withALPN.Kind.Abrupt() {
+		t.Errorf("this listener vanishes rather than declining: kind=%s", withALPN.Kind)
+	}
+	if withALPN.HelloBytes <= bare.HelloBytes {
+		t.Errorf("the ALPN hello (%d B) is not larger than the bare one (%d B), so nothing was tested",
+			withALPN.HelloBytes, bare.HelloBytes)
+	}
+}
