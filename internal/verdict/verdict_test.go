@@ -797,3 +797,31 @@ func TestNoALPNFindingWithoutThePair(t *testing.T) {
 		}
 	}
 }
+
+// PQ-34. A set somebody asked for gets its own handshake finding — they asked,
+// they want to see it — but it must not decide the class: the class is about
+// the client shapes this tool defines, and a caller-defined set is a question,
+// not a baseline.
+func TestACustomGroupSetIsVisibleButDoesNotGrade(t *testing.T) {
+	custom := fail("custom:X25519MLKEM768", probe.KindAlert)
+
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true),
+		ok("pq-only", "TLS 1.3", "X25519MLKEM768", true),
+		custom,
+	}, opts())
+
+	if rep.Class != PQReady {
+		t.Fatalf("class = %s, want %s", rep.Class, PQReady)
+	}
+	var seen bool
+	for _, f := range rep.Finding {
+		if f.Check == "handshake" && strings.Contains(f.Target, "custom:") {
+			seen = true
+		}
+	}
+	if !seen {
+		t.Error("the caller asked for that dial and has to see its result")
+	}
+}

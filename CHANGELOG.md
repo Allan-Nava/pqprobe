@@ -6,6 +6,20 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.12.0] - 2026-09-02
+
+### Added
+
+- **An ad-hoc capability class** (PQ-34) — `--groups X25519MLKEM768,X25519`
+  dials exactly that set, in that order, with the same version window as
+  `pq-preferred` so the two results are comparable. It shows up as
+  `custom:X25519MLKEM768+X25519` with its own handshake finding — the caller
+  asked for that dial — and it does not decide the class, because a set somebody
+  described is a question, not a baseline. Group names are the ones reports
+  print, case-insensitive and round-tripped by a test, and an unknown name is a
+  usage error listing the known ones rather than a silently smaller set: a run
+  that quietly dropped a group would prove something other than what was asked.
+
 ## [0.11.0] - 2026-09-02
 
 ### Added
@@ -331,6 +345,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.12.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.12.0
 [0.11.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.11.0
 [0.10.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.10.0
 [0.9.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.9.0

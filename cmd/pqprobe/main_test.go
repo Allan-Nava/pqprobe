@@ -45,6 +45,30 @@ func TestValidStatus(t *testing.T) {
 	}
 }
 
+// PQ-34. --groups takes a list, so permute has to consume the word after it —
+// otherwise the group list becomes a target and pqprobe tries to resolve
+// "X25519MLKEM768,X25519" as a hostname.
+func TestGroupsTakesAValue(t *testing.T) {
+	if !takesValue("--groups") {
+		t.Fatal("--groups takes a list")
+	}
+	got := permute([]string{"origin.example", "--groups", "X25519MLKEM768,X25519"})
+	want := []string{"--groups", "X25519MLKEM768,X25519", "origin.example"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("permute = %v, want %v", got, want)
+	}
+}
+
+// --group (inventory groups) and --groups (key exchange groups) are one letter
+// apart and mean completely different things. Both exist because both names are
+// the obvious one for their job — so the difference is asserted, since a silent
+// mix-up would probe the wrong hosts with the wrong hello.
+func TestGroupAndGroupsAreBothFlagsAndBothTakeValues(t *testing.T) {
+	if !takesValue("--group") || !takesValue("--groups") {
+		t.Fatal("both take a value")
+	}
+}
+
 // PQ-25. --alpn-check is a boolean: it adds exactly one handshake, the same
 // client carrying a realistic protocol list.
 func TestALPNCheckIsABooleanFlag(t *testing.T) {
@@ -131,7 +155,7 @@ func TestUsageDocumentsEveryFlagTheProbeAccepts(t *testing.T) {
 		"--profile", "--per-group", "--inventory", "--group", "--list", "--port",
 		"--sni", "--alpn", "--timeout", "--concurrency", "--json", "--findings",
 		"--min-severity", "--exit-on", "--expiry-warn", "--expiry-bad", "--confirm",
-		"--per-address", "--baseline", "--size-sweep", "--alpn-check",
+		"--per-address", "--baseline", "--size-sweep", "--alpn-check", "--groups",
 	} {
 		if !strings.Contains(b.String(), flag) {
 			t.Errorf("%s is not in --help", flag)

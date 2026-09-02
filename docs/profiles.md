@@ -21,6 +21,20 @@ The default set is `classic,pq-preferred,pq-only`: a baseline and the two
 post-quantum questions. The version edges cost two more connections per endpoint
 and answer a different question, so they are opt-in.
 
+## The set you are migrating to
+
+`--groups X25519MLKEM768,X25519` dials exactly that set, in that order, with the
+same version window as `pq-preferred` so the two results are comparable. It
+appears as `custom:X25519MLKEM768+X25519` and gets its own handshake finding —
+you asked for the dial, you see the result — but it does not decide the class:
+the class is about the client shapes this tool defines, and a set you described
+is a question rather than a baseline.
+
+Names are the ones reports print (`X25519MLKEM768`, `X25519`, `P-256`, `P-384`,
+`P-521`), case-insensitive. An unknown name is a usage error listing the known
+ones, never a silently smaller set: a run that quietly dropped a group would
+prove something other than what was asked.
+
 ## Single-group probes
 
 `--per-group` adds a synthetic profile per group — `group:X25519MLKEM768`,

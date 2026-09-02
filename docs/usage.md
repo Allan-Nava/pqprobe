@@ -27,6 +27,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--per-address` | — | probe every A/AAAA record of each name, by address, still sending the name |
 | `--size-sweep` | — | grow the ClientHello in steps and report the size at which the peer stops answering |
 | `--alpn-check` | — | dial the same client with `h2,http/1.1` too, and report when the ALPN bytes change the answer |
+| `--groups a,b` | — | also dial exactly this key exchange group set, in this order (names as reports print them) |
 | `--inventory FILE` | — | Ansible INI inventory to take hosts from |
 | `--group g,h` | all | restrict to these inventory groups |
 | `--list FILE` | — | flat list of targets, one per line |

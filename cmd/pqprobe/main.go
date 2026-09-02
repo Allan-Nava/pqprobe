@@ -144,6 +144,8 @@ flags:
   --per-group              also dial each key exchange group on its own and
                            report the accepted set (one extra handshake per
                            group, in sequence)
+  --groups a,b             also dial exactly this key exchange group set, in
+                           this order (names as reports print them, case-free)
   --alpn-check             also dial the same client with h2,http/1.1 and report
                            when the ALPN bytes change the answer
   --size-sweep             also grow the ClientHello in steps and report the
@@ -204,6 +206,7 @@ func cmdProbe(args []string) int {
 		perGroup    = fs.Bool("per-group", false, "also dial each key exchange group on its own")
 		sizeSweep   = fs.Bool("size-sweep", false, "also grow the ClientHello in steps and report the limit")
 		alpnCheck   = fs.Bool("alpn-check", false, "also dial the same client with h2,http/1.1")
+		groupSet    = fs.String("groups", "", "also dial exactly this key exchange group set")
 		perAddress  = fs.Bool("per-address", false, "probe every A/AAAA record of each name")
 		invFile     = fs.String("inventory", "", "Ansible INI inventory")
 		groups      = fs.String("group", "", "inventory groups")
@@ -262,6 +265,21 @@ func cmdProbe(args []string) int {
 	}
 	if *alpnCheck {
 		sel = append(sel, clientprofile.ALPNProbe())
+	}
+	if *groupSet != "" {
+		custom, unknown := clientprofile.CustomProfile(splitList(*groupSet))
+		if len(unknown) > 0 {
+			// Not a smaller set silently dialled: that would prove something
+			// other than what was asked for.
+			known := make([]string, 0, len(clientprofile.Probed))
+			for _, id := range clientprofile.Probed {
+				known = append(known, clientprofile.GroupName(id))
+			}
+			fmt.Fprintf(os.Stderr, "pqprobe: unknown group(s): %s (have: %s)\n",
+				strings.Join(unknown, ", "), strings.Join(known, ", "))
+			return 2
+		}
+		sel = append(sel, custom)
 	}
 
 	// The names are kept, so the pool can be reported per name after the run.
@@ -459,7 +477,7 @@ func takesValue(flagArg string) bool {
 	switch name {
 	case "profile", "inventory", "group", "list", "port", "sni", "alpn",
 		"timeout", "concurrency", "min-severity", "exit-on", "expiry-warn", "expiry-bad",
-		"baseline":
+		"baseline", "groups":
 		return true
 	}
 	return false

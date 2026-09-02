@@ -2,6 +2,7 @@ package clientprofile
 
 import (
 	"crypto/tls"
+	"strings"
 	"testing"
 )
 
@@ -264,5 +265,70 @@ func TestTheALPNProbeDiffersFromItsPairInExactlyOneWay(t *testing.T) {
 	}
 	if probe.OffersPQ != bare.OffersPQ || probe.RequiresPQ != bare.RequiresPQ || probe.Pad != bare.Pad {
 		t.Error("the flags have to match: the ALPN list is the only variable")
+	}
+}
+
+// PQ-34. The profiles fix three group sets and --per-group asks about one group
+// at a time. Neither answers "what about exactly the set my CDN offers", which
+// is the question somebody planning a migration actually has.
+func TestCustomProfileTakesTheSetItIsGiven(t *testing.T) {
+	p, unknown := CustomProfile([]string{"X25519MLKEM768", "X25519"})
+	if len(unknown) != 0 {
+		t.Fatalf("unknown = %v, want none", unknown)
+	}
+	if !IsCustomProfile(p.Name) {
+		t.Errorf("%s is not recognisable as the custom profile", p.Name)
+	}
+	if len(p.Groups) != 2 || p.Groups[0] != tls.X25519MLKEM768 || p.Groups[1] != tls.X25519 {
+		t.Fatalf("groups = %v, want the two asked for, in that order", p.Groups)
+	}
+	// The order is the client's preference and it is the caller's to choose:
+	// reordering it would answer a different question.
+	if !p.OffersPQ {
+		t.Error("a set containing ML-KEM offers post-quantum")
+	}
+	if p.RequiresPQ {
+		t.Error("X25519 is a fallback, so this set does not require post-quantum")
+	}
+	// The same version window as the realistic client, so the result is
+	// comparable with pq-preferred rather than with nothing.
+	bare, _ := ByName("pq-preferred")
+	if p.MinVersion != bare.MinVersion || p.MaxVersion != bare.MaxVersion {
+		t.Errorf("version window %x-%x, want the same as pq-preferred", p.MinVersion, p.MaxVersion)
+	}
+	if !strings.Contains(p.Name, "X25519MLKEM768") {
+		t.Errorf("the name has to say what was dialled, since nothing else will: %q", p.Name)
+	}
+}
+
+// A set of only post-quantum groups requires it, exactly as pq-only does.
+func TestACustomPostQuantumOnlySetRequiresIt(t *testing.T) {
+	p, _ := CustomProfile([]string{"X25519MLKEM768"})
+	if !p.OffersPQ || !p.RequiresPQ {
+		t.Errorf("offers=%v requires=%v, want both", p.OffersPQ, p.RequiresPQ)
+	}
+}
+
+// A name Go cannot offer is a usage error, not a silently smaller set: a run
+// that quietly dropped a group would prove something other than what was asked.
+func TestUnknownGroupNamesAreReturnedNotDropped(t *testing.T) {
+	p, unknown := CustomProfile([]string{"X25519", "kyber1024", "P-256"})
+	if len(unknown) != 1 || unknown[0] != "kyber1024" {
+		t.Fatalf("unknown = %v, want [kyber1024]", unknown)
+	}
+	if len(p.Groups) != 2 {
+		t.Errorf("groups = %v: the known ones are still resolved so the caller can report both", p.Groups)
+	}
+}
+
+// Group names are how they are printed, and nobody types them twice the same
+// way: the spelling in the report is what the flag accepts, case aside.
+func TestGroupNamesRoundTripThroughTheFlag(t *testing.T) {
+	for _, id := range Probed {
+		name := GroupName(id)
+		p, unknown := CustomProfile([]string{strings.ToLower(name)})
+		if len(unknown) != 0 || len(p.Groups) != 1 || p.Groups[0] != id {
+			t.Errorf("%q did not resolve back to itself: groups=%v unknown=%v", name, p.Groups, unknown)
+		}
 	}
 }

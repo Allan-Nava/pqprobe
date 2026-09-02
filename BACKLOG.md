@@ -91,13 +91,14 @@ prints what to pick up.
   claim a browser fingerprint, not only a capability class. Behind a build tag
   and clearly separated, because the zero-dependency default is what makes the
   binary safe to run anywhere. <!-- pq: prio=med size=XL labels=profile -->
-- [ ] **PQ-34 — An ad-hoc capability class**: `--groups X25519MLKEM768,X25519`
-  to dial with exactly the set somebody is migrating to, instead of the three
-  the profiles fix and the one-at-a-time of `--per-group`. The realistic
-  question is often "what does *my* CDN offer", and today it cannot be asked.
-  Half of it exists already in the group probes; the rest is one flag, a name
-  for the synthetic profile and a refusal to accept a group Go cannot offer.
-  <!-- pq: prio=med size=S labels=cli,profile -->
+- [x] **PQ-34 — An ad-hoc capability class**: `--groups X25519MLKEM768,X25519`
+  dials exactly that set, in that order, with `pq-preferred`'s version window so
+  the two are comparable. It is visible — its own handshake finding, since the
+  caller asked for the dial — and it does not decide the class, because a set
+  somebody described is a question rather than a baseline. Names are the ones
+  reports print, case-free and round-tripped by a test; an unknown name is a
+  usage error listing the known groups, never a silently smaller set.
+  <!-- pq: prio=med size=S labels=cli,profile ver=0.12.0 -->
 - [x] **PQ-11 — ClientHello size sweep**: `--size-sweep` grows the hybrid hello
   through 2048…12288 bytes, stops at the first size that goes unanswered, and
   reports the bracket in *measured* bytes — the number that went on the wire,

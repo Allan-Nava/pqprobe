@@ -6,14 +6,14 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**35 items · 24 shipped · 11 open · 5 milestones.**
+**35 items · 25 shipped · 10 open · 5 milestones.**
 
 ## At a glance
 
 | Milestone | Target | Phase | Progress | Open | Shipped |
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
-| **M2** — Say it more precisely | `v0.2.0` | **now** | `#####.....` 50% | 3 | 3 |
+| **M2** — Say it more precisely | `v0.2.0` | **now** | `#######...` 67% | 2 | 4 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 80% | 2 | 8 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
 | **M5** — Make the verdict actionable | `v0.4.0` | **now** | `######....` 63% | 3 | 5 |
@@ -26,7 +26,6 @@ The open items with the highest priority in the milestones that are in flight.
 - **PQ-10** — Real ClientHello shapes · `med` · size `XL` · profile (M2, target `v0.2.0`)
 - **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
 - **PQ-27** — Pull-request delivery · `med` · size `M` · delivery,output (M5, target `v0.4.0`)
-- **PQ-34** — An ad-hoc capability class · `med` · size `S` · cli,profile (M2, target `v0.2.0`)
 - **PQ-35** — Egress through a proxy, but only SOCKS5 · `med` · size `M` · probe,cli (M5, target `v0.4.0`)
 - **PQ-13** — Watch mode · `low` · size `M` · cli (M2, target `v0.2.0`)
 - **PQ-28** — `explain <class>` · `low` · size `S` · cli,docs (M5, target `v0.4.0`)
@@ -50,16 +49,16 @@ Target `v0.1.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 ### M2 — Say it more precisely
 
-Target `v0.2.0` · **now** · 3 open · 3 shipped · `#####.....` 50%
+Target `v0.2.0` · **now** · 2 open · 4 shipped · `#######...` 67%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-10** — Real ClientHello shapes | med | XL | profile | open |
-| **PQ-34** — An ad-hoc capability class | med | S | cli,profile | open |
 | **PQ-13** — Watch mode | low | M | cli | open |
 | **PQ-9** — HelloRetryRequest visibility | high | L | probe | shipped `0.9.0` |
 | **PQ-11** — ClientHello size sweep | high | M | probe | shipped `0.10.0` |
 | **PQ-12** — Multi-address endpoints | high | M | probe,inventory | shipped `0.7.0` |
+| **PQ-34** — An ad-hoc capability class | med | S | cli,profile | shipped `0.12.0` |
 
 ### M3 — Fit the toolchain
 
@@ -107,10 +106,10 @@ Target `v0.4.0` · **now** · 3 open · 5 shipped · `######....` 63%
 
 | Label | Items | Open |
 |---|---|---|
-| `cli` | 6 | 4 |
+| `cli` | 6 | 3 |
 | `probe` | 12 | 3 |
-| `profile` | 5 | 3 |
 | `output` | 4 | 2 |
+| `profile` | 5 | 2 |
 | `delivery` | 3 | 1 |
 | `docs` | 5 | 1 |
 | `integration` | 1 | 1 |

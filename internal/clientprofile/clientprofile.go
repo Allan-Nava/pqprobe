@@ -218,6 +218,73 @@ func ALPNProbe() Profile {
 	return p
 }
 
+// CustomPrefix marks the profile built from --groups.
+const CustomPrefix = "custom:"
+
+// IsCustomProfile reports whether a name came from CustomProfile.
+func IsCustomProfile(name string) bool {
+	return len(name) > len(CustomPrefix) && name[:len(CustomPrefix)] == CustomPrefix
+}
+
+// GroupByName resolves a printed group name back to its CurveID, ignoring case
+// so `p-256` and `P-256` both work. The names it accepts are exactly the ones
+// reports print: a flag that spelled them differently from the output would be
+// a flag nobody gets right first time.
+func GroupByName(name string) (tls.CurveID, bool) {
+	want := strings.ToLower(strings.TrimSpace(name))
+	for _, id := range Probed {
+		if strings.ToLower(GroupName(id)) == want {
+			return id, true
+		}
+	}
+	return 0, false
+}
+
+// CustomProfile is the capability class the caller describes: exactly these
+// groups, in this order (PQ-34).
+//
+// The five profiles fix three group sets and --per-group asks about one group at
+// a time. Neither answers "what about exactly the set my CDN offers", which is
+// the question somebody planning a migration has. The order is the client's
+// preference and stays as given; the flags are derived, so a set of nothing but
+// ML-KEM requires post-quantum exactly as pq-only does. The version window
+// mirrors pq-preferred, so the result is comparable with the realistic client
+// rather than with nothing.
+//
+// Unknown names are returned rather than dropped: a run that quietly offered a
+// smaller set would prove something other than what was asked.
+func CustomProfile(names []string) (Profile, []string) {
+	var groups []tls.CurveID
+	var unknown, resolved []string
+	pq, classical := false, false
+	for _, n := range names {
+		id, ok := GroupByName(n)
+		if !ok {
+			unknown = append(unknown, strings.TrimSpace(n))
+			continue
+		}
+		groups = append(groups, id)
+		resolved = append(resolved, GroupName(id))
+		if IsPQ(id) {
+			pq = true
+		} else {
+			classical = true
+		}
+	}
+
+	bare, _ := ByName("pq-preferred")
+	return Profile{
+		Name:       CustomPrefix + strings.Join(resolved, "+"),
+		Summary:    "the group set given on the command line: " + strings.Join(resolved, ", "),
+		Clients:    "whatever client you are planning for — this set was asked for, not observed",
+		Groups:     groups,
+		MinVersion: bare.MinVersion,
+		MaxVersion: bare.MaxVersion,
+		OffersPQ:   pq,
+		RequiresPQ: pq && !classical,
+	}, unknown
+}
+
 // SizePrefix marks a profile that exists to make the ClientHello a given size.
 const SizePrefix = "size:"
 
