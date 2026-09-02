@@ -77,6 +77,25 @@ jobs:
         run: ./scripts/docs.sh check
       - name: The link gate itself
         run: sh scripts/docs_test.sh
+      # An edited SVG with a stale PNG is the failure nobody sees: the page looks
+      # right and the social card is last month's.
+      - name: The PNGs are in step with their SVGs
+        run: sh scripts/render-assets.sh --check
+      # The About box is data here, and a description GitHub would reject is a
+      # silently ignored API call rather than an error.
+      - name: The repository metadata is valid
+        run: ./scripts/repo-meta.sh lint
+
+  release-tooling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The notes in every GitHub release come out of CHANGELOG.md by script, so
+      # the extractor is tested rather than eyeballed at tag time.
+      - name: The release notes extractor and the release script's refusals
+        run: sh scripts/release_test.sh
+      - name: The newest CHANGELOG section is extractable
+        run: ./scripts/release-notes.sh >/dev/null
 
   backlog:
     runs-on: ubuntu-latest

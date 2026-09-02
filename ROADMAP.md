@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**29 items · 11 shipped · 18 open · 5 milestones.**
+**31 items · 14 shipped · 17 open · 5 milestones.**
 
 ## At a glance
 
@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.2.0` | **now** | `..........` 0% | 5 | 0 |
-| **M3** — Fit the toolchain | `v0.3.0` | next | `#####.....` 50% | 3 | 3 |
+| **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 75% | 2 | 6 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
 | **M5** — Make the verdict actionable | `v0.4.0` | later | `..........` 0% | 7 | 0 |
 
@@ -26,7 +26,6 @@ The open items with the highest priority in the milestones that are in flight.
 - **PQ-11** — ClientHello size sweep · `high` · size `M` · probe (M2, target `v0.2.0`)
 - **PQ-12** — Multi-address endpoints · `high` · size `M` · probe,inventory (M2, target `v0.2.0`)
 - **PQ-14** — checkfleet module · `high` · size `M` · integration (M3, target `v0.3.0`)
-- **PQ-16** — Release pipeline · `high` · size `M` · release (M3, target `v0.3.0`)
 - **PQ-10** — Real ClientHello shapes · `med` · size `XL` · profile (M2, target `v0.2.0`)
 - **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
 - **PQ-13** — Watch mode · `low` · size `M` · cli (M2, target `v0.2.0`)
@@ -62,16 +61,18 @@ Target `v0.2.0` · **now** · 5 open · 0 shipped · `..........` 0%
 
 ### M3 — Fit the toolchain
 
-Target `v0.3.0` · next · 3 open · 3 shipped · `#####.....` 50%
+Target `v0.3.0` · next · 2 open · 6 shipped · `########..` 75%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-14** — checkfleet module | high | M | integration | open |
-| **PQ-16** — Release pipeline | high | M | release | open |
 | **PQ-15** — Prometheus textfile output | med | S | output | open |
+| **PQ-16** — Release pipeline | high | M | release | done, unreleased |
 | **PQ-21** — Intent document | high | S | docs,project | done, unreleased |
 | **PQ-17** — Docs site | med | M | docs | done, unreleased |
 | **PQ-29** — Brand assets | med | S | docs,project | done, unreleased |
+| **PQ-30** — The About box as data | med | S | project,delivery | done, unreleased |
+| **PQ-31** — Backlog to issues, automatically | med | S | project | done, unreleased |
 
 ### M4 — Later
 
@@ -106,10 +107,10 @@ Target `v0.4.0` · later · 7 open · 0 shipped · `..........` 0%
 | `output` | 4 | 3 |
 | `profile` | 4 | 3 |
 | `verdict` | 4 | 3 |
-| `delivery` | 1 | 1 |
+| `delivery` | 2 | 1 |
 | `docs` | 4 | 1 |
 | `integration` | 1 | 1 |
 | `inventory` | 2 | 1 |
-| `release` | 1 | 1 |
-| `project` | 2 | 0 |
+| `project` | 4 | 0 |
+| `release` | 1 | 0 |
 | `tests` | 1 | 0 |

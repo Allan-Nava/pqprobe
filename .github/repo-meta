@@ -1,0 +1,17 @@
+# repo-meta — the GitHub "About" box, as data.
+#
+# The description, the homepage and the topics are how somebody finds this
+# repository and decides in one line whether it answers their question. They are
+# also the only part of the project that lives outside git by default, which is
+# how they end up eighteen months stale. So they live here, and
+# scripts/repo-meta.sh applies them.
+#
+# Format: `key: value`, one per line, `#` comments ignored. Keys: description
+# (350 characters at most, GitHub's limit), homepage, topics (comma-separated,
+# lowercase, 20 at most).
+
+description: Which classes of TLS client can still handshake with your endpoint? pqprobe dials it as a classical client and as a post-quantum one (ML-KEM), and tells a civil refusal apart from a ClientHello it choked on. One static Go binary, zero dependencies, no request ever sent.
+
+homepage: https://allan-nava.github.io/pqprobe/
+
+topics: tls, tls13, post-quantum, ml-kem, x25519mlkem768, pqc, handshake, clienthello, cdn, load-balancer, sre, devops, observability, golang, cli, zero-dependencies, ansible-inventory, security, monitoring, tls-intolerance

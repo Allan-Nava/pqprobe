@@ -691,6 +691,7 @@ pqprobe version</code></pre>
       <div class="card"><h3><a href="https://github.com/Allan-Nava/pqprobe/blob/main/CHANGELOG.md">CHANGELOG.md</a></h3><p><strong>What changed.</strong> Keep a Changelog, one section per tagged <code>vX.Y.Z</code>.</p></div>
       <div class="card"><h3><a href="https://github.com/Allan-Nava/pqprobe/blob/main/AGENTS.md">AGENTS.md</a></h3><p><strong>How work happens here</strong> — operating rules and known traps, for people and for AI agents.</p></div>
       <div class="card"><h3>Development</h3><p><code>go test -race ./...</code> — the suite includes a server that dies on a large ClientHello, so the real failure reproduces offline.</p></div>
+      <div class="card"><h3>Automated</h3><p>Everything that can be a script is one, and CI runs all of them: the roadmap and the GitHub issues are generated from the backlog, this page is link-gated, the PNGs are checksummed against their SVGs, the About box is data, and a release is a tag — archives for six platforms, <code>SHA256SUMS</code>, a provenance attestation, the <code>ghcr.io</code> image, and notes lifted from the changelog.</p></div>
     </div>
     <div class="term">
       <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
@@ -699,7 +700,13 @@ pqprobe version</code></pre>
       </div>
 <pre><code>go test ./...            <span class="c-dim"># includes a server that dies on a large ClientHello</span>
 go test -race ./...
-./scripts/backlog.sh lint &amp;&amp; ./scripts/backlog.sh check</code></pre>
+./scripts/backlog.sh lint &amp;&amp; ./scripts/backlog.sh check
+./scripts/docs.sh check  <span class="c-dim"># no dead link in the site or the Markdown</span>
+./scripts/repo-meta.sh lint
+sh scripts/render-assets.sh --check
+
+<span class="c-dim"># a release: every gate, the changelog section, the tag — and no push</span>
+./scripts/release.sh 0.2.0</code></pre>
     </div>
   </div>
 </section>

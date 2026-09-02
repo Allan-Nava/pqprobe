@@ -26,6 +26,25 @@ fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
   class arriving and the oversized hybrid hello cut off before the wall.
   `scripts/render-assets.sh` rasterises the Open Graph card and the iOS icon,
   the two places SVG is not accepted.
+- **Release pipeline** (PQ-16) — a tag is the only trigger: archives for six
+  platforms, one `SHA256SUMS`, a provenance attestation, the multi-arch
+  `ghcr.io/allan-nava/pqprobe` image smoke-tested after it is pushed, and
+  release notes lifted from this file by `scripts/release-notes.sh`. No
+  goreleaser and no release bot — the pipeline has as few dependencies as the
+  binary. `scripts/release.sh <X.Y.Z>` runs every gate, turns `[Unreleased]`
+  into a dated section, rewrites `ver=unreleased` in the backlog, regenerates
+  the roadmap and tags; it never pushes.
+- **The About box as data** (PQ-30) — the repository description, homepage and
+  topics live in [.github/repo-meta](.github/repo-meta).
+  `scripts/repo-meta.sh` lints them in CI (GitHub's 350-character limit, the
+  topic charset, and the homepage agreeing with the published page's canonical
+  URL), `check` reports drift against GitHub and `apply` writes it.
+- **Backlog to issues, automatically** (PQ-31) — the existing planner now runs
+  on a push that touches `BACKLOG.md`, one direction only.
+- **A freshness gate for the rendered assets** (PQ-29) —
+  `scripts/render-assets.sh --check` compares the SVGs against the checksums
+  recorded when the PNGs were rendered, so an edited logo cannot ship with last
+  month's social card.
 - **M5 — Make the verdict actionable** (PQ-22…PQ-28) planned in
   [BACKLOG.md](BACKLOG.md): a per-group capability map, a re-dial before an
   abrupt result is condemned, `--baseline` transitions, ALPN as a variable,

@@ -107,9 +107,27 @@ prints what to pick up.
 - [ ] **PQ-15 — Prometheus textfile output**: `--textfile` writing
   `pqprobe_class{target=…}` for a node exporter, so the state is graphable
   without a scraper of its own. <!-- pq: prio=med size=S labels=output -->
-- [ ] **PQ-16 — Release pipeline**: tag-driven archives for six platforms with
-  `SHA256SUMS`, a sigstore attestation, the `ghcr.io` image and release notes
-  lifted from the CHANGELOG section. <!-- pq: prio=high size=M labels=release -->
+- [x] **PQ-16 — Release pipeline**: tag-driven archives for six platforms with
+  one `SHA256SUMS`, a provenance attestation, the multi-arch `ghcr.io` image
+  (smoke-tested after it is pushed) and release notes lifted from the CHANGELOG
+  section by `scripts/release-notes.sh` rather than retyped. No goreleaser and
+  no release bot: the pipeline has as few dependencies as the binary.
+  `scripts/release.sh` runs every gate, rewrites the CHANGELOG and the backlog
+  ticks, tags — and never pushes.
+  <!-- pq: prio=high size=M labels=release ver=unreleased -->
+- [x] **PQ-30 — The About box as data**: the description, homepage and topics
+  live in `.github/repo-meta` and go to GitHub through
+  `scripts/repo-meta.sh apply`. They are the only part of the project that lives
+  outside git by default, which is how they end up eighteen months stale. `lint`
+  is a CI gate — a description over 350 characters or a topic GitHub will not
+  accept is a silently ignored API call, not an error — and it fails when the
+  homepage disagrees with the canonical URL of the published page.
+  <!-- pq: prio=med size=S labels=project,delivery ver=unreleased -->
+- [x] **PQ-31 — Backlog to issues, automatically**: the existing planner runs on
+  a push that touches `BACKLOG.md`, so the issues are a view of the backlog
+  without anybody remembering to sync them. One direction only: ticking an item
+  closes its issue, closing an issue changes nothing.
+  <!-- pq: prio=med size=S labels=project ver=unreleased -->
 - [x] **PQ-17 — Docs site**: `docs/` published to GitHub Pages as a single
   committed static page — no generator, no build step and no external request
   beyond the badges, which is the same property the binary has. A POSIX-sh
@@ -120,8 +138,9 @@ prints what to pick up.
 - [x] **PQ-29 — Brand assets**: a mark that states what the tool measures — one
   client class arrives, the oversized hybrid hello is cut off before the wall —
   as `logo.svg`, `favicon.svg`, a wordmark and a 1200×630 social card, with
-  `scripts/render-assets.sh` rasterising the two places SVG is not accepted.
-  Hand-written SVG: an icon is not worth a dependency.
+  `scripts/render-assets.sh` rasterising the two places SVG is not accepted and
+  `--check` failing CI when a PNG is older than its SVG. Hand-written SVG: an
+  icon is not worth a dependency.
   <!-- pq: prio=med size=S labels=docs,project ver=unreleased -->
 - [x] **PQ-21 — Intent document**: [INTENT.md](INTENT.md) — why the tool
   exists, the goals in priority order, the non-goals as decisions rather than

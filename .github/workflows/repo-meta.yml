@@ -1,0 +1,69 @@
+name: Repo metadata
+
+# PQ-30: the GitHub "About" box — description, homepage, topics — is data in
+# .github/repo-meta, and this is what puts it on GitHub.
+#
+# Two modes, deliberately different:
+#
+#   * on a push that touches the file: **check only**. It reports drift and
+#     fails, so the run says out loud that GitHub and the repository disagree.
+#   * on workflow_dispatch with apply=true: writes it. A maintainer starts it,
+#     the same way a push is a maintainer's decision.
+#
+# Editing repository settings is beyond what the default GITHUB_TOKEN is given
+# in most organisations. If `apply` fails with 403, add a fine-grained PAT with
+# "Administration: read and write" as the REPO_META_TOKEN secret, or run
+# `scripts/repo-meta.sh apply` locally — the script and the workflow do exactly
+# the same thing.
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/repo-meta"
+      - "scripts/repo-meta.sh"
+      - ".github/workflows/repo-meta.yml"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Write .github/repo-meta to GitHub (otherwise only compare)"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repo-meta
+  cancel-in-progress: false
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint
+        run: ./scripts/repo-meta.sh lint
+
+      - name: What it would apply
+        run: |
+          {
+            echo '### .github/repo-meta'
+            echo '```'
+            ./scripts/repo-meta.sh show
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compare with GitHub
+        if: github.event.inputs.apply != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.REPO_META_TOKEN || secrets.GITHUB_TOKEN }}
+        run: ./scripts/repo-meta.sh check
+
+      - name: Apply
+        if: github.event.inputs.apply == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.REPO_META_TOKEN || secrets.GITHUB_TOKEN }}
+        run: ./scripts/repo-meta.sh apply
