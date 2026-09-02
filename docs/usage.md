@@ -39,6 +39,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--port N` | `443` | default port for targets written without one |
 | `--sni NAME` | — | server name for every target |
 | `--alpn a,b` | none | ALPN protocols to offer |
+| `--socks5 HOST:PORT` | — | reach every endpoint through a no-auth SOCKS5 proxy |
 | `--timeout D` | `10s` | per-handshake timeout |
 | `--confirm` | on | re-dial an abrupt failure once before believing it (`--confirm=false` to dial once) |
 | `--concurrency N` | `8` | endpoints in flight (profiles of one endpoint are sequential) |
@@ -61,6 +62,28 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 
 Exit 0 on a WARN is deliberate. A check that fails the pipeline on every
 deviation is a check people learn to ignore.
+
+## Through a proxy
+
+```sh
+pqprobe probe --socks5 127.0.0.1:1080 origin.internal.example
+```
+
+SOCKS5 and nothing else. HTTP `CONNECT` is a *request*, and sending one would
+trade away the property that makes this binary safe to point at production — so
+the flag is named after what it supports rather than disappointing you later.
+
+No authentication: pqprobe holds no credentials by design. A proxy that wants
+some says so in those words.
+
+The host name is sent to the proxy **unresolved**, because inside a network that
+is often the only place it resolves. That is also why `--per-address` and
+`--socks5` do not belong together — the first resolves here, which is the
+opposite of the point — and pqprobe says so if you combine them.
+
+A failure at the proxy is reported as `proxy` and is never abrupt: it is not the
+endpoint cutting you off, and grading it as one would put somebody else's
+endpoint in the `pq-intolerant` bucket for a fault on this side.
 
 ## In a pull request
 

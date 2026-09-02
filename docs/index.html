@@ -542,6 +542,7 @@ pqprobe version</code></pre>
           <tr><td><code>--port N</code></td><td><code>443</code></td><td>default port for targets written without one</td></tr>
           <tr><td><code>--sni NAME</code></td><td>—</td><td>server name for every target</td></tr>
           <tr><td><code>--alpn a,b</code></td><td>none</td><td>ALPN protocols to offer</td></tr>
+          <tr><td><code>--socks5 HOST:PORT</code></td><td>—</td><td>reach every endpoint through a no-auth SOCKS5 proxy (HTTP <code>CONNECT</code> is a request and is not supported)</td></tr>
           <tr><td><code>--timeout D</code></td><td><code>10s</code></td><td>per-handshake timeout</td></tr>
           <tr><td><code>--confirm</code></td><td>on</td><td>re-dial an abrupt failure once before believing it (<code>--confirm=false</code> to dial once)</td></tr>
           <tr><td><code>--concurrency N</code></td><td><code>8</code></td><td>endpoints in flight (the profiles of one endpoint stay sequential)</td></tr>

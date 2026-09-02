@@ -10,10 +10,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -826,5 +828,180 @@ func TestALPNBytesCanBeWhatTipsAPeerOver(t *testing.T) {
 	if withALPN.HelloBytes <= bare.HelloBytes {
 		t.Errorf("the ALPN hello (%d B) is not larger than the bare one (%d B), so nothing was tested",
 			withALPN.HelloBytes, bare.HelloBytes)
+	}
+}
+
+// socks5Server is a minimal RFC 1928 proxy for the tests: it negotiates
+// no-auth, CONNECTs to `to`, and splices. `auth` makes it demand a method
+// pqprobe does not have; `reply` makes it answer CONNECT with a failure.
+// asked records the address the client asked for, which is how the test proves
+// the *name* went to the proxy rather than an address resolved here.
+type socks5Server struct {
+	to    string
+	auth  bool
+	reply byte
+	asked chan string
+}
+
+func startSocks5(t *testing.T, s *socks5Server) string {
+	t.Helper()
+	s.asked = make(chan string, 4)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go s.serve(c)
+		}
+	}()
+	return ln.Addr().String()
+}
+
+func (s *socks5Server) serve(c net.Conn) {
+	defer c.Close()
+
+	hdr := make([]byte, 2)
+	if _, err := io.ReadFull(c, hdr); err != nil {
+		return
+	}
+	methods := make([]byte, int(hdr[1]))
+	if _, err := io.ReadFull(c, methods); err != nil {
+		return
+	}
+	if s.auth {
+		_, _ = c.Write([]byte{5, 2}) // username/password, which pqprobe has none of
+		return
+	}
+	if _, err := c.Write([]byte{5, 0}); err != nil {
+		return
+	}
+
+	req := make([]byte, 4)
+	if _, err := io.ReadFull(c, req); err != nil {
+		return
+	}
+	var host string
+	switch req[3] {
+	case 1:
+		b := make([]byte, 4)
+		io.ReadFull(c, b)
+		host = net.IP(b).String()
+	case 3:
+		l := make([]byte, 1)
+		io.ReadFull(c, l)
+		b := make([]byte, int(l[0]))
+		io.ReadFull(c, b)
+		host = string(b)
+	case 4:
+		b := make([]byte, 16)
+		io.ReadFull(c, b)
+		host = net.IP(b).String()
+	}
+	port := make([]byte, 2)
+	io.ReadFull(c, port)
+	select {
+	case s.asked <- net.JoinHostPort(host, fmt.Sprint(int(port[0])<<8|int(port[1]))):
+	default:
+	}
+
+	if s.reply != 0 {
+		_, _ = c.Write([]byte{5, s.reply, 0, 1, 0, 0, 0, 0, 0, 0})
+		return
+	}
+	up, err := net.Dial("tcp", s.to)
+	if err != nil {
+		_, _ = c.Write([]byte{5, 1, 0, 1, 0, 0, 0, 0, 0, 0})
+		return
+	}
+	defer up.Close()
+	if _, err := c.Write([]byte{5, 0, 0, 1, 0, 0, 0, 0, 0, 0}); err != nil {
+		return
+	}
+	go io.Copy(up, c)
+	io.Copy(c, up)
+}
+
+// PQ-35. From many networks the only way out is a proxy. SOCKS5 is a handshake
+// on a raw socket and fits; HTTP CONNECT is a *request* and would trade away
+// the property that makes this binary safe to point at production.
+func TestAHandshakeThroughASocks5Proxy(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	origin := serveTLS(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13})
+	srv := &socks5Server{to: origin.Addr()}
+	proxy := startSocks5(t, srv)
+
+	p, _ := clientprofile.ByName("pq-only")
+	d := Dialer{Timeout: 5 * time.Second, Socks5: proxy}
+	res := d.Do(context.Background(), Target{Host: "origin.example", Port: origin.Port, SNI: "origin.example"}, p)
+
+	if !res.OK {
+		t.Fatalf("the handshake has to complete through the proxy: %s (%s)", res.Err, res.Kind)
+	}
+	if res.Group != "X25519MLKEM768" {
+		t.Errorf("group = %q — the proxy carries bytes, it does not change the key exchange", res.Group)
+	}
+	if res.HelloBytes == 0 {
+		t.Error("the hello is still measured through a proxy")
+	}
+
+	// The name has to travel to the proxy: inside a network it is often the only
+	// place it resolves at all.
+	select {
+	case asked := <-srv.asked:
+		if !strings.HasPrefix(asked, "origin.example:") {
+			t.Errorf("the proxy was asked for %q, want the name", asked)
+		}
+	default:
+		t.Error("the proxy recorded no request")
+	}
+}
+
+// A proxy that wants credentials, a proxy that refuses, and a proxy that is not
+// there: none of those is the endpoint cutting us off, and none may ever read as
+// abrupt — that is what turns into a pq-intolerant verdict about somebody
+// else's endpoint.
+func TestProxyFailuresAreNeverTheEndpointsFault(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	origin := serveTLS(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13})
+	p, _ := clientprofile.ByName("pq-preferred")
+	tg := Target{Host: "origin.example", Port: origin.Port, SNI: "origin.example"}
+
+	cases := []struct {
+		name  string
+		proxy string
+		want  string
+	}{
+		{"wants credentials", startSocks5(t, &socks5Server{to: origin.Addr(), auth: true}), "auth"},
+		{"refuses the connection", startSocks5(t, &socks5Server{to: origin.Addr(), reply: 5}), "refused"},
+		{"host unreachable", startSocks5(t, &socks5Server{to: origin.Addr(), reply: 4}), "unreachable"},
+		{"not listening", "127.0.0.1:1", "proxy"},
+	}
+	for _, tc := range cases {
+		d := Dialer{Timeout: 3 * time.Second, Socks5: tc.proxy}
+		res := d.Do(context.Background(), tg, p)
+
+		if res.OK {
+			t.Errorf("%s: the handshake must not complete", tc.name)
+			continue
+		}
+		if res.Kind != KindProxy {
+			t.Errorf("%s: kind = %q, want %q — this happened at the proxy, before the endpoint saw anything",
+				tc.name, res.Kind, KindProxy)
+		}
+		if res.Kind.Abrupt() {
+			t.Errorf("%s: a proxy failure must never read as the peer cutting us off", tc.name)
+		}
+		if !strings.Contains(strings.ToLower(res.Err), tc.want) {
+			t.Errorf("%s: error = %q, want it to mention %q", tc.name, res.Err, tc.want)
+		}
+		if !strings.Contains(strings.ToLower(res.Err), "socks5") {
+			t.Errorf("%s: error = %q, want the proxy named so nobody debugs the wrong host", tc.name, res.Err)
+		}
 	}
 }

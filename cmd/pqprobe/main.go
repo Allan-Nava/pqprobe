@@ -163,6 +163,9 @@ flags:
   --port N                 default port for targets written without one (default 443)
   --sni NAME               server name for every target (overrides per-target =sni)
   --alpn a,b               ALPN protocols to offer (default none)
+  --socks5 HOST:PORT       reach every endpoint through a no-auth SOCKS5 proxy
+                           (the name is sent unresolved, so the proxy resolves
+                           it; HTTP CONNECT is a request and is not supported)
   --timeout D              per-handshake timeout (default 10s)
   --confirm                re-dial an abrupt failure once before believing it
                            (default true; --confirm=false to dial once)
@@ -254,6 +257,7 @@ func cmdProbe(args []string) int {
 		port        = fs.String("port", inventory.DefaultPort, "default port")
 		sni         = fs.String("sni", "", "server name for every target")
 		alpn        = fs.String("alpn", "", "ALPN protocols")
+		socks5      = fs.String("socks5", "", "reach endpoints through a no-auth SOCKS5 proxy")
 		timeout     = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
 		confirm     = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
 		concurrency = fs.Int("concurrency", 8, "endpoints in flight")
@@ -328,6 +332,10 @@ func cmdProbe(args []string) int {
 	for i, t := range targets {
 		names[i] = t.ServerName()
 	}
+	if *perAddress && *socks5 != "" {
+		fmt.Fprintln(os.Stderr,
+			"pqprobe: --per-address resolves names on this host, which is the opposite of what --socks5 is for; the addresses it finds may not be the ones the proxy would reach")
+	}
 	if *perAddress {
 		expanded, errs := probe.ExpandAddresses(context.Background(), net.DefaultResolver, targets)
 		for _, err := range errs {
@@ -340,7 +348,7 @@ func cmdProbe(args []string) int {
 		}
 	}
 
-	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn), Confirm: *confirm}
+	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn), Confirm: *confirm, Socks5: *socks5}
 	opt := verdict.DefaultOptions()
 	opt.ExpiryWarnDays, opt.ExpiryBadDays = *expWarn, *expBad
 	opt.Now = time.Now()
@@ -520,7 +528,7 @@ func takesValue(flagArg string) bool {
 	switch name {
 	case "profile", "inventory", "group", "list", "port", "sni", "alpn",
 		"timeout", "concurrency", "min-severity", "exit-on", "expiry-warn", "expiry-bad",
-		"baseline", "groups":
+		"baseline", "groups", "socks5":
 		return true
 	}
 	return false

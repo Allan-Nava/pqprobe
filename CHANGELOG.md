@@ -6,6 +6,33 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.15.0] - 2026-09-02
+
+### Added
+
+- **Egress through a SOCKS5 proxy** (PQ-35) — `--socks5 HOST:PORT` reaches every
+  endpoint through a no-auth SOCKS5 proxy (RFC 1928), which from many networks
+  is the only way out. SOCKS5 and nothing else: HTTP `CONNECT` is a *request*,
+  and sending one would trade away the property that makes this binary safe to
+  point at production, so the flag is named after what it supports rather than
+  disappointing you later. No authentication either — pqprobe holds no
+  credentials by design, and a proxy that wants some says exactly that.
+
+  The host name is sent **unresolved** so the proxy resolves it, because inside
+  a network that is frequently the only place it can be resolved; combining
+  `--per-address` with `--socks5` prints a warning, since the former resolves
+  here. A failure at the proxy is the new `proxy` kind and is **never** abrupt,
+  asserted by a test against a fake proxy that wants credentials, refuses, or is
+  not there: reading any of those as abrupt would file somebody else's endpoint
+  as `pq-intolerant` for a fault on this side.
+
+### Changed
+
+- **M5 — Make the verdict actionable is complete** (PQ-22 … PQ-28, PQ-35): the
+  per-group map, confirmation before condemning, the baseline diff, ALPN as a
+  variable, mutual TLS told apart from a refusal, pull-request delivery,
+  `explain`, and proxy egress.
+
 ## [0.14.0] - 2026-09-02
 
 ### Added
@@ -377,6 +404,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.15.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.15.0
 [0.14.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.14.0
 [0.13.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.13.0
 [0.12.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.12.0

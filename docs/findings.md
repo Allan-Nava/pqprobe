@@ -199,6 +199,13 @@ alone. The peer's `CertificateRequest` is recorded during the handshake — that
 is what tells the two apart, and when it broke every profile the class is
 `mtls-required` with an ERROR rather than a capability verdict.
 
+## Through a proxy
+
+With `--socks5`, a failure that happens at the proxy — it wants credentials, it
+refuses, it is not there — is kind `proxy` and never counts as abrupt. The
+endpoint has not been reached, so nothing about it is known, and the error names
+the proxy so nobody debugs the wrong host.
+
 ## Alert versus reset
 
 The two BAD classes look identical from a browser and are different work:

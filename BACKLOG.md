@@ -211,7 +211,7 @@ prints what to pick up.
   TLS all handshake, and none of them are covered by a web-shaped probe.
   <!-- pq: prio=low size=L labels=probe -->
 
-## M5 — Make the verdict actionable <!-- ms: target=v0.4.0 phase=now -->
+## M5 — Make the verdict actionable <!-- ms: target=v0.15.0 phase=shipped -->
 
 The class is the answer; these items are what an operator needs *around* it —
 which group exactly, was it a flap or a wall, what changed since yesterday, and
@@ -270,13 +270,16 @@ how the answer reaches a pull request without a second tool.
   `uses: ./` against the commit under test — because an action nobody exercises
   is a file that used to work.
   <!-- pq: prio=med size=M labels=delivery,output ver=0.14.0 -->
-- [ ] **PQ-35 — Egress through a proxy, but only SOCKS5**: from many corporate
-  networks the only way out is a proxy, and today pqprobe reaches nothing from
-  there. SOCKS5 is a handshake on a raw socket and fits; HTTP `CONNECT` is a
-  *request*, and sending one would trade away the property that makes this
-  binary safe to point at production — so it stays out, and the flag says
-  `--socks5` rather than `--proxy` to make that explicit rather than
-  disappointing. <!-- pq: prio=med size=M labels=probe,cli -->
+- [x] **PQ-35 — Egress through a proxy, but only SOCKS5**: `--socks5
+  HOST:PORT`, RFC 1928, no authentication — pqprobe holds no credentials by
+  design and a proxy that wants some says so in those words. The host goes to
+  the proxy **unresolved**, because inside a network that is often the only place
+  it resolves; combining it with `--per-address` is warned about, since that
+  resolves here. HTTP `CONNECT` stays out and the flag is named `--socks5` to
+  say so rather than disappoint later. A failure at the proxy is kind `proxy`
+  and never abrupt: asserted, because reading it as abrupt would put somebody
+  else's endpoint in the `pq-intolerant` bucket for a fault on this side.
+  <!-- pq: prio=med size=M labels=probe,cli ver=0.15.0 -->
 - [x] **PQ-28 — `explain <class>`**: meaning, affected clients and next action
   for any class, with no network call, so it is runnable while the endpoint is
   still refusing. No argument lists them all, a leading `--` is tolerated

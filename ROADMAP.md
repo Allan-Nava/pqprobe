@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**35 items · 27 shipped · 8 open · 5 milestones.**
+**35 items · 28 shipped · 7 open · 5 milestones.**
 
 ## At a glance
 
@@ -16,7 +16,7 @@
 | **M2** — Say it more precisely | `v0.2.0` | **now** | `#######...` 67% | 2 | 4 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 80% | 2 | 8 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
-| **M5** — Make the verdict actionable | `v0.4.0` | **now** | `#########.` 88% | 1 | 7 |
+| **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
 ## Next up
 
@@ -25,7 +25,6 @@ The open items with the highest priority in the milestones that are in flight.
 - **PQ-14** — checkfleet module · `high` · size `M` · integration (M3, target `v0.3.0`)
 - **PQ-10** — Real ClientHello shapes · `med` · size `XL` · profile (M2, target `v0.2.0`)
 - **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
-- **PQ-35** — Egress through a proxy, but only SOCKS5 · `med` · size `M` · probe,cli (M5, target `v0.4.0`)
 - **PQ-13** — Watch mode · `low` · size `M` · cli (M2, target `v0.2.0`)
 
 ## Milestones
@@ -87,26 +86,26 @@ Target `ongoing` · later · 3 open · 0 shipped · `..........` 0%
 
 ### M5 — Make the verdict actionable
 
-Target `v0.4.0` · **now** · 1 open · 7 shipped · `#########.` 88%
+Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-35** — Egress through a proxy, but only SOCKS5 | med | M | probe,cli | open |
 | **PQ-22** — Per-group capability map | high | M | probe,profile | shipped `0.3.0` |
 | **PQ-23** — Confirm before condemning | high | S | probe,verdict | shipped `0.5.0` |
 | **PQ-24** — Baseline diff | high | M | output,cli | shipped `0.8.0` |
 | **PQ-26** — mTLS is not a refusal | high | M | probe,verdict | shipped `0.6.0` |
 | **PQ-25** — ALPN as a variable | med | S | probe,verdict | shipped `0.11.0` |
 | **PQ-27** — Pull-request delivery | med | M | delivery,output | shipped `0.14.0` |
+| **PQ-35** — Egress through a proxy, but only SOCKS5 | med | M | probe,cli | shipped `0.15.0` |
 | **PQ-28** — `explain <class>` | low | S | cli,docs | shipped `0.13.0` |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `probe` | 12 | 3 |
-| `cli` | 6 | 2 |
+| `probe` | 12 | 2 |
 | `profile` | 5 | 2 |
+| `cli` | 6 | 1 |
 | `integration` | 1 | 1 |
 | `output` | 4 | 1 |
 | `delivery` | 3 | 0 |

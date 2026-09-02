@@ -47,6 +47,23 @@ func TestValidStatus(t *testing.T) {
 	}
 }
 
+// PQ-35. --socks5 takes an address, and the name of the flag is the promise:
+// no --proxy, because HTTP CONNECT is a request and this tool does not send
+// requests.
+func TestSocks5TakesAValueAndIsNotCalledProxy(t *testing.T) {
+	if !takesValue("--socks5") {
+		t.Fatal("--socks5 takes host:port")
+	}
+	if takesValue("--proxy") {
+		t.Fatal("there is no --proxy: CONNECT is a request, and the flag name has to say what is supported")
+	}
+	got := permute([]string{"origin.example", "--socks5", "127.0.0.1:1080"})
+	want := []string{"--socks5", "127.0.0.1:1080", "origin.example"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("permute = %v, want %v", got, want)
+	}
+}
+
 // PQ-27. --markdown is a boolean and one of the mutually exclusive renderers:
 // two documents on one stdout is not a document.
 func TestMarkdownIsABooleanFlag(t *testing.T) {
@@ -170,7 +187,7 @@ func TestUsageDocumentsEveryFlagTheProbeAccepts(t *testing.T) {
 		"--sni", "--alpn", "--timeout", "--concurrency", "--json", "--findings",
 		"--min-severity", "--exit-on", "--expiry-warn", "--expiry-bad", "--confirm",
 		"--per-address", "--baseline", "--size-sweep", "--alpn-check", "--groups",
-		"--markdown",
+		"--markdown", "--socks5",
 	} {
 		if !strings.Contains(b.String(), flag) {
 			t.Errorf("%s is not in --help", flag)

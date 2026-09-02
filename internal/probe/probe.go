@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -34,6 +35,11 @@ const (
 	KindDNS Kind = "dns"
 	// KindRefused: nothing is listening.
 	KindRefused Kind = "refused"
+	// KindProxy: the SOCKS5 proxy failed before the endpoint saw anything — it
+	// wanted credentials, refused, or was not there. Never abrupt: it is not the
+	// peer cutting us off, and treating it as one would put somebody else's
+	// endpoint in the pq-intolerant bucket for a fault on this side.
+	KindProxy Kind = "proxy"
 	// KindUnroutable: this host has no route to the address. It says nothing
 	// about the endpoint — an AAAA record probed from a machine with no IPv6
 	// egress is the usual case — so it must never be reported as a property of
@@ -166,6 +172,130 @@ type Result struct {
 	PeerChainLen int `json:"peer_chain_len,omitempty"`
 }
 
+// socks5Connect opens a connection to host:port through a SOCKS5 proxy
+// (RFC 1928), with no authentication (PQ-35).
+//
+// The host is sent as a name whenever it is one, so the proxy resolves it: from
+// inside a network that is frequently the only place it resolves at all, and it
+// is also what a CDN does.
+//
+// No authentication, deliberately: pqprobe holds no credentials by design, and
+// a flag that took a proxy password would be the first secret this tool ever
+// asked for. A proxy that demands one says so, in those words.
+func socks5Connect(ctx context.Context, proxy, host, port string) (net.Conn, error) {
+	c, err := (&net.Dialer{}).DialContext(ctx, "tcp", proxy)
+	if err != nil {
+		return nil, fmt.Errorf("socks5 proxy %s: %w", proxy, err)
+	}
+	ok := false
+	defer func() {
+		if !ok {
+			c.Close()
+		}
+	}()
+	if deadline, has := ctx.Deadline(); has {
+		_ = c.SetDeadline(deadline)
+	}
+
+	// Greeting: version 5, one method, "no authentication".
+	if _, err := c.Write([]byte{5, 1, 0}); err != nil {
+		return nil, fmt.Errorf("socks5 proxy %s: %w", proxy, err)
+	}
+	reply := make([]byte, 2)
+	if _, err := io.ReadFull(c, reply); err != nil {
+		return nil, fmt.Errorf("socks5 proxy %s: %w", proxy, err)
+	}
+	if reply[0] != 5 {
+		return nil, fmt.Errorf("socks5 proxy %s: answered version %d, not 5 — is that a SOCKS5 proxy?", proxy, reply[0])
+	}
+	if reply[1] != 0 {
+		return nil, fmt.Errorf("socks5 proxy %s: wants auth method %#x; pqprobe holds no credentials by design and only speaks no-auth SOCKS5", proxy, reply[1])
+	}
+
+	// CONNECT.
+	req := []byte{5, 1, 0}
+	if ip := net.ParseIP(host); ip != nil {
+		if v4 := ip.To4(); v4 != nil {
+			req = append(req, 1)
+			req = append(req, v4...)
+		} else {
+			req = append(req, 4)
+			req = append(req, ip.To16()...)
+		}
+	} else {
+		if len(host) > 255 {
+			return nil, fmt.Errorf("socks5 proxy %s: the host name is %d bytes; SOCKS5 allows 255", proxy, len(host))
+		}
+		req = append(req, 3, byte(len(host)))
+		req = append(req, host...)
+	}
+	p, err := strconv.Atoi(port)
+	if err != nil || p < 0 || p > 65535 {
+		return nil, fmt.Errorf("socks5 proxy %s: %q is not a port", proxy, port)
+	}
+	req = append(req, byte(p>>8), byte(p))
+	if _, err := c.Write(req); err != nil {
+		return nil, fmt.Errorf("socks5 proxy %s: %w", proxy, err)
+	}
+
+	head := make([]byte, 4)
+	if _, err := io.ReadFull(c, head); err != nil {
+		return nil, fmt.Errorf("socks5 proxy %s: %w", proxy, err)
+	}
+	if head[1] != 0 {
+		return nil, fmt.Errorf("socks5 proxy %s: %s (reply %#x) for %s",
+			proxy, socks5Reply(head[1]), head[1], net.JoinHostPort(host, port))
+	}
+	// The bound address, which is of no interest but has to be consumed before
+	// the TLS bytes start.
+	var skip int
+	switch head[3] {
+	case 1:
+		skip = 4
+	case 3:
+		l := make([]byte, 1)
+		if _, err := io.ReadFull(c, l); err != nil {
+			return nil, fmt.Errorf("socks5 proxy %s: %w", proxy, err)
+		}
+		skip = int(l[0])
+	case 4:
+		skip = 16
+	default:
+		return nil, fmt.Errorf("socks5 proxy %s: unknown address type %#x in the reply", proxy, head[3])
+	}
+	if _, err := io.ReadFull(c, make([]byte, skip+2)); err != nil {
+		return nil, fmt.Errorf("socks5 proxy %s: %w", proxy, err)
+	}
+
+	// The deadline was the proxy handshake's; the TLS handshake sets its own.
+	_ = c.SetDeadline(time.Time{})
+	ok = true
+	return c, nil
+}
+
+// socks5Reply is RFC 1928's reply code in words an operator can act on.
+func socks5Reply(code byte) string {
+	switch code {
+	case 1:
+		return "general failure at the proxy"
+	case 2:
+		return "the proxy is configured not to allow this connection"
+	case 3:
+		return "the proxy says the network is unreachable"
+	case 4:
+		return "the proxy says the host is unreachable"
+	case 5:
+		return "the endpoint refused the connection"
+	case 6:
+		return "the proxy timed out reaching the endpoint"
+	case 7:
+		return "the proxy does not support CONNECT"
+	case 8:
+		return "the proxy does not support that address type"
+	}
+	return "the proxy refused"
+}
+
 // wireConn counts the ClientHellos written to the peer and records the size of
 // the first one.
 //
@@ -244,6 +374,12 @@ func ExpandAddresses(ctx context.Context, r Resolver, targets []Target) ([]Targe
 type Dialer struct {
 	Timeout time.Duration
 	ALPN    []string
+	// Socks5, when set, is the `host:port` of a SOCKS5 proxy every connection
+	// goes through. SOCKS5 and nothing else: HTTP CONNECT is a *request*, and
+	// sending one would trade away the property that makes this binary safe to
+	// point at production. The target name is passed to the proxy unresolved,
+	// because inside a network that is often the only place it resolves.
+	Socks5 string
 	// Confirm re-dials an abrupt failure once before it is believed. See
 	// DoConfirmed.
 	Confirm bool
@@ -314,11 +450,24 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 	defer cancel()
 
 	start := time.Now()
-	raw, err := (&net.Dialer{}).DialContext(ctx, "tcp", t.Addr())
-	if err != nil {
-		res.Kind, res.Err = classify(err)
-		res.Elapsed = time.Since(start)
-		return res
+	var raw net.Conn
+	var err error
+	if d.Socks5 != "" {
+		raw, err = socks5Connect(ctx, d.Socks5, t.Host, t.Port)
+		if err != nil {
+			// Attributed to the proxy on purpose: the endpoint has not been
+			// reached, so nothing here is a statement about it.
+			res.Kind, res.Err = KindProxy, err.Error()
+			res.Elapsed = time.Since(start)
+			return res
+		}
+	} else {
+		raw, err = (&net.Dialer{}).DialContext(ctx, "tcp", t.Addr())
+		if err != nil {
+			res.Kind, res.Err = classify(err)
+			res.Elapsed = time.Since(start)
+			return res
+		}
 	}
 	defer raw.Close()
 
