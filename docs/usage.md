@@ -34,6 +34,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--timeout D` | `10s` | per-handshake timeout |
 | `--confirm` | on | re-dial an abrupt failure once before believing it (`--confirm=false` to dial once) |
 | `--concurrency N` | `8` | endpoints in flight (profiles of one endpoint are sequential) |
+| `--baseline FILE` | — | compare against a previous `--json` run and report the transitions |
 | `--json` | — | full report, every profile result included |
 | `--findings` | — | flat findings array |
 | `--min-severity S` | — | hide findings below `S` |
@@ -57,6 +58,14 @@ deviation is a check people learn to ignore.
 ```sh
 pqprobe probe --inventory inventory/edge --group edge \
   --findings --min-severity WARN --exit-on BAD > findings.json
+```
+
+With a baseline, the run reports **what changed** rather than what was already
+broken — which is what makes a daily check readable on day thirty:
+
+```sh
+pqprobe probe --inventory inventory/edge --json > today.json
+pqprobe probe --inventory inventory/edge --baseline yesterday.json --exit-on BAD
 ```
 
 `--findings` is the flat array the sibling tools speak: one object per finding,

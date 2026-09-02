@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**33 items · 20 shipped · 13 open · 5 milestones.**
+**33 items · 21 shipped · 12 open · 5 milestones.**
 
 ## At a glance
 
@@ -16,7 +16,7 @@
 | **M2** — Say it more precisely | `v0.2.0` | **now** | `##........` 20% | 4 | 1 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 80% | 2 | 8 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
-| **M5** — Make the verdict actionable | `v0.4.0` | **now** | `####......` 43% | 4 | 3 |
+| **M5** — Make the verdict actionable | `v0.4.0` | **now** | `######....` 57% | 3 | 4 |
 
 ## Next up
 
@@ -25,11 +25,11 @@ The open items with the highest priority in the milestones that are in flight.
 - **PQ-9** — HelloRetryRequest visibility · `high` · size `L` · probe (M2, target `v0.2.0`)
 - **PQ-11** — ClientHello size sweep · `high` · size `M` · probe (M2, target `v0.2.0`)
 - **PQ-14** — checkfleet module · `high` · size `M` · integration (M3, target `v0.3.0`)
-- **PQ-24** — Baseline diff · `high` · size `M` · output,cli (M5, target `v0.4.0`)
 - **PQ-10** — Real ClientHello shapes · `med` · size `XL` · profile (M2, target `v0.2.0`)
 - **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
 - **PQ-25** — ALPN as a variable · `med` · size `S` · probe,verdict (M5, target `v0.4.0`)
 - **PQ-27** — Pull-request delivery · `med` · size `M` · delivery,output (M5, target `v0.4.0`)
+- **PQ-13** — Watch mode · `low` · size `M` · cli (M2, target `v0.2.0`)
 
 ## Milestones
 
@@ -89,16 +89,16 @@ Target `ongoing` · later · 3 open · 0 shipped · `..........` 0%
 
 ### M5 — Make the verdict actionable
 
-Target `v0.4.0` · **now** · 4 open · 3 shipped · `####......` 43%
+Target `v0.4.0` · **now** · 3 open · 4 shipped · `######....` 57%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-24** — Baseline diff | high | M | output,cli | open |
 | **PQ-25** — ALPN as a variable | med | S | probe,verdict | open |
 | **PQ-27** — Pull-request delivery | med | M | delivery,output | open |
 | **PQ-28** — `explain <class>` | low | S | cli,docs | open |
 | **PQ-22** — Per-group capability map | high | M | probe,profile | shipped `0.3.0` |
 | **PQ-23** — Confirm before condemning | high | S | probe,verdict | shipped `0.5.0` |
+| **PQ-24** — Baseline diff | high | M | output,cli | shipped `0.8.0` |
 | **PQ-26** — mTLS is not a refusal | high | M | probe,verdict | shipped `0.6.0` |
 
 ## By label
@@ -106,8 +106,8 @@ Target `v0.4.0` · **now** · 4 open · 3 shipped · `####......` 43%
 | Label | Items | Open |
 |---|---|---|
 | `probe` | 11 | 5 |
-| `cli` | 4 | 3 |
-| `output` | 4 | 3 |
+| `cli` | 4 | 2 |
+| `output` | 4 | 2 |
 | `profile` | 4 | 2 |
 | `delivery` | 3 | 1 |
 | `docs` | 5 | 1 |

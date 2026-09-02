@@ -26,6 +26,7 @@ not an endpoint that passed, and an operator has to see it first.
 | `chain` | `host:port` | chain does not verify, or the peer sent the leaf alone |
 | `client-auth` | `host:port` | the peer requested a client certificate: this endpoint is mutual TLS |
 | `addresses` | the name | with `--per-address`: how many addresses the name has, and which one answers differently |
+| `transition` | `host:port` | with `--baseline`: the class changed since a stored run, or the endpoint is new or gone |
 | `tls-version` | `host:port` | TLS 1.3 did not complete while 1.2 did |
 
 A failed handshake is a `WARN` on its own, never a `BAD`: whether it matters is
@@ -77,6 +78,23 @@ An alert is never re-dialled: it is an answer the peer chose to give.
 
 A flap never becomes a `BAD` class: the endpoint connected, so it is graded on
 that, and the instability is reported next to it. `--confirm=false` dials once.
+
+## What changed since last time
+
+`--baseline yesterday.json` compares this run against a stored `--json` run.
+Only **transitions** are reported:
+
+| Since the baseline | How it reads |
+|---|---|
+| nothing changed | nothing at all — an endpoint broken yesterday is not today's news |
+| it got worse | a `transition` finding graded by the class it fell to: `pq-ready → pq-intolerant` |
+| it got better | the same finding, `OK`: somebody should know a fix landed |
+| new endpoint | `new since the baseline: pq-ready`, usually an inventory change |
+| endpoint gone | `WARN`, and it names itself, because it has no report of its own to be printed under |
+
+A baseline that is not a pqprobe `--json` document is an error, not an empty
+comparison: one that silently parsed as nothing would report "no changes" for
+ever.
 
 ## A name is not a stack
 

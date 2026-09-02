@@ -105,3 +105,35 @@ func TestSummaryCountsClasses(t *testing.T) {
 		t.Fatalf("summary = %q", out)
 	}
 }
+
+// PQ-24. A baseline is a previous --json run, read back. The shape has to be
+// the one this tool writes, or the flag is a promise it cannot keep.
+func TestLoadReportsReadsWhatJSONWrote(t *testing.T) {
+	want := []verdict.Report{
+		{Target: "a.example:443", Class: verdict.PQReady},
+		{Target: "b.example:443", Class: verdict.PQIntolerant},
+	}
+	var buf bytes.Buffer
+	if err := JSON(&buf, want); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := LoadReports(&buf)
+	if err != nil {
+		t.Fatalf("LoadReports: %v", err)
+	}
+	if len(got) != 2 || got[0].Target != "a.example:443" || got[1].Class != verdict.PQIntolerant {
+		t.Fatalf("round trip lost something: %+v", got)
+	}
+}
+
+// A file that is not a pqprobe run must say so, not silently compare against
+// nothing — a baseline that quietly matched everything would report "no
+// changes" for ever.
+func TestLoadReportsRejectsSomethingElse(t *testing.T) {
+	for _, in := range []string{`{"tool":"segcheck","reports":[]}`, `[]`, `not json at all`, `{}`} {
+		if _, err := LoadReports(strings.NewReader(in)); err == nil {
+			t.Errorf("%q was accepted as a baseline", in)
+		}
+	}
+}

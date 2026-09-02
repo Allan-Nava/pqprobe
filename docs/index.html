@@ -527,6 +527,7 @@ pqprobe version</code></pre>
           <tr><td><code>--timeout D</code></td><td><code>10s</code></td><td>per-handshake timeout</td></tr>
           <tr><td><code>--confirm</code></td><td>on</td><td>re-dial an abrupt failure once before believing it (<code>--confirm=false</code> to dial once)</td></tr>
           <tr><td><code>--concurrency N</code></td><td><code>8</code></td><td>endpoints in flight (the profiles of one endpoint stay sequential)</td></tr>
+          <tr><td><code>--baseline FILE</code></td><td>—</td><td>compare against a previous <code>--json</code> run and report the transitions</td></tr>
           <tr><td><code>--json</code></td><td>—</td><td>full report, every per-profile result included</td></tr>
           <tr><td><code>--findings</code></td><td>—</td><td>flat findings array</td></tr>
           <tr><td><code>--min-severity S</code></td><td>—</td><td>hide findings below <code>S</code>; the endpoint header stays</td></tr>
@@ -561,7 +562,10 @@ pqprobe version</code></pre>
         <button class="cp" type="button">copy</button>
       </div>
 <pre><code>pqprobe probe --inventory inventory/edge --group edge \
-  --findings --min-severity WARN --exit-on BAD &gt; findings.json</code></pre>
+  --findings --min-severity WARN --exit-on BAD &gt; findings.json
+
+<span class="c-dim"># or against yesterday: only what changed</span>
+pqprobe probe --inventory inventory/edge --baseline yesterday.json --exit-on BAD</code></pre>
     </div>
     <p>
       <code>--findings</code> is the flat array the sibling tools speak: one
@@ -658,6 +662,7 @@ pqprobe version</code></pre>
           <tr><td><code>chain</code></td><td><code>host:port</code></td><td>the chain does not verify, or the peer sent the leaf alone</td></tr>
           <tr><td><code>client-auth</code></td><td><code>host:port</code></td><td>the peer requested a client certificate: this endpoint is mutual TLS</td></tr>
           <tr><td><code>addresses</code></td><td>the name</td><td>with <code>--per-address</code>: how many addresses the name has, and which one answers differently</td></tr>
+          <tr><td><code>transition</code></td><td><code>host:port</code></td><td>with <code>--baseline</code>: the class changed since a stored run, or the endpoint is new or gone</td></tr>
           <tr><td><code>tls-version</code></td><td><code>host:port</code></td><td>TLS 1.3 did not complete while 1.2 did</td></tr>
         </tbody>
       </table>

@@ -266,6 +266,77 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	return rep
 }
 
+// Transitions compares a run against a baseline and reports what *changed*
+// (PQ-24).
+//
+// The transition is the news. An endpoint that was already intolerant yesterday
+// is not news, and putting it at the top of the output every morning is how a
+// daily check becomes a daily thing people close. So an unchanged endpoint
+// produces nothing at all, a regression is graded by the class it fell to, an
+// improvement is stated quietly, and an endpoint that appeared or vanished is
+// mentioned because both are usually somebody editing an inventory.
+func Transitions(baseline, current []Report) []finding.Finding {
+	was := make(map[string]Class, len(baseline))
+	for _, r := range baseline {
+		was[r.Target] = r.Class
+	}
+	seen := make(map[string]bool, len(current))
+
+	var out []finding.Finding
+	for _, r := range current {
+		seen[r.Target] = true
+		before, known := was[r.Target]
+		if !known {
+			out = append(out, finding.Finding{
+				Check:   "transition",
+				Target:  r.Target,
+				Status:  finding.OK,
+				Message: fmt.Sprintf("new since the baseline: %s", r.Class),
+				Hint:    "the baseline had never seen this endpoint — expected after an inventory change, worth a look otherwise",
+			})
+			continue
+		}
+		if before == r.Class {
+			continue
+		}
+
+		st := StatusOf(r.Class)
+		hint := "this endpoint changed class since the baseline: whatever changed on the path or in the TLS configuration did it, and the time between the two runs is the window to look in"
+		if !finding.AtLeast(StatusOf(r.Class), StatusOf(before)) {
+			// It got better. Still a transition — somebody should know a fix
+			// landed — but not something to page about.
+			st = finding.OK
+			hint = "this endpoint improved since the baseline: if nobody meant to change it, find out who did"
+		}
+		out = append(out, finding.Finding{
+			Check:   "transition",
+			Target:  r.Target,
+			Status:  st,
+			Message: fmt.Sprintf("%s → %s", before, r.Class),
+			Hint:    hint,
+		})
+	}
+
+	for _, r := range baseline {
+		if seen[r.Target] {
+			continue
+		}
+		out = append(out, finding.Finding{
+			Check:  "transition",
+			Target: r.Target,
+			Status: finding.WARN,
+			// Named, because this finding has no report of its own: it is filed
+			// under another endpoint, where an unqualified sentence would read
+			// as a statement about that one.
+			Message: fmt.Sprintf("%s was %s in the baseline and is not in this run", r.Target, r.Class),
+			Hint:    "an endpoint that disappeared is usually an inventory edit, and occasionally a target somebody deleted by accident",
+		})
+	}
+
+	finding.SortWorstFirst(out)
+	return out
+}
+
 // AddressConsistency compares the reports for the addresses behind one name
 // (PQ-12) and returns the finding, the index of the report it belongs next to,
 // and whether there is anything to say.

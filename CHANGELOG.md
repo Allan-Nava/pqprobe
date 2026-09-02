@@ -6,6 +6,22 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.8.0] - 2026-09-02
+
+### Added
+
+- **Baseline diff** (PQ-24) — `--baseline yesterday.json` compares this run
+  against a stored `--json` run and reports the **transitions**: a regression
+  graded by the class it fell to (`pq-ready → pq-intolerant`), an improvement
+  stated quietly, and an endpoint that appeared or vanished named. An endpoint
+  that has not changed produces nothing at all — an endpoint broken yesterday is
+  not today's news, and a diff that always has something in it is a diff nobody
+  reads. A baseline that is not a pqprobe `--json` document is an error, not an
+  empty comparison: one that silently parsed as nothing would report "no
+  changes" for ever. Running it also showed that a transition for a *vanished*
+  endpoint has no report of its own to be printed under, so it names itself
+  rather than reading as a statement about whichever endpoint it was filed with.
+
 ## [0.7.0] - 2026-09-02
 
 ### Added
@@ -243,6 +259,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.8.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.8.0
 [0.7.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.7.0
 [0.6.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.6.0
 [0.5.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.5.0

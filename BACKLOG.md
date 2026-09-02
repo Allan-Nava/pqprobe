@@ -214,11 +214,14 @@ how the answer reaches a pull request without a second tool.
   and nothing at all for a civil refusal, which is not re-dialled because an
   alert is an answer the peer chose to give. A healthy fleet therefore pays no
   extra connections. <!-- pq: prio=high size=S labels=probe,verdict ver=0.5.0 -->
-- [ ] **PQ-24 — Baseline diff**: `--baseline run.json` compares this run against
-  a stored one and reports the *transitions* — `pq-ready` → `pq-intolerant` is
-  the finding, and an endpoint that was already broken yesterday is not news at
-  the top of the output. The complement of watch mode (PQ-13) for anything that
-  runs on a schedule. <!-- pq: prio=high size=M labels=output,cli -->
+- [x] **PQ-24 — Baseline diff**: `--baseline run.json` compares this run
+  against a stored `--json` run and reports only the *transitions* — a
+  regression graded by the class it fell to, an improvement stated quietly, an
+  endpoint that appeared or vanished named — while an endpoint that has not
+  changed produces nothing at all, because a diff that always has something in
+  it is a diff nobody reads. A file that is not a pqprobe document is an error
+  rather than an empty comparison: one that silently parsed as nothing would
+  report "no changes" for ever. <!-- pq: prio=high size=M labels=output,cli ver=0.8.0 -->
 - [ ] **PQ-25 — ALPN as a variable**: ALPN is bytes in the same hello, and a CDN
   offers `h2,http/1.1` where a health check offers nothing. Dial `pq-preferred`
   both ways and report when the answer differs — an endpoint that takes a hybrid

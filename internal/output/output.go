@@ -9,6 +9,7 @@ package output
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -83,6 +84,30 @@ func JSON(w io.Writer, reps []verdict.Report) error {
 // Findings renders the flat findings array. An empty run emits `[]`, never
 // `null`: a consumer that does `for f in findings` must not have to special-case
 // a healthy fleet.
+// LoadReports reads a baseline: a document JSON wrote earlier (PQ-24).
+//
+// The `tool` field is checked rather than trusted. A file that is not a pqprobe
+// run must be an error, because a baseline that silently parsed as nothing
+// would compare against nothing and report "no changes" for ever — which is
+// the most expensive kind of quiet.
+func LoadReports(r io.Reader) ([]verdict.Report, error) {
+	var doc struct {
+		Tool    string           `json:"tool"`
+		Reports []verdict.Report `json:"reports"`
+	}
+	dec := json.NewDecoder(r)
+	if err := dec.Decode(&doc); err != nil {
+		return nil, fmt.Errorf("not a pqprobe --json document: %w", err)
+	}
+	if doc.Tool != "pqprobe" {
+		return nil, fmt.Errorf("not a pqprobe --json document (tool = %q)", doc.Tool)
+	}
+	if len(doc.Reports) == 0 {
+		return nil, errors.New("the baseline holds no reports")
+	}
+	return doc.Reports, nil
+}
+
 func Findings(w io.Writer, reps []verdict.Report, min finding.Status) error {
 	out := []finding.Finding{}
 	for _, r := range reps {

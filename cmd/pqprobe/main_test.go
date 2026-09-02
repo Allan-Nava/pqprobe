@@ -45,6 +45,19 @@ func TestValidStatus(t *testing.T) {
 	}
 }
 
+// PQ-24. --baseline takes a path, so permute must consume the word after it or
+// the file name becomes a target and the run probes a JSON file.
+func TestBaselineTakesAValue(t *testing.T) {
+	if !takesValue("--baseline") {
+		t.Fatal("--baseline takes a file")
+	}
+	got := permute([]string{"origin.example", "--baseline", "yesterday.json"})
+	want := []string{"--baseline", "yesterday.json", "origin.example"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("permute = %v, want %v", got, want)
+	}
+}
+
 // PQ-12. --per-address turns one name into one target per A/AAAA record, so it
 // multiplies the connections a run makes: off by default, and a boolean.
 func TestPerAddressIsABooleanFlag(t *testing.T) {
@@ -93,7 +106,7 @@ func TestUsageDocumentsEveryFlagTheProbeAccepts(t *testing.T) {
 		"--profile", "--per-group", "--inventory", "--group", "--list", "--port",
 		"--sni", "--alpn", "--timeout", "--concurrency", "--json", "--findings",
 		"--min-severity", "--exit-on", "--expiry-warn", "--expiry-bad", "--confirm",
-		"--per-address",
+		"--per-address", "--baseline",
 	} {
 		if !strings.Contains(b.String(), flag) {
 			t.Errorf("%s is not in --help", flag)

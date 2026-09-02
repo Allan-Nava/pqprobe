@@ -511,3 +511,102 @@ func TestAPoolWithAnUnreachableNodeBlamesTheRouteFirst(t *testing.T) {
 		t.Errorf("draining a node you simply cannot reach is the wrong advice: %q", f.Hint)
 	}
 }
+
+// PQ-24. The transition is the news. An endpoint that was already broken
+// yesterday is not, and it must not be at the top of the output every morning.
+func TestTransitionsAreTheNews(t *testing.T) {
+	old := []Report{
+		{Target: "a:443", Class: PQReady},
+		{Target: "b:443", Class: PQIntolerant},
+		{Target: "c:443", Class: PQBlind},
+	}
+	now := []Report{
+		{Target: "a:443", Class: PQIntolerant}, // regression: the news
+		{Target: "b:443", Class: PQIntolerant}, // still broken: not news
+		{Target: "c:443", Class: PQReady},      // fixed: worth saying, quietly
+		{Target: "d:443", Class: PQReady},      // new endpoint
+	}
+
+	fs := Transitions(old, now)
+
+	byTarget := map[string]finding.Finding{}
+	for _, f := range fs {
+		if f.Check != "transition" {
+			t.Errorf("unexpected check %q", f.Check)
+		}
+		byTarget[f.Target] = f
+	}
+
+	if _, ok := byTarget["b:443"]; ok {
+		t.Error("an endpoint that has not changed must produce nothing at all")
+	}
+
+	a, ok := byTarget["a:443"]
+	if !ok {
+		t.Fatal("a regression has to be reported")
+	}
+	if a.Status != finding.BAD {
+		t.Errorf("status = %s, want BAD: it got worse", a.Status)
+	}
+	if !strings.Contains(a.Message, "pq-ready") || !strings.Contains(a.Message, "pq-intolerant") {
+		t.Errorf("both classes have to be in the message: %q", a.Message)
+	}
+
+	c, ok := byTarget["c:443"]
+	if !ok {
+		t.Fatal("an improvement is a transition too")
+	}
+	if c.Status != finding.OK {
+		t.Errorf("status = %s, want OK: it got better", c.Status)
+	}
+
+	d, ok := byTarget["d:443"]
+	if !ok {
+		t.Fatal("an endpoint the baseline never saw has to be flagged as new")
+	}
+	if !strings.Contains(d.Message, "new") {
+		t.Errorf("message = %q, want it to say the baseline had never seen it", d.Message)
+	}
+	if d.Status != finding.OK {
+		t.Errorf("status = %s: a new endpoint is not by itself a problem", d.Status)
+	}
+}
+
+// An endpoint that vanished is a question about the inventory, and silence
+// would hide a target somebody deleted by accident.
+func TestAVanishedEndpointIsReported(t *testing.T) {
+	fs := Transitions(
+		[]Report{{Target: "gone:443", Class: PQReady}},
+		[]Report{{Target: "here:443", Class: PQReady}},
+	)
+	var found bool
+	for _, f := range fs {
+		if f.Target == "gone:443" {
+			found = true
+			if f.Status != finding.WARN {
+				t.Errorf("status = %s, want WARN", f.Status)
+			}
+			if !strings.Contains(f.Message, "not in this run") {
+				t.Errorf("message = %q", f.Message)
+			}
+			// It has nowhere of its own to be printed, so it is filed under
+			// another endpoint. The message has to name the endpoint it is
+			// about, or it reads as a statement about the wrong one.
+			if !strings.Contains(f.Message, "gone:443") {
+				t.Errorf("a transition with no report of its own must name its target: %q", f.Message)
+			}
+		}
+	}
+	if !found {
+		t.Error("an endpoint in the baseline and not in the run has to be reported")
+	}
+}
+
+// Two identical runs say nothing. A diff that always has something in it is a
+// diff nobody reads.
+func TestIdenticalRunsProduceNoTransitions(t *testing.T) {
+	reps := []Report{{Target: "a:443", Class: PQReady}, {Target: "b:443", Class: PQBlind}}
+	if fs := Transitions(reps, reps); len(fs) != 0 {
+		t.Fatalf("got %d findings for two identical runs: %+v", len(fs), fs)
+	}
+}

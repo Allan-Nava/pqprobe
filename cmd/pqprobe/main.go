@@ -55,6 +55,42 @@ func main() {
 	}
 }
 
+// addTransitions compares this run against a stored one and files each
+// transition on the report it belongs to (PQ-24). A transition for an endpoint
+// this run did not probe has nowhere to live, so it goes on the first report —
+// where an operator will still see it.
+func addTransitions(path string, reps []verdict.Report) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("baseline: %w", err)
+	}
+	defer f.Close()
+
+	old, err := output.LoadReports(f)
+	if err != nil {
+		return fmt.Errorf("baseline %s: %w", path, err)
+	}
+	if len(reps) == 0 {
+		return nil
+	}
+
+	byTarget := make(map[string]int, len(reps))
+	for i, r := range reps {
+		byTarget[r.Target] = i
+	}
+	for _, t := range verdict.Transitions(old, reps) {
+		at := 0
+		if i, ok := byTarget[t.Target]; ok {
+			at = i
+		}
+		reps[at].Finding = append(reps[at].Finding, t)
+	}
+	for i := range reps {
+		finding.SortWorstFirst(reps[i].Finding)
+	}
+	return nil
+}
+
 // addressFindings adds one `addresses` finding per name that resolved to more
 // than one address, next to the report of the address that differs (PQ-12).
 // Grouping happens here because this is the only place that still knows which
@@ -121,6 +157,8 @@ flags:
   --confirm                re-dial an abrupt failure once before believing it
                            (default true; --confirm=false to dial once)
   --concurrency N          endpoints in flight (default 8)
+  --baseline FILE          compare against a previous --json run and report the
+                           transitions: what changed, not what was already broken
   --json                   full report, every profile result included
   --findings               flat findings array (the toolchain contract)
   --min-severity S         hide findings below S (OK|WARN|BAD|ERROR)
@@ -169,6 +207,7 @@ func cmdProbe(args []string) int {
 		timeout     = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
 		confirm     = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
 		concurrency = fs.Int("concurrency", 8, "endpoints in flight")
+		baseline    = fs.String("baseline", "", "compare against a previous --json run")
 		asJSON      = fs.Bool("json", false, "full JSON report")
 		asFindings  = fs.Bool("findings", false, "flat findings array")
 		minSev      = fs.String("min-severity", "", "hide findings below this status")
@@ -237,6 +276,14 @@ func cmdProbe(args []string) int {
 	reps := run(context.Background(), dialer, targets, sel, opt, *concurrency)
 	if *perAddress {
 		addressFindings(names, reps)
+	}
+
+	// The baseline is read *after* the probe: a run that produced findings must
+	// still print them if the comparison cannot be made.
+	if *baseline != "" {
+		if err := addTransitions(*baseline, reps); err != nil {
+			fmt.Fprintln(os.Stderr, "pqprobe:", err)
+		}
 	}
 
 	var err error
@@ -388,7 +435,8 @@ func takesValue(flagArg string) bool {
 	name := strings.TrimLeft(flagArg, "-")
 	switch name {
 	case "profile", "inventory", "group", "list", "port", "sni", "alpn",
-		"timeout", "concurrency", "min-severity", "exit-on", "expiry-warn", "expiry-bad":
+		"timeout", "concurrency", "min-severity", "exit-on", "expiry-warn", "expiry-bad",
+		"baseline":
 		return true
 	}
 	return false
