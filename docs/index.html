@@ -431,8 +431,12 @@ footer a:hover { color:var(--link-hover); }
         <p>Go 1.25 or newer. <code>X25519MLKEM768</code> comes from the standard library, which is why the tool has no dependencies at all.</p>
       </div>
       <div class="card">
+        <h3>Homebrew</h3>
+        <p>The tap is this repository. The formula clones the tag and builds from source, so one formula covers macOS and Linux on Intel and ARM.</p>
+      </div>
+      <div class="card">
         <h3>Docker</h3>
-        <p>The image is <code>scratch</code> plus the binary and the CA bundle — no shell, nothing else to reason about when it is pointed at production.</p>
+        <p><code>ghcr.io/allan-nava/pqprobe</code> is <code>scratch</code> plus the binary and the CA bundle — no shell, multi-arch, with a provenance attestation and smoke-tested after it is pushed.</p>
       </div>
       <div class="card">
         <h3>Requirements</h3>
@@ -444,7 +448,11 @@ footer a:hover { color:var(--link-hover); }
         <span>three ways</span>
         <button class="cp" type="button">copy</button>
       </div>
-<pre><code><span class="c-dim"># the released binary</span>
+<pre><code><span class="c-dim"># Homebrew: the tap is this repository</span>
+brew tap allan-nava/pqprobe https://github.com/Allan-Nava/pqprobe
+brew install pqprobe
+
+<span class="c-dim"># the released binary</span>
 go install github.com/Allan-Nava/pqprobe/cmd/pqprobe@latest
 
 <span class="c-dim"># from source</span>
@@ -452,7 +460,10 @@ git clone https://github.com/Allan-Nava/pqprobe
 cd pqprobe &amp;&amp; go build -o pqprobe ./cmd/pqprobe
 ./pqprobe probe example.com
 
-<span class="c-dim"># scratch image: the binary and the CA bundle, nothing else</span>
+<span class="c-dim"># the published image: multi-arch, attested, nothing but the binary</span>
+docker run --rm ghcr.io/allan-nava/pqprobe:latest probe example.com
+
+<span class="c-dim"># or build it yourself</span>
 docker build -t pqprobe .
 docker run --rm pqprobe probe example.com</code></pre>
     </div>

@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**32 items · 16 shipped · 16 open · 5 milestones.**
+**33 items · 17 shipped · 16 open · 5 milestones.**
 
 ## At a glance
 
@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.2.0` | **now** | `..........` 0% | 5 | 0 |
-| **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 78% | 2 | 7 |
+| **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 80% | 2 | 8 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
 | **M5** — Make the verdict actionable | `v0.4.0` | **now** | `#.........` 14% | 6 | 1 |
 
@@ -62,7 +62,7 @@ Target `v0.2.0` · **now** · 5 open · 0 shipped · `..........` 0%
 
 ### M3 — Fit the toolchain
 
-Target `v0.3.0` · next · 2 open · 7 shipped · `########..` 78%
+Target `v0.3.0` · next · 2 open · 8 shipped · `########..` 80%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
@@ -71,6 +71,7 @@ Target `v0.3.0` · next · 2 open · 7 shipped · `########..` 78%
 | **PQ-16** — Release pipeline | high | M | release | shipped `0.2.0` |
 | **PQ-21** — Intent document | high | S | docs,project | shipped `0.2.0` |
 | **PQ-32** — Every commit is a version | high | S | release,project | shipped `0.2.0` |
+| **PQ-33** — Homebrew and the published image | high | S | delivery,docs | shipped `0.4.0` |
 | **PQ-17** — Docs site | med | M | docs | shipped `0.2.0` |
 | **PQ-29** — Brand assets | med | S | docs,project | shipped `0.2.0` |
 | **PQ-30** — The About box as data | med | S | project,delivery | shipped `0.2.0` |
@@ -109,8 +110,8 @@ Target `v0.4.0` · **now** · 6 open · 1 shipped · `#.........` 14%
 | `output` | 4 | 3 |
 | `verdict` | 4 | 3 |
 | `profile` | 4 | 2 |
-| `delivery` | 2 | 1 |
-| `docs` | 4 | 1 |
+| `delivery` | 3 | 1 |
+| `docs` | 5 | 1 |
 | `integration` | 1 | 1 |
 | `inventory` | 2 | 1 |
 | `project` | 5 | 0 |

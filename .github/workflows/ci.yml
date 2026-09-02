@@ -102,6 +102,13 @@ jobs:
         run: ./scripts/release-notes.sh >/dev/null
       - name: The version gate itself
         run: sh scripts/version_test.sh
+      # A stale formula is worse than a missing one: `brew install` reads
+      # whatever it says, so one left at the previous version installs the old
+      # binary and looks like it worked.
+      - name: The Homebrew formula names the current version
+        run: ./scripts/brew.sh check
+      - name: The formula generator itself
+        run: sh scripts/brew_test.sh
 
   # Every commit ships as a tagged vX.Y.Z with its own CHANGELOG section. On a
   # tag that is a hard requirement; on a branch push the tag is usually a second

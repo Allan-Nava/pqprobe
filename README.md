@@ -139,11 +139,17 @@ OK    google.com:443  pq-ready
 ## Install
 
 ```sh
+# Homebrew — the tap is this repository
+brew tap allan-nava/pqprobe https://github.com/Allan-Nava/pqprobe && brew install pqprobe
+
+# Go
 go install github.com/Allan-Nava/pqprobe/cmd/pqprobe@latest
+
+# Docker — scratch plus the binary and the CA bundle, multi-arch, attested
+docker run --rm ghcr.io/allan-nava/pqprobe:latest probe example.com
 ```
 
-or build the static binary — and the `scratch` image, which contains nothing
-but it:
+Or build it yourself:
 
 ```sh
 go build -o pqprobe ./cmd/pqprobe

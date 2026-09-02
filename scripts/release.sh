@@ -148,6 +148,7 @@ sh scripts/repo-meta_test.sh >/dev/null && echo "metadata tests OK"
 sh scripts/render-assets.sh --check
 sh scripts/assets_test.sh >/dev/null && echo "asset tests OK"
 sh scripts/version_test.sh >/dev/null && echo "version tests OK"
+sh scripts/brew_test.sh >/dev/null && echo "formula tests OK"
 
 [ "${RELEASE_DRY_RUN:-0}" = 1 ] && { say "dry run — nothing was rewritten"; exit 0; }
 
@@ -182,6 +183,12 @@ say "BACKLOG.md"
 sed "s/ver=unreleased/ver=$version/g" BACKLOG.md > "$tmp" && mv "$tmp" BACKLOG.md
 ./scripts/backlog.sh roadmap
 
+# The formula is generated from the CHANGELOG, so it is rendered *after* the
+# section is dated and *inside* this commit — the tap is this repository, and a
+# formula bumped in a later commit would be a commit that is not a version.
+say "Formula/pqprobe.rb"
+./scripts/brew.sh write
+
 fi
 
 say "the diff"
@@ -204,8 +211,10 @@ git commit -q -m "pqprobe $version" -m "$(./scripts/release-notes.sh "$version" 
 git tag -a "$tag" -m "pqprobe $version" -m "$(./scripts/release-notes.sh "$version")"
 echo "committed $(git rev-parse --short HEAD) and tagged $tag"
 
-# The rule this repository runs on, checked on the thing it was just applied to.
+# The rules this repository runs on, checked on the thing they were just applied
+# to: the tag matches the CHANGELOG, and the formula installs it.
 ./scripts/version.sh check
+./scripts/brew.sh check
 
 cat <<MSG
 

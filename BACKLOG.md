@@ -107,6 +107,18 @@ prints what to pick up.
 - [ ] **PQ-15 — Prometheus textfile output**: `--textfile` writing
   `pqprobe_class{target=…}` for a node exporter, so the state is graphable
   without a scraper of its own. <!-- pq: prio=med size=S labels=output -->
+- [x] **PQ-33 — Homebrew and the published image**: `brew tap` on this
+  repository and `brew install pqprobe`, from a `Formula/pqprobe.rb` that
+  `scripts/brew.sh` renders inside the release commit — the tap is the repo, so
+  there is no second repository to keep in step and no token for a bot to push
+  with. The formula clones the tag and builds from source (one formula for
+  macOS and Linux, Intel and ARM; a tarball would need a sha256 that cannot
+  exist while rendering the file the tag will point at). `brew.sh check` is a CI
+  gate, because `brew install` reads whatever the formula says: one left at the
+  previous version installs the old binary and looks like it worked. The
+  `ghcr.io` image was already published by PQ-16 and documented nowhere — the
+  install pages said `docker build` and never `docker pull`.
+  <!-- pq: prio=high size=S labels=delivery,docs ver=0.4.0 -->
 - [x] **PQ-16 — Release pipeline**: tag-driven archives for six platforms with
   one `SHA256SUMS`, a provenance attestation, the multi-arch `ghcr.io` image
   (smoke-tested after it is pushed) and release notes lifted from the CHANGELOG
