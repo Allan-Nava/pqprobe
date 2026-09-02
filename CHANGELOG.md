@@ -6,6 +6,25 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.14.0] - 2026-09-02
+
+### Added
+
+- **Pull-request delivery** (PQ-27) — `--markdown` renders the run as a table,
+  worst endpoint first, with each endpoint's findings in a collapsible
+  `<details>` block: the same findings, the same order and the same
+  `--min-severity` as every other renderer, with no colour, because a comment
+  carrying terminal escapes would be unreadable in the one place this format
+  exists for. An empty run says so in a sentence rather than printing an empty
+  table.
+- **A GitHub Action** (PQ-27) — [action.yml](action.yml), composite: it installs
+  the binary with the runner's Go toolchain (no image to pull), writes the
+  markdown report to the job summary, exposes the findings array as the
+  `findings` output and fails the step only on `exit-on`. Its inputs reach the
+  shell through the environment, never through `${{ }}` inside the script. CI
+  runs `uses: ./` against the commit under test, because an action nobody
+  exercises is a file that used to work.
+
 ## [0.13.0] - 2026-09-02
 
 ### Added
@@ -358,6 +377,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.14.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.14.0
 [0.13.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.13.0
 [0.12.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.12.0
 [0.11.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.11.0

@@ -169,6 +169,8 @@ flags:
   --concurrency N          endpoints in flight (default 8)
   --baseline FILE          compare against a previous --json run and report the
                            transitions: what changed, not what was already broken
+  --markdown               a table and collapsible detail, for a pull request
+                           comment or a CI job summary
   --json                   full report, every profile result included
   --findings               flat findings array (the toolchain contract)
   --min-severity S         hide findings below S (OK|WARN|BAD|ERROR)
@@ -256,6 +258,7 @@ func cmdProbe(args []string) int {
 		confirm     = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
 		concurrency = fs.Int("concurrency", 8, "endpoints in flight")
 		baseline    = fs.String("baseline", "", "compare against a previous --json run")
+		asMarkdown  = fs.Bool("markdown", false, "markdown for a PR comment or job summary")
 		asJSON      = fs.Bool("json", false, "full JSON report")
 		asFindings  = fs.Bool("findings", false, "flat findings array")
 		minSev      = fs.String("min-severity", "", "hide findings below this status")
@@ -357,6 +360,8 @@ func cmdProbe(args []string) int {
 
 	var err error
 	switch {
+	case *asMarkdown:
+		err = output.Markdown(os.Stdout, reps, finding.Status(*minSev))
 	case *asFindings:
 		err = output.Findings(os.Stdout, reps, finding.Status(*minSev))
 	case *asJSON:

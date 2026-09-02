@@ -1,0 +1,82 @@
+name: pqprobe
+description: Which classes of TLS client can still handshake with your endpoints — post-quantum readiness, as a check.
+author: Allan Nava
+branding:
+  icon: shield
+  color: purple
+
+# PQ-27. A composite action rather than a Docker one: it installs the binary
+# with the Go toolchain the runner already has, so there is no image to pull and
+# nothing to keep in step with a release beyond the version input.
+#
+# It writes the markdown report to the job summary, which is where a reviewer
+# will actually look, and leaves the exit code to `exit-on` — the same contract
+# the CLI has, because a check that fails a pipeline on every deviation is a
+# check people route around.
+
+inputs:
+  targets:
+    description: "Endpoints to probe, space-separated (host, host:port, https://host/… or 1.2.3.4=origin.example)"
+    required: false
+    default: ""
+  args:
+    description: "Extra pqprobe flags, e.g. --per-address --size-sweep --inventory ansible/inventory/edge"
+    required: false
+    default: ""
+  exit-on:
+    description: "Fail the step when a finding reaches this status (OK|WARN|BAD|ERROR). Empty never fails."
+    required: false
+    default: "BAD"
+  version:
+    description: "Version of pqprobe to install: a tag like v0.13.0, a commit, or latest"
+    required: false
+    default: "latest"
+  summary:
+    description: "Write the markdown report to the job summary"
+    required: false
+    default: "true"
+
+outputs:
+  findings:
+    description: "The findings array, as JSON"
+    value: ${{ steps.probe.outputs.findings }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install pqprobe
+      shell: bash
+      run: go install "github.com/Allan-Nava/pqprobe/cmd/pqprobe@${{ inputs.version }}"
+
+    - id: probe
+      shell: bash
+      env:
+        TARGETS: ${{ inputs.targets }}
+        EXTRA: ${{ inputs.args }}
+        EXIT_ON: ${{ inputs.exit-on }}
+        SUMMARY: ${{ inputs.summary }}
+      run: |
+        set -o pipefail
+
+        # The inputs reach the shell through the environment, never through
+        # ${{ }} inside this script: a workflow input is somebody else's string.
+        # shellcheck disable=SC2086
+        set -- $EXTRA $TARGETS
+
+        if [ "$SUMMARY" = "true" ]; then
+          pqprobe probe --markdown "$@" >> "$GITHUB_STEP_SUMMARY" || true
+        fi
+
+        # The findings array is the machine-readable half, and it is an output
+        # so a later step can do something with it.
+        {
+          echo "findings<<PQPROBE_EOF"
+          pqprobe probe --findings "$@" || true
+          echo "PQPROBE_EOF"
+        } >> "$GITHUB_OUTPUT"
+
+        # The exit code comes from a run of its own, so the two documents above
+        # are always written even when this fails the step.
+        if [ -n "$EXIT_ON" ]; then
+          pqprobe probe --min-severity "$EXIT_ON" --exit-on "$EXIT_ON" "$@"
+        fi

@@ -137,3 +137,109 @@ func TestLoadReportsRejectsSomethingElse(t *testing.T) {
 		}
 	}
 }
+
+// PQ-27. The same findings in the shape a review can read: a table first,
+// because a PR comment is read at a glance, and the detail after it for whoever
+// is actually going to fix something.
+func TestMarkdownLeadsWithATableWorstFirst(t *testing.T) {
+	reps := []verdict.Report{
+		{Target: "good.example:443", Class: verdict.PQReady, Finding: []finding.Finding{
+			{Check: "verdict", Target: "good.example:443", Status: finding.OK, Message: "pq-ready — fine"},
+		}},
+		{Target: "bad.example:443", Class: verdict.PQIntolerant, Finding: []finding.Finding{
+			{Check: "verdict", Target: "bad.example:443", Status: finding.BAD,
+				Message: "pq-intolerant — capable clients cannot connect", Hint: "look at the path"},
+			{Check: "handshake", Target: "bad.example:443/pq-preferred", Status: finding.WARN, Message: "no handshake (reset)"},
+		}},
+	}
+
+	var b bytes.Buffer
+	if err := Markdown(&b, reps, finding.OK); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+
+	if !strings.Contains(out, "| Endpoint | Class |") {
+		t.Errorf("no table header:\n%s", out)
+	}
+	bad := strings.Index(out, "bad.example")
+	good := strings.Index(out, "good.example")
+	if bad == -1 || good == -1 || bad > good {
+		t.Errorf("the worst endpoint has to come first (bad at %d, good at %d)", bad, good)
+	}
+	if !strings.Contains(out, "pq-intolerant") || !strings.Contains(out, "look at the path") {
+		t.Errorf("the finding and its hint have to survive into the detail:\n%s", out)
+	}
+	// A PR comment that says "2 endpoints" saves the reader counting rows.
+	if !strings.Contains(out, "2 endpoint") {
+		t.Errorf("no summary line:\n%s", out)
+	}
+	if strings.Contains(out, "\x1b[") {
+		t.Error("markdown must carry no terminal escapes")
+	}
+}
+
+// --min-severity has to mean the same thing here as everywhere else, or a
+// comment posted with it says more than the run was asked to say.
+func TestMarkdownRespectsMinSeverity(t *testing.T) {
+	reps := []verdict.Report{{Target: "h:443", Class: verdict.PQBlind, Finding: []finding.Finding{
+		{Check: "verdict", Target: "h:443", Status: finding.WARN, Message: "pq-blind — plan it"},
+		{Check: "handshake", Target: "h:443/classic", Status: finding.OK, Message: "TLS 1.3, X25519"},
+	}}}
+
+	var b bytes.Buffer
+	if err := Markdown(&b, reps, finding.WARN); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b.String(), "TLS 1.3, X25519") {
+		t.Errorf("an OK finding survived --min-severity WARN:\n%s", b.String())
+	}
+	if !strings.Contains(b.String(), "pq-blind") {
+		t.Error("the WARN finding must still be there")
+	}
+}
+
+// A run with nothing in it must say so. An empty table in a pull request reads
+// as a broken tool, which is worse than a sentence.
+func TestMarkdownSaysWhenThereIsNothing(t *testing.T) {
+	var b bytes.Buffer
+	if err := Markdown(&b, nil, finding.OK); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "no endpoint") {
+		t.Errorf("output = %q", b.String())
+	}
+	if strings.Contains(b.String(), "| Endpoint |") {
+		t.Error("an empty table is worse than a sentence")
+	}
+}
+
+// A pipe in a *table cell* splits it and silently shifts every column after
+// it — the same trap the roadmap generator already has to handle. In the detail
+// list a pipe is literal text and escaping it would only add backslashes, so
+// this asserts the table and leaves the prose alone.
+func TestMarkdownEscapesPipesInTableCellsOnly(t *testing.T) {
+	reps := []verdict.Report{{Target: "h:443|weird", Class: verdict.PQBlind, Finding: []finding.Finding{
+		{Check: "verdict", Target: "h:443|weird", Status: finding.WARN, Message: "a|b|c"},
+	}}}
+	var b bytes.Buffer
+	if err := Markdown(&b, reps, finding.OK); err != nil {
+		t.Fatal(err)
+	}
+
+	var row string
+	for _, line := range strings.Split(b.String(), "\n") {
+		if strings.HasPrefix(line, "| `h:443") {
+			row = line
+		}
+	}
+	if row == "" {
+		t.Fatalf("no table row for the endpoint:\n%s", b.String())
+	}
+	if strings.Count(row, "|") != strings.Count(row, "\\|")+4 {
+		t.Errorf("the row has an unescaped pipe and its columns will shift: %q", row)
+	}
+	if !strings.Contains(b.String(), "a|b|c") {
+		t.Error("a pipe in prose is literal text: escaping it would only add backslashes")
+	}
+}

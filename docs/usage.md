@@ -43,6 +43,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--confirm` | on | re-dial an abrupt failure once before believing it (`--confirm=false` to dial once) |
 | `--concurrency N` | `8` | endpoints in flight (profiles of one endpoint are sequential) |
 | `--baseline FILE` | — | compare against a previous `--json` run and report the transitions |
+| `--markdown` | — | a table and collapsible detail, for a pull request comment or a CI job summary |
 | `--json` | — | full report, every profile result included |
 | `--findings` | — | flat findings array |
 | `--min-severity S` | — | hide findings below `S` |
@@ -60,6 +61,23 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 
 Exit 0 on a WARN is deliberate. A check that fails the pipeline on every
 deviation is a check people learn to ignore.
+
+## In a pull request
+
+There is a composite action, so a repository that owns endpoints can check them
+where the change is being reviewed:
+
+```yaml
+- uses: Allan-Nava/pqprobe@v0.14.0
+  with:
+    targets: origin.example.com api.example.com
+    args: --per-address
+    exit-on: BAD
+```
+
+It writes the `--markdown` report to the job summary, exposes the findings array
+as the `findings` output, and fails the step only on `exit-on`. Inputs: `targets`,
+`args`, `exit-on`, `version`, `summary`.
 
 ## In a scheduled job
 

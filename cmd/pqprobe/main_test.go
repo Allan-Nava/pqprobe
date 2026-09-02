@@ -47,6 +47,18 @@ func TestValidStatus(t *testing.T) {
 	}
 }
 
+// PQ-27. --markdown is a boolean and one of the mutually exclusive renderers:
+// two documents on one stdout is not a document.
+func TestMarkdownIsABooleanFlag(t *testing.T) {
+	if takesValue("--markdown") {
+		t.Fatal("--markdown takes no value")
+	}
+	got := permute([]string{"--markdown", "origin.example"})
+	if len(got) != 2 || got[1] != "origin.example" {
+		t.Fatalf("permute = %v, want the target kept as an operand", got)
+	}
+}
+
 // PQ-34. --groups takes a list, so permute has to consume the word after it —
 // otherwise the group list becomes a target and pqprobe tries to resolve
 // "X25519MLKEM768,X25519" as a hostname.
@@ -158,6 +170,7 @@ func TestUsageDocumentsEveryFlagTheProbeAccepts(t *testing.T) {
 		"--sni", "--alpn", "--timeout", "--concurrency", "--json", "--findings",
 		"--min-severity", "--exit-on", "--expiry-warn", "--expiry-bad", "--confirm",
 		"--per-address", "--baseline", "--size-sweep", "--alpn-check", "--groups",
+		"--markdown",
 	} {
 		if !strings.Contains(b.String(), flag) {
 			t.Errorf("%s is not in --help", flag)

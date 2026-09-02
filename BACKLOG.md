@@ -261,10 +261,15 @@ how the answer reaches a pull request without a second tool.
   the class is `mtls-required` with an ERROR: the endpoint refused the prober,
   not post-quantum clients, and pqprobe holds no key material by design.
   <!-- pq: prio=high size=M labels=probe,verdict ver=0.6.0 -->
-- [ ] **PQ-27 — Pull-request delivery**: an `action.yml` and a `--markdown`
-  renderer, so the fleet table lands in a PR comment or a job summary with the
-  worst endpoint first. The same findings, a shape a review can read; no new
-  checks. <!-- pq: prio=med size=M labels=delivery,output -->
+- [x] **PQ-27 — Pull-request delivery**: `--markdown` renders a table
+  worst-first with the detail in `<details>` blocks, and `action.yml` is a
+  composite action that installs the binary, writes that report to the job
+  summary, exposes the findings array as an output and fails the step only on
+  `exit-on`. Same findings, same order, same `--min-severity`, no new checks and
+  no colour. The action is tested the way it will be used — a CI job that runs
+  `uses: ./` against the commit under test — because an action nobody exercises
+  is a file that used to work.
+  <!-- pq: prio=med size=M labels=delivery,output ver=0.14.0 -->
 - [ ] **PQ-35 — Egress through a proxy, but only SOCKS5**: from many corporate
   networks the only way out is a proxy, and today pqprobe reaches nothing from
   there. SOCKS5 is a handshake on a raw socket and fits; HTTP `CONNECT` is a

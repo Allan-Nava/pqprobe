@@ -182,6 +182,7 @@ docker build -t pqprobe . && docker run --rm pqprobe probe example.com
 | *(none)* | text, worst endpoint first, hint on its own line |
 | `--json` | everything, including every per-profile handshake result |
 | `--findings` | the flat findings array the sibling tools speak — empty array, never `null` |
+| `--markdown` | a table and collapsible detail, for a PR comment or a CI job summary |
 | `--min-severity S` | hide findings below `S`; the endpoint header stays |
 
 | Exit | Meaning |

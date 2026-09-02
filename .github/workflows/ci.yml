@@ -128,6 +128,31 @@ jobs:
             ./scripts/version.sh check --warn
           fi
 
+  # PQ-27: the action is delivery, so it is tested the way it will be used —
+  # `uses: ./` against this very commit. `version: ${{ github.sha }}` is
+  # fetchable by definition here, since CI only runs on commits GitHub has.
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - id: run
+        uses: ./
+        with:
+          targets: example.com
+          args: --timeout 15s
+          version: ${{ github.sha }}
+          exit-on: ""
+      - name: The action produced findings
+        env:
+          FINDINGS: ${{ steps.run.outputs.findings }}
+        run: |
+          echo "$FINDINGS" | head -20
+          # An empty array is a valid answer; nothing at all is a broken action.
+          echo "$FINDINGS" | grep -q '\[' || { echo "::error::the action emitted no findings array"; exit 1; }
+
   backlog:
     runs-on: ubuntu-latest
     steps:
