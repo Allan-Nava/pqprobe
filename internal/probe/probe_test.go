@@ -664,3 +664,85 @@ func TestRefusedIsNotUnroutable(t *testing.T) {
 		t.Errorf("kind = %q, want %q", kind, KindRefused)
 	}
 }
+
+// PQ-9. Go does not expose HelloRetryRequest, and the backlog assumed a
+// hand-parsed ServerHello. There is a simpler signal that needs no parsing of
+// somebody else's message: an HRR is precisely the case where *we* send a second
+// ClientHello. Counting the ClientHellos we write is deterministic, and it also
+// gives the size of the first one for free.
+//
+// What the first run of this test taught, and what the finding therefore has to
+// mean: Go's client sends **two** key shares — the hybrid one and X25519 — so a
+// classical server picking X25519 costs no retry at all. An HRR happens when
+// the only group in common is one no key share was offered for, which in
+// practice means P-256 or P-384. That is a narrower, more interesting state
+// than "the peer has no ML-KEM".
+func TestHelloRetryRequestIsVisibleFromOurOwnWrites(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+
+	// Only P-256, which pq-preferred lists but sends no key share for: the peer
+	// has to ask for another group, and the round trip is real.
+	p256 := serveTLS(t, &tls.Config{
+		Certificates:     []tls.Certificate{cert},
+		MinVersion:       tls.VersionTLS13,
+		CurvePreferences: []tls.CurveID{tls.CurveP256},
+	})
+	res := dial(t, p256, "pq-preferred")
+	if !res.OK {
+		t.Fatalf("the realistic client must still connect: %s (%s)", res.Err, res.Kind)
+	}
+	if res.Group != "P-256" {
+		t.Fatalf("group = %q, want P-256", res.Group)
+	}
+	if !res.HRR {
+		t.Error("this handshake cost a HelloRetryRequest and the result has to say so")
+	}
+	if res.HelloCount != 2 {
+		t.Errorf("hello count = %d, want 2: the client hello was sent again", res.HelloCount)
+	}
+
+	// X25519 needs no retry, because a key share for it went out with the
+	// hybrid one. Asserted so the day Go stops doing that, this says so.
+	x25519 := serveTLS(t, &tls.Config{
+		Certificates:     []tls.Certificate{cert},
+		MinVersion:       tls.VersionTLS13,
+		CurvePreferences: []tls.CurveID{tls.X25519},
+	})
+	if res := dial(t, x25519, "pq-preferred"); res.HRR || res.HelloCount != 1 {
+		t.Errorf("falling back to X25519 costs no retry: hrr=%v count=%d", res.HRR, res.HelloCount)
+	}
+
+	// A server that has ML-KEM answers the first hello, and nothing is retried.
+	modern := serveTLS(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13})
+	res = dial(t, modern, "pq-preferred")
+	if !res.OK {
+		t.Fatalf("handshake failed: %s", res.Err)
+	}
+	if res.HRR || res.HelloCount != 1 {
+		t.Errorf("nothing was retried: hrr=%v count=%d", res.HRR, res.HelloCount)
+	}
+}
+
+// The size of the ClientHello is the number the size-intolerance conversation
+// actually turns on, and it is measured rather than estimated: these are the
+// bytes we put on the wire.
+func TestTheClientHelloSizeIsMeasured(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := serveTLS(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13})
+
+	small := dial(t, tg, "classic")
+	large := dial(t, tg, "pq-preferred")
+
+	if small.HelloBytes <= 0 || large.HelloBytes <= 0 {
+		t.Fatalf("no hello size recorded: classic=%d pq-preferred=%d", small.HelloBytes, large.HelloBytes)
+	}
+	// The ML-KEM key share is roughly 1.2 KB. The exact numbers move with the
+	// toolchain, so the assertion is the gap, which is the whole story.
+	if large.HelloBytes-small.HelloBytes < 800 {
+		t.Errorf("the hybrid hello is only %d bytes bigger than the classical one (%d vs %d) — that gap is the reason this tool exists",
+			large.HelloBytes-small.HelloBytes, large.HelloBytes, small.HelloBytes)
+	}
+	if small.HelloBytes > 1000 {
+		t.Errorf("the classical hello is %d bytes, which is implausible", small.HelloBytes)
+	}
+}

@@ -537,6 +537,15 @@ func handshakeFinding(target string, r probe.Result) finding.Finding {
 		if r.ALPN != "" {
 			f.Message += ", alpn " + r.ALPN
 		}
+		if r.HelloBytes > 0 {
+			f.Message += fmt.Sprintf(", hello %d B", r.HelloBytes)
+		}
+		// An HRR is a round trip the peer imposed (PQ-9). Said only when it
+		// happened: "no HelloRetryRequest" on every healthy handshake is noise.
+		if r.HRR {
+			f.Message += " after a hello retry"
+			f.Hint = "the peer did not take either key share offered and asked for another group, which costs an extra round trip on every connection. Go sends key shares for the hybrid group and X25519, so this means the only group in common was a third one — usually P-256 or P-384 on an older or policy-restricted stack"
+		}
 		f.Value = finding.Num(float64(r.Elapsed.Milliseconds()))
 		f.Unit = "ms"
 		// A handshake that needed a second dial is a third state (PQ-23): the

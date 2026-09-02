@@ -6,14 +6,14 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**35 items · 21 shipped · 14 open · 5 milestones.**
+**35 items · 22 shipped · 13 open · 5 milestones.**
 
 ## At a glance
 
 | Milestone | Target | Phase | Progress | Open | Shipped |
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
-| **M2** — Say it more precisely | `v0.2.0` | **now** | `##........` 17% | 5 | 1 |
+| **M2** — Say it more precisely | `v0.2.0` | **now** | `###.......` 33% | 4 | 2 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 80% | 2 | 8 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
 | **M5** — Make the verdict actionable | `v0.4.0` | **now** | `#####.....` 50% | 4 | 4 |
@@ -22,7 +22,6 @@
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-9** — HelloRetryRequest visibility · `high` · size `L` · probe (M2, target `v0.2.0`)
 - **PQ-11** — ClientHello size sweep · `high` · size `M` · probe (M2, target `v0.2.0`)
 - **PQ-14** — checkfleet module · `high` · size `M` · integration (M3, target `v0.3.0`)
 - **PQ-10** — Real ClientHello shapes · `med` · size `XL` · profile (M2, target `v0.2.0`)
@@ -30,6 +29,7 @@ The open items with the highest priority in the milestones that are in flight.
 - **PQ-25** — ALPN as a variable · `med` · size `S` · probe,verdict (M5, target `v0.4.0`)
 - **PQ-27** — Pull-request delivery · `med` · size `M` · delivery,output (M5, target `v0.4.0`)
 - **PQ-34** — An ad-hoc capability class · `med` · size `S` · cli,profile (M2, target `v0.2.0`)
+- **PQ-35** — Egress through a proxy, but only SOCKS5 · `med` · size `M` · probe,cli (M5, target `v0.4.0`)
 
 ## Milestones
 
@@ -50,15 +50,15 @@ Target `v0.1.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 ### M2 — Say it more precisely
 
-Target `v0.2.0` · **now** · 5 open · 1 shipped · `##........` 17%
+Target `v0.2.0` · **now** · 4 open · 2 shipped · `###.......` 33%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-9** — HelloRetryRequest visibility | high | L | probe | open |
 | **PQ-11** — ClientHello size sweep | high | M | probe | open |
 | **PQ-10** — Real ClientHello shapes | med | XL | profile | open |
 | **PQ-34** — An ad-hoc capability class | med | S | cli,profile | open |
 | **PQ-13** — Watch mode | low | M | cli | open |
+| **PQ-9** — HelloRetryRequest visibility | high | L | probe | shipped `0.9.0` |
 | **PQ-12** — Multi-address endpoints | high | M | probe,inventory | shipped `0.7.0` |
 
 ### M3 — Fit the toolchain
@@ -107,7 +107,7 @@ Target `v0.4.0` · **now** · 4 open · 4 shipped · `#####.....` 50%
 
 | Label | Items | Open |
 |---|---|---|
-| `probe` | 12 | 6 |
+| `probe` | 12 | 5 |
 | `cli` | 6 | 4 |
 | `profile` | 5 | 3 |
 | `output` | 4 | 2 |

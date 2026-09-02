@@ -138,6 +138,19 @@ type Result struct {
 	// connected. The endpoint works and is unstable, which is a third state and
 	// must not render as either of the other two.
 	Flapped bool `json:"flapped,omitempty"`
+	// HelloBytes is the size on the wire of the first ClientHello record,
+	// measured rather than estimated. It is the number the whole
+	// size-intolerance conversation turns on: the hybrid hello is roughly
+	// 1.2 KB larger than the classical one, which is what stops it fitting a
+	// single TCP segment.
+	HelloBytes int `json:"hello_bytes,omitempty"`
+	// HelloCount is how many ClientHellos went out. Two means the peer sent a
+	// HelloRetryRequest.
+	HelloCount int `json:"hello_count,omitempty"`
+	// HRR is true when the peer answered with a HelloRetryRequest: it did not
+	// take the key share offered and asked for another group, which costs a
+	// round trip and is a different state from never having seen ML-KEM.
+	HRR bool `json:"hrr,omitempty"`
 	// ClientCertRequested is true when the peer sent a CertificateRequest: this
 	// endpoint is mutual TLS. On TLS 1.3 that does not stop the handshake —
 	// the peer's objection arrives after the client is finished, and pqprobe
@@ -151,6 +164,32 @@ type Result struct {
 	// a fresh client will not, which is the most confusing class of bug there
 	// is.
 	PeerChainLen int `json:"peer_chain_len,omitempty"`
+}
+
+// wireConn counts the ClientHellos written to the peer and records the size of
+// the first one.
+//
+// It reads only the record header and the handshake type — five bytes and one
+// byte, of our own outgoing data — and never buffers or alters anything. A TLS
+// handshake record can in principle carry several handshake messages, and a
+// ClientHello can in principle be fragmented across records; neither happens in
+// what Go's client writes, and if it ever did, the count would be low rather
+// than wrong, so nothing here can turn into a false HelloRetryRequest.
+type wireConn struct {
+	net.Conn
+	helloBytes int
+	helloCount int
+}
+
+func (c *wireConn) Write(b []byte) (int, error) {
+	// A handshake record (22) whose first message is a client_hello (1).
+	if len(b) >= 6 && b[0] == 22 && b[5] == 1 {
+		c.helloCount++
+		if c.helloBytes == 0 {
+			c.helloBytes = len(b)
+		}
+	}
+	return c.Conn.Write(b)
 }
 
 // Resolver is the DNS lookup ExpandAddresses needs. *net.Resolver satisfies it;
@@ -283,6 +322,13 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 	}
 	defer raw.Close()
 
+	// Everything written to the peer passes through here, which is how the
+	// ClientHello gets measured and how a HelloRetryRequest becomes visible
+	// without parsing somebody else's message: an HRR is exactly the case where
+	// we send a second ClientHello.
+	wire := &wireConn{Conn: raw}
+	raw = wire
+
 	cfg := p.TLSConfig(t.ServerName(), d.ALPN)
 
 	// GetClientCertificate is called exactly when the peer sends a
@@ -301,6 +347,8 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 	conn := tls.Client(raw, cfg)
 	err = conn.HandshakeContext(ctx)
 	res.ClientCertRequested = requested
+	res.HelloBytes, res.HelloCount = wire.helloBytes, wire.helloCount
+	res.HRR = wire.helloCount > 1
 	res.Elapsed = time.Since(start)
 	if err != nil {
 		res.Kind, res.Err = classify(err)

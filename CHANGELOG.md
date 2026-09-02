@@ -6,6 +6,26 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.9.0] - 2026-09-02
+
+### Added
+
+- **HelloRetryRequest, and the ClientHello size** (PQ-9) — every successful
+  handshake now reports the size of the hello it sent, measured on the wire:
+  `hello 272 B` for the classical profile against `hello 1495 B` for the hybrid
+  one, on real endpoints. That gap is the reason this tool exists, and it is now
+  a number rather than a claim. A handshake that says `after a hello retry` cost
+  an extra round trip.
+
+  It needed neither `KeyLogWriter` nor a hand-parsed ServerHello, which is what
+  the item assumed: an HRR is precisely the case where *pqprobe* sends a second
+  ClientHello, so a small wrapper that reads the record header of our own
+  outgoing bytes counts them, and measures the first one for free. The test's
+  first run also corrected what the finding means — Go sends key shares for the
+  hybrid group **and** X25519, so falling back to X25519 costs no retry; an HRR
+  means the only group in common was a third one, usually P-256 or P-384 on an
+  older or policy-restricted stack.
+
 ## [0.8.1] - 2026-09-02
 
 ### Changed
@@ -272,6 +292,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.9.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.9.0
 [0.8.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.8.1
 [0.8.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.8.0
 [0.7.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.7.0

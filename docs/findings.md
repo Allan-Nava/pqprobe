@@ -19,7 +19,7 @@ not an endpoint that passed, and an operator has to see it first.
 
 | Check | Target | What it says |
 |---|---|---|
-| `handshake` | `host:port/profile` | one attempt: negotiated version, group, cipher, ALPN and elapsed ms — or how it failed |
+| `handshake` | `host:port/profile` | one attempt: negotiated version, group, cipher, ALPN, the **measured ClientHello size** and elapsed ms — or how it failed |
 | `verdict` | `host:port` | the class, with the affected clients named in the hint |
 | `groups` | `host:port` | with `--per-group`: which groups the peer accepted alone, and how it refused the others |
 | `expiry` | `host:port` | days to leaf expiry (`--expiry-warn`, `--expiry-bad`) |
@@ -78,6 +78,26 @@ An alert is never re-dialled: it is an answer the peer chose to give.
 
 A flap never becomes a `BAD` class: the endpoint connected, so it is graded on
 that, and the instability is reported next to it. `--confirm=false` dials once.
+
+## The hello size, and the retry
+
+Every successful handshake reports the size of the ClientHello it sent, measured
+on the wire rather than estimated:
+
+```console
+OK  handshake/classic        TLS 1.3, X25519, TLS_AES_128_GCM_SHA256, hello 272 B
+OK  handshake/pq-preferred   TLS 1.3, X25519MLKEM768, TLS_AES_128_GCM_SHA256, hello 1495 B
+```
+
+That gap — a few hundred bytes against roughly 1.5 KB — is the reason this tool
+exists, and it is now a number you can quote instead of a claim.
+
+A handshake that says **`after a hello retry`** cost an extra round trip: the
+peer took neither key share offered and asked for a third group. Go sends key
+shares for the hybrid group *and* X25519, so falling back to X25519 costs
+nothing — a retry means the only group in common was something else, usually
+P-256 or P-384 on an older or policy-restricted stack. It is reported as a cost,
+not a failure: the endpoint works.
 
 ## What changed since last time
 

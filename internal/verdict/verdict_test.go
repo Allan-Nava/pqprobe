@@ -610,3 +610,52 @@ func TestIdenticalRunsProduceNoTransitions(t *testing.T) {
 		t.Fatalf("got %d findings for two identical runs: %+v", len(fs), fs)
 	}
 }
+
+// PQ-9. An HRR is a round trip the peer imposed, and it is a different state
+// from never having seen ML-KEM: the handshake finding says so, and the size of
+// the hello it retried is the number the size conversation turns on.
+func TestHelloRetryAndSizeAreInTheHandshakeFinding(t *testing.T) {
+	r := ok("pq-preferred", "TLS 1.3", "P-256", false)
+	r.HRR = true
+	r.HelloCount = 2
+	r.HelloBytes = 1543
+
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		r,
+	}, opts())
+
+	var hs finding.Finding
+	for _, f := range rep.Finding {
+		if f.Check == "handshake" && strings.Contains(f.Target, "pq-preferred") {
+			hs = f
+		}
+	}
+	if !strings.Contains(hs.Message, "1543") {
+		t.Errorf("the measured hello size belongs in the message: %q", hs.Message)
+	}
+	if !strings.Contains(hs.Message, "retry") && !strings.Contains(hs.Message, "HelloRetryRequest") {
+		t.Errorf("the retry has to be named: %q", hs.Message)
+	}
+	if !strings.Contains(hs.Hint, "round trip") {
+		t.Errorf("the hint has to say what it costs: %q", hs.Hint)
+	}
+	// It is not a failure: the endpoint works, at a price.
+	if hs.Status != finding.OK {
+		t.Errorf("status = %s, want OK: a retry is a cost, not a refusal", hs.Status)
+	}
+}
+
+// No retry, no clause. Every handshake finding carrying "no HelloRetryRequest"
+// would be noise on a healthy fleet.
+func TestNoRetryMeansNoRetryClause(t *testing.T) {
+	r := ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true)
+	r.HelloCount = 1
+	r.HelloBytes = 1600
+	rep := Evaluate("h:443", []probe.Result{ok("classic", "TLS 1.3", "X25519", false), r}, opts())
+	for _, f := range rep.Finding {
+		if strings.Contains(f.Message, "retry") {
+			t.Errorf("nothing was retried: %q", f.Message)
+		}
+	}
+}

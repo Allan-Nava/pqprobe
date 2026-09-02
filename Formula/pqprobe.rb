@@ -11,8 +11,8 @@
 class Pqprobe < Formula
   desc "Which classes of TLS client can still handshake with this endpoint"
   homepage "https://allan-nava.github.io/pqprobe/"
-  url "https://github.com/Allan-Nava/pqprobe.git", tag: "v0.8.1"
-  version "0.8.1"
+  url "https://github.com/Allan-Nava/pqprobe.git", tag: "v0.9.0"
+  version "0.9.0"
   license "MIT"
   head "https://github.com/Allan-Nava/pqprobe.git", branch: "main"
 

@@ -77,15 +77,16 @@ prints what to pick up.
 
 ## M2 — Say it more precisely <!-- ms: target=v0.2.0 phase=now -->
 
-- [ ] **PQ-9 — HelloRetryRequest visibility**: a peer that answers the hybrid
-  key share with an HRR down to X25519 costs an extra round trip and is a
-  different state from one that never saw ML-KEM. Go does not expose it, so this
-  needs `tls.Config.KeyLogWriter` plumbing or a hand-parsed ServerHello. The
-  cost of going hybrid belongs here too — the delta between the `classic` and
-  `pq-preferred` handshakes is already measured per profile, and it means
-  something only next to the round trip an HRR adds. It is not a separate item:
-  a finding that graded latency on its own would be a performance check, and
-  that is a different tool. <!-- pq: prio=high size=L labels=probe -->
+- [x] **PQ-9 — HelloRetryRequest visibility**: neither `KeyLogWriter` nor a
+  hand-parsed ServerHello was needed. An HRR is precisely the case where *we*
+  send a second ClientHello, so a six-line wrapper that reads the record header
+  of our own outgoing bytes counts them — and measures the first hello for free,
+  which is the number the whole size conversation turns on (272 B classical
+  against ~1495 B hybrid, on real endpoints). The first run of the test also
+  corrected the premise: Go sends key shares for the hybrid group *and* X25519,
+  so falling back to X25519 costs no retry at all; an HRR means the only group in
+  common was a third one, usually P-256 or P-384. Reported as a cost, not a
+  failure. <!-- pq: prio=high size=L labels=probe ver=0.9.0 -->
 - [ ] **PQ-10 — Real ClientHello shapes**: profiles built with uTLS so a run can
   claim a browser fingerprint, not only a capability class. Behind a build tag
   and clearly separated, because the zero-dependency default is what makes the

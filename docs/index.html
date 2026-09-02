@@ -655,7 +655,7 @@ pqprobe probe --inventory inventory/edge --baseline yesterday.json --exit-on BAD
       <table>
         <thead><tr><th>Check</th><th>Target</th><th>What it says</th></tr></thead>
         <tbody>
-          <tr><td><code>handshake</code></td><td><code>host:port/profile</code></td><td>one attempt: negotiated version, group, cipher, ALPN and elapsed ms — or how it failed</td></tr>
+          <tr><td><code>handshake</code></td><td><code>host:port/profile</code></td><td>one attempt: negotiated version, group, cipher, ALPN, the measured ClientHello size and elapsed ms — or how it failed</td></tr>
           <tr><td><code>verdict</code></td><td><code>host:port</code></td><td>the class, with the affected clients named in the hint</td></tr>
           <tr><td><code>groups</code></td><td><code>host:port</code></td><td>with <code>--per-group</code>: which groups the peer accepted alone, and how it refused the others</td></tr>
           <tr><td><code>expiry</code></td><td><code>host:port</code></td><td>days to leaf expiry (<code>--expiry-warn</code>, <code>--expiry-bad</code>)</td></tr>
@@ -725,7 +725,7 @@ pqprobe probe --inventory inventory/edge --baseline yesterday.json --exit-on BAD
     <h3>What pqprobe deliberately does not tell you</h3>
     <ul class="plain">
       <li>Whether a <em>specific</em> browser build connects. It probes capability classes, not ClientHello fingerprints.</li>
-      <li>Whether a HelloRetryRequest happened. Go does not expose it; it is on the roadmap (<code>PQ-9</code>) because an HRR costs a round trip and is a different state from never having seen ML-KEM.</li>
+      <li>Nothing about the application behind the endpoint — but it does now report the <strong>measured ClientHello size</strong> (272 B classical against ~1495 B hybrid, on real endpoints) and says <em>after a hello retry</em> when the peer imposed an extra round trip.</li>
       <li>Anything about the application behind the endpoint. The handshake completes and the connection closes.</li>
     </ul>
   </div>
