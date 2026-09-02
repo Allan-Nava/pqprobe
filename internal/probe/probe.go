@@ -34,6 +34,11 @@ const (
 	KindDNS Kind = "dns"
 	// KindRefused: nothing is listening.
 	KindRefused Kind = "refused"
+	// KindUnroutable: this host has no route to the address. It says nothing
+	// about the endpoint — an AAAA record probed from a machine with no IPv6
+	// egress is the usual case — so it must never be reported as a property of
+	// the peer.
+	KindUnroutable Kind = "unroutable"
 	// KindTimeout: no answer inside the deadline. On a profile with a large
 	// ClientHello this is a classic intolerance symptom — a middlebox that
 	// drops the second TCP segment leaves the handshake hanging forever.
@@ -146,6 +151,53 @@ type Result struct {
 	// a fresh client will not, which is the most confusing class of bug there
 	// is.
 	PeerChainLen int `json:"peer_chain_len,omitempty"`
+}
+
+// Resolver is the DNS lookup ExpandAddresses needs. *net.Resolver satisfies it;
+// the tests pass a table, because DNS is flaky and belongs to somebody else.
+type Resolver interface {
+	LookupIPAddr(ctx context.Context, host string) ([]net.IPAddr, error)
+}
+
+// ExpandAddresses turns each named target into one target per A/AAAA record,
+// dialling the address while still sending the name (PQ-12).
+//
+// A hostname behind six records is six stacks, and the failure that survives a
+// manual check is one of them being different: probe the name and you hit
+// whichever address the resolver felt like handing over, six times if you are
+// unlucky, and the broken node stays invisible. This is the
+// `1.2.3.4=origin.example` form the tool already had, applied automatically.
+//
+// An address literal is left alone — there is nothing to resolve, and looking
+// it up would be a DNS query nobody asked for. A name that does not resolve
+// keeps its target and the error is returned as well: the dialler then reports
+// it as a DNS failure in the usual words, and no endpoint silently disappears
+// from a fleet report.
+func ExpandAddresses(ctx context.Context, r Resolver, targets []Target) ([]Target, []error) {
+	var out []Target
+	var errs []error
+	for _, t := range targets {
+		if net.ParseIP(t.Host) != nil {
+			out = append(out, t)
+			continue
+		}
+		addrs, err := r.LookupIPAddr(ctx, t.Host)
+		if err != nil || len(addrs) == 0 {
+			if err == nil {
+				err = fmt.Errorf("%s: no A or AAAA record", t.Host)
+			} else {
+				err = fmt.Errorf("%s: %w", t.Host, err)
+			}
+			errs = append(errs, err)
+			out = append(out, t)
+			continue
+		}
+		sni := t.ServerName()
+		for _, a := range addrs {
+			out = append(out, Target{Host: a.IP.String(), Port: t.Port, SNI: sni})
+		}
+	}
+	return out, errs
 }
 
 // Dialer performs one handshake. It exists so tests can drive the classifier
@@ -325,6 +377,10 @@ func classify(err error) (Kind, string) {
 	}
 	if errors.Is(err, syscall.ECONNREFUSED) {
 		return KindRefused, msg
+	}
+	// A route that does not exist is a fact about the prober, not the peer.
+	if errors.Is(err, syscall.EHOSTUNREACH) || errors.Is(err, syscall.ENETUNREACH) {
+		return KindUnroutable, msg
 	}
 	if errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) {
 		return KindReset, msg

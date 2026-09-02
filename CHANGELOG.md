@@ -6,6 +6,30 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.7.0] - 2026-09-02
+
+### Added
+
+- **Probe every address behind a name** (PQ-12) — `--per-address` resolves each
+  name and dials every A/AAAA record by address, with the name still travelling
+  as the SNI (the `1.2.3.4=origin.example` form, applied automatically). One
+  `addresses` finding per name says whether the pool agrees and names the node
+  that does not: `7 addresses disagree: 6 pq-ready, 1 unreachable`. One bad
+  stack out of six is invisible to a name-only probe, which hits whichever
+  address the resolver felt like handing over. A name that does not resolve
+  keeps its target, so no endpoint silently disappears from a fleet report.
+
+### Fixed
+
+- **An address with no route was reported as a broken endpoint** (PQ-12) —
+  found by running `--per-address` from a host without IPv6 egress: the AAAA
+  records were classified `other`, which the verdict read as `tls-broken`, "the
+  port answered but no client profile completed a handshake". The port never
+  answered. There is now a `unroutable` kind that grades as `unreachable`, and
+  the hints on both the verdict and the pool finding offer the local route as
+  the first explanation instead of advising somebody to drain a node they simply
+  cannot reach.
+
 ## [0.6.0] - 2026-09-02
 
 ### Added
@@ -219,6 +243,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.7.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.7.0
 [0.6.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.6.0
 [0.5.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.4.0

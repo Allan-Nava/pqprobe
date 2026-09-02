@@ -6,14 +6,14 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**33 items · 19 shipped · 14 open · 5 milestones.**
+**33 items · 20 shipped · 13 open · 5 milestones.**
 
 ## At a glance
 
 | Milestone | Target | Phase | Progress | Open | Shipped |
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
-| **M2** — Say it more precisely | `v0.2.0` | **now** | `..........` 0% | 5 | 0 |
+| **M2** — Say it more precisely | `v0.2.0` | **now** | `##........` 20% | 4 | 1 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 80% | 2 | 8 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
 | **M5** — Make the verdict actionable | `v0.4.0` | **now** | `####......` 43% | 4 | 3 |
@@ -24,12 +24,12 @@ The open items with the highest priority in the milestones that are in flight.
 
 - **PQ-9** — HelloRetryRequest visibility · `high` · size `L` · probe (M2, target `v0.2.0`)
 - **PQ-11** — ClientHello size sweep · `high` · size `M` · probe (M2, target `v0.2.0`)
-- **PQ-12** — Multi-address endpoints · `high` · size `M` · probe,inventory (M2, target `v0.2.0`)
 - **PQ-14** — checkfleet module · `high` · size `M` · integration (M3, target `v0.3.0`)
 - **PQ-24** — Baseline diff · `high` · size `M` · output,cli (M5, target `v0.4.0`)
 - **PQ-10** — Real ClientHello shapes · `med` · size `XL` · profile (M2, target `v0.2.0`)
 - **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
 - **PQ-25** — ALPN as a variable · `med` · size `S` · probe,verdict (M5, target `v0.4.0`)
+- **PQ-27** — Pull-request delivery · `med` · size `M` · delivery,output (M5, target `v0.4.0`)
 
 ## Milestones
 
@@ -50,15 +50,15 @@ Target `v0.1.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 ### M2 — Say it more precisely
 
-Target `v0.2.0` · **now** · 5 open · 0 shipped · `..........` 0%
+Target `v0.2.0` · **now** · 4 open · 1 shipped · `##........` 20%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-9** — HelloRetryRequest visibility | high | L | probe | open |
 | **PQ-11** — ClientHello size sweep | high | M | probe | open |
-| **PQ-12** — Multi-address endpoints | high | M | probe,inventory | open |
 | **PQ-10** — Real ClientHello shapes | med | XL | profile | open |
 | **PQ-13** — Watch mode | low | M | cli | open |
+| **PQ-12** — Multi-address endpoints | high | M | probe,inventory | shipped `0.7.0` |
 
 ### M3 — Fit the toolchain
 
@@ -105,15 +105,15 @@ Target `v0.4.0` · **now** · 4 open · 3 shipped · `####......` 43%
 
 | Label | Items | Open |
 |---|---|---|
-| `probe` | 11 | 6 |
+| `probe` | 11 | 5 |
 | `cli` | 4 | 3 |
 | `output` | 4 | 3 |
 | `profile` | 4 | 2 |
 | `delivery` | 3 | 1 |
 | `docs` | 5 | 1 |
 | `integration` | 1 | 1 |
-| `inventory` | 2 | 1 |
 | `verdict` | 4 | 1 |
+| `inventory` | 2 | 0 |
 | `project` | 5 | 0 |
 | `release` | 2 | 0 |
 | `tests` | 1 | 0 |

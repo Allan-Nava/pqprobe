@@ -90,10 +90,17 @@ prints what to pick up.
   byte size at which the peer stops answering, so an intolerant middlebox can be
   shown the number rather than argued with.
   <!-- pq: prio=high size=M labels=probe -->
-- [ ] **PQ-12 — Multi-address endpoints**: a hostname behind several A/AAAA
-  records is several stacks. Probe each address and report the inconsistent one,
-  because one bad node out of six is exactly the shape that survives a manual
-  check. <!-- pq: prio=high size=M labels=probe,inventory -->
+- [x] **PQ-12 — Multi-address endpoints**: `--per-address` resolves each name
+  and probes every A/AAAA record by address with the name still as the SNI, and
+  one `addresses` finding per name names the node that answers differently —
+  one bad stack out of six is invisible to a name-only probe, which hits
+  whichever address the resolver felt like handing over. A name that does not
+  resolve keeps its target so no endpoint silently vanishes from a fleet report.
+  Running it also turned up a real classification bug: an address with no route
+  from the prober was read as `tls-broken`, claiming the port had answered. It
+  is now `unroutable` → `unreachable`, and both hints offer the local route
+  first, because an AAAA record probed without IPv6 egress fails in exactly this
+  way. <!-- pq: prio=high size=M labels=probe,inventory ver=0.7.0 -->
 - [ ] **PQ-13 — Watch mode**: re-probe on an interval and print only the
   transitions, for the window in which a CDN or a load balancer is being
   changed. <!-- pq: prio=low size=M labels=cli -->

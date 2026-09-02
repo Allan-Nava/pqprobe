@@ -25,6 +25,7 @@ not an endpoint that passed, and an operator has to see it first.
 | `expiry` | `host:port` | days to leaf expiry (`--expiry-warn`, `--expiry-bad`) |
 | `chain` | `host:port` | chain does not verify, or the peer sent the leaf alone |
 | `client-auth` | `host:port` | the peer requested a client certificate: this endpoint is mutual TLS |
+| `addresses` | the name | with `--per-address`: how many addresses the name has, and which one answers differently |
 | `tls-version` | `host:port` | TLS 1.3 did not complete while 1.2 did |
 
 A failed handshake is a `WARN` on its own, never a `BAD`: whether it matters is
@@ -76,6 +77,26 @@ An alert is never re-dialled: it is an answer the peer chose to give.
 
 A flap never becomes a `BAD` class: the endpoint connected, so it is graded on
 that, and the instability is reported next to it. `--confirm=false` dials once.
+
+## A name is not a stack
+
+`--per-address` resolves each name and probes **every** A/AAAA record by
+address, with the name still travelling as the SNI — the
+`1.2.3.4=origin.example` form, applied automatically. One `addresses` finding
+per name says whether the pool agrees:
+
+```console
+ERROR addresses    7 addresses disagree: 6 pq-ready, 1 unreachable — worst is [2a00:...:200e]:443 (unreachable)
+```
+
+One bad node out of six is the shape of failure that survives a manual check: a
+name-only probe hits whichever address the resolver felt like handing over, and
+the broken stack stays invisible.
+
+An address this host has no route to is `unroutable`, which grades as
+`unreachable` — never `tls-broken`, which would claim the port answered. The
+hint offers the local route first, because an AAAA record probed from a machine
+without IPv6 egress fails in exactly this way.
 
 ## Mutual TLS
 

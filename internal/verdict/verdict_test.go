@@ -386,3 +386,128 @@ func TestAlertsWithoutACertificateRequestStayTLSBroken(t *testing.T) {
 		t.Fatalf("class = %s, want %s", rep.Class, TLSBroken)
 	}
 }
+
+// PQ-12. Six addresses behind one name, one of them different: that is the
+// shape that survives a manual check, and naming the odd one out is the whole
+// value of probing by address.
+func TestTheInconsistentAddressIsNamed(t *testing.T) {
+	reps := []Report{
+		{Target: "192.0.2.1:443 (sni origin.example)", Class: PQReady},
+		{Target: "192.0.2.2:443 (sni origin.example)", Class: PQReady},
+		{Target: "192.0.2.3:443 (sni origin.example)", Class: PQIntolerant},
+	}
+
+	f, idx, ok := AddressConsistency("origin.example", reps)
+	if !ok {
+		t.Fatal("three addresses that disagree must produce a finding")
+	}
+	if idx != 2 {
+		t.Errorf("index = %d, want the finding attached to the address that differs", idx)
+	}
+	if f.Status != finding.BAD {
+		t.Errorf("status = %s, want BAD: the worst class in the group decides", f.Status)
+	}
+	if !strings.Contains(f.Message, "192.0.2.3") {
+		t.Errorf("the odd address has to be named: %q", f.Message)
+	}
+	if !strings.Contains(f.Message, "pq-intolerant") || !strings.Contains(f.Message, "pq-ready") {
+		t.Errorf("both sides of the disagreement have to be in the message: %q", f.Message)
+	}
+	if f.Value == nil || *f.Value != 3 {
+		t.Errorf("value = %v, want the number of addresses behind the name", f.Value)
+	}
+	if f.Unit != "addresses" {
+		t.Errorf("unit = %q, want addresses", f.Unit)
+	}
+	if !strings.Contains(f.Hint, "one node") && !strings.Contains(f.Hint, "pool") {
+		t.Errorf("the hint has to say what to do with an inconsistent pool: %q", f.Hint)
+	}
+}
+
+// Every address agreeing is worth saying once: it is the difference between "we
+// checked the pool" and "we checked whatever DNS handed us".
+func TestAConsistentPoolIsStatedOnce(t *testing.T) {
+	reps := []Report{
+		{Target: "192.0.2.1:443 (sni origin.example)", Class: PQReady},
+		{Target: "192.0.2.2:443 (sni origin.example)", Class: PQReady},
+	}
+	f, idx, ok := AddressConsistency("origin.example", reps)
+	if !ok {
+		t.Fatal("a consistent pool still deserves the one line that says so")
+	}
+	if f.Status != finding.OK {
+		t.Errorf("status = %s, want OK", f.Status)
+	}
+	if idx != 0 {
+		t.Errorf("index = %d, want the first report", idx)
+	}
+	if !strings.Contains(f.Message, "2 addresses") || !strings.Contains(f.Message, "pq-ready") {
+		t.Errorf("message = %q", f.Message)
+	}
+}
+
+// One address is not a pool, and a finding about its consistency would be noise
+// on every single-homed endpoint in the fleet.
+func TestASingleAddressGetsNoConsistencyFinding(t *testing.T) {
+	if _, _, ok := AddressConsistency("origin.example", []Report{{Target: "192.0.2.1:443", Class: PQReady}}); ok {
+		t.Fatal("a single address must not produce a consistency finding")
+	}
+}
+
+// An unreachable node in a pool of working ones is the same story with a
+// different word: ERROR sorts above BAD, so it must not be diluted into it.
+func TestAnUnreachableNodeInAPoolIsAnError(t *testing.T) {
+	reps := []Report{
+		{Target: "192.0.2.1:443 (sni origin.example)", Class: PQReady},
+		{Target: "192.0.2.9:443 (sni origin.example)", Class: Unreachable},
+	}
+	f, idx, ok := AddressConsistency("origin.example", reps)
+	if !ok {
+		t.Fatal("want a finding")
+	}
+	if f.Status != finding.ERROR {
+		t.Errorf("status = %s, want ERROR", f.Status)
+	}
+	if idx != 1 {
+		t.Errorf("index = %d, want the unreachable node", idx)
+	}
+}
+
+// PQ-12. An address this host has no route to says nothing about the endpoint,
+// so it is unreachable — never tls-broken, which claims the port answered.
+func TestUnroutableIsUnreachableNotBroken(t *testing.T) {
+	rep := Evaluate("[2001:db8::1]:443 (sni origin.example)", []probe.Result{
+		fail("classic", probe.KindUnroutable),
+		fail("pq-preferred", probe.KindUnroutable),
+		fail("pq-only", probe.KindUnroutable),
+	}, opts())
+
+	if rep.Class != Unreachable {
+		t.Fatalf("class = %s, want %s", rep.Class, Unreachable)
+	}
+	v := find(t, rep, "verdict")
+	if !strings.Contains(v.Hint, "route") {
+		t.Errorf("the hint has to raise the likeliest cause — no route from this host: %q", v.Hint)
+	}
+	if !strings.Contains(v.Hint, "IPv6") {
+		t.Errorf("and name the case that produces it in practice: %q", v.Hint)
+	}
+}
+
+// The pool finding must not tell somebody to drain a node that is only
+// unreachable from the machine running the probe.
+func TestAPoolWithAnUnreachableNodeBlamesTheRouteFirst(t *testing.T) {
+	f, _, ok := AddressConsistency("origin.example", []Report{
+		{Target: "192.0.2.1:443 (sni origin.example)", Class: PQReady},
+		{Target: "[2001:db8::1]:443 (sni origin.example)", Class: Unreachable},
+	})
+	if !ok {
+		t.Fatal("want a finding")
+	}
+	if !strings.Contains(f.Hint, "route") {
+		t.Errorf("the hint has to offer the local route as the first explanation: %q", f.Hint)
+	}
+	if strings.Contains(f.Hint, "take it out of rotation") {
+		t.Errorf("draining a node you simply cannot reach is the wrong advice: %q", f.Hint)
+	}
+}

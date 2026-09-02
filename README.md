@@ -128,6 +128,9 @@ $ pqprobe probe --inventory ansible/inventory/edge --group edge --findings | jq 
 - `1.2.3.4=origin.example.com` dials the address while sending that server name
   — the only way to reproduce a CDN-only failure from a workstation, and the way
   to find the *one* node out of six that is broken.
+- `--per-address` does that automatically for every A/AAAA record of a name, and
+  one `addresses` finding says whether the pool agrees:
+  `7 addresses disagree: 6 pq-ready, 1 unreachable`.
 
 Real output over three public endpoints, September 2026:
 

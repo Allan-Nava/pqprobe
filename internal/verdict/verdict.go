@@ -11,6 +11,7 @@ package verdict
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -161,10 +162,15 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 			// post-quantum support on that would be a fabrication.
 			rep.Class = MTLSRequired
 		}
-		if allKinds(client, probe.KindDNS, probe.KindRefused) {
+		if allKinds(client, probe.KindDNS, probe.KindRefused, probe.KindUnroutable) {
 			rep.Class = Unreachable
 		}
 		hint := "fix reachability first — no statement about post-quantum readiness can be made from a probe that never completed a handshake"
+		if allKinds(client, probe.KindUnroutable) {
+			// The prober's own connectivity, not the endpoint's: usually an AAAA
+			// record reached from a host with no IPv6 egress.
+			hint = "this host has no route to that address, so nothing here is a statement about the endpoint — an IPv6 address probed from a machine without IPv6 egress is the usual cause. Fix the route, or probe the addresses you can actually reach"
+		}
 		if rep.Class == MTLSRequired {
 			// A different failure and a different next step: the endpoint is
 			// working, it just will not talk to a client without a certificate.
@@ -258,6 +264,91 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	rep.Finding = append(rep.Finding, chainFindings(target, client, opt)...)
 	finding.SortWorstFirst(rep.Finding)
 	return rep
+}
+
+// AddressConsistency compares the reports for the addresses behind one name
+// (PQ-12) and returns the finding, the index of the report it belongs next to,
+// and whether there is anything to say.
+//
+// One bad node out of six is the failure that survives a manual check: probe
+// the name and the resolver hands over whichever address it likes, so the
+// broken stack stays invisible. The finding is attached to the report of the
+// address that differs, because that is where somebody reading the output is
+// already looking.
+//
+// A single address gets nothing: a consistency finding on every single-homed
+// endpoint in a fleet is noise, and noise is what teaches people to skim.
+func AddressConsistency(name string, reps []Report) (finding.Finding, int, bool) {
+	if len(reps) < 2 {
+		return finding.Finding{}, 0, false
+	}
+
+	// The worst class in the group decides the severity, and its report is where
+	// the finding goes. finding.Worst orders ERROR above BAD deliberately.
+	worst := 0
+	counts := map[Class]int{}
+	for i, r := range reps {
+		counts[r.Class]++
+		if cur, best := StatusOf(r.Class), StatusOf(reps[worst].Class); cur != best && finding.AtLeast(cur, best) {
+			worst = i
+		}
+	}
+
+	if len(counts) == 1 {
+		c := reps[0].Class
+		return finding.Finding{
+			Check:   "addresses",
+			Target:  name,
+			Status:  StatusOf(c),
+			Message: fmt.Sprintf("%d addresses, all %s", len(reps), c),
+			Value:   finding.Num(float64(len(reps))),
+			Unit:    "addresses",
+			Hint:    "the whole pool answers the same way, which is what probing by address rather than by name is for",
+		}, 0, true
+	}
+
+	// Name the classes, commonest first, so the message reads as "mostly this,
+	// except that one".
+	var classes []Class
+	for c := range counts {
+		classes = append(classes, c)
+	}
+	sort.Slice(classes, func(i, j int) bool {
+		if counts[classes[i]] != counts[classes[j]] {
+			return counts[classes[i]] > counts[classes[j]]
+		}
+		return classes[i] < classes[j]
+	})
+	parts := make([]string, 0, len(classes))
+	for _, c := range classes {
+		parts = append(parts, fmt.Sprintf("%d %s", counts[c], c))
+	}
+
+	odd := addressOf(reps[worst].Target)
+	hint := "one node in the pool answers differently from the others: take it out of rotation, then compare its TLS terminator with a healthy one. A name-only probe would have hit whichever address the resolver felt like handing over, and this is the shape of failure that survives a manual check"
+	if reps[worst].Class == Unreachable {
+		// Draining a node you cannot reach is the wrong advice, and reaching an
+		// AAAA record from a host with no IPv6 egress is the common false alarm.
+		hint = "before blaming the node: check the route to it from here — an IPv6 address probed from a machine without IPv6 egress fails exactly like this. If the route is fine, then that address is down while the rest of the pool serves"
+	}
+	return finding.Finding{
+		Check:  "addresses",
+		Target: name,
+		Status: StatusOf(reps[worst].Class),
+		Message: fmt.Sprintf("%d addresses disagree: %s — worst is %s (%s)",
+			len(reps), strings.Join(parts, ", "), odd, reps[worst].Class),
+		Value: finding.Num(float64(len(reps))),
+		Unit:  "addresses",
+		Hint:  hint,
+	}, worst, true
+}
+
+// addressOf is the dial address out of a report target, without the SNI note.
+func addressOf(target string) string {
+	if i := strings.Index(target, " ("); i > 0 {
+		return target[:i]
+	}
+	return target
 }
 
 // anyClientCertRequested reports whether the peer asked for a client
@@ -398,13 +489,27 @@ func handshakeFinding(target string, r probe.Result) finding.Finding {
 	return f
 }
 
-func verdictFinding(target string, c Class, hint string) finding.Finding {
-	st := finding.OK
+// StatusOf is the severity a class carries. Exported because a fleet-level
+// finding has to agree with the endpoint-level one — two tables would drift,
+// and the day they did the wrong one would be the one an alert read.
+func StatusOf(c Class) finding.Status {
 	switch c {
 	case PQBlind, PQCapable, NoTLS13:
-		st = finding.WARN
+		return finding.WARN
 	case PQIntolerant, PQRefusing:
-		st = finding.BAD
+		return finding.BAD
+	case Unreachable, TLSBroken, MTLSRequired:
+		return finding.ERROR
+	}
+	return finding.OK
+}
+
+func verdictFinding(target string, c Class, hint string) finding.Finding {
+	st := StatusOf(c)
+	if c == Unreachable || c == TLSBroken || c == MTLSRequired {
+		// Those are raised by the branch that returns early, with their own
+		// wording; keep this function's behaviour unchanged for them.
+		st = finding.ERROR
 	}
 	return finding.Finding{
 		Check:   "verdict",

@@ -14,6 +14,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"sort"
 	"strings"
@@ -54,6 +55,35 @@ func main() {
 	}
 }
 
+// addressFindings adds one `addresses` finding per name that resolved to more
+// than one address, next to the report of the address that differs (PQ-12).
+// Grouping happens here because this is the only place that still knows which
+// name each target came from.
+func addressFindings(names []string, reps []verdict.Report) {
+	byName := map[string][]int{}
+	var order []string
+	for i, n := range names {
+		if _, seen := byName[n]; !seen {
+			order = append(order, n)
+		}
+		byName[n] = append(byName[n], i)
+	}
+	for _, n := range order {
+		idxs := byName[n]
+		group := make([]verdict.Report, 0, len(idxs))
+		for _, i := range idxs {
+			group = append(group, reps[i])
+		}
+		f, at, ok := verdict.AddressConsistency(n, group)
+		if !ok {
+			continue
+		}
+		target := idxs[at]
+		reps[target].Finding = append(reps[target].Finding, f)
+		finding.SortWorstFirst(reps[target].Finding)
+	}
+}
+
 func usage(w *os.File) { usageTo(w) }
 
 // usageTo is usage() over any writer, so a test can assert that every flag the
@@ -78,6 +108,9 @@ flags:
   --per-group              also dial each key exchange group on its own and
                            report the accepted set (one extra handshake per
                            group, in sequence)
+  --per-address            probe every A/AAAA record of each name, by address,
+                           still sending the name (one bad node out of six is
+                           invisible to a name-only probe)
   --inventory FILE         Ansible INI inventory to take hosts from
   --group g,h              only these inventory groups
   --list FILE              flat list of targets, one per line
@@ -126,6 +159,7 @@ func cmdProbe(args []string) int {
 	var (
 		profiles    = fs.String("profile", strings.Join(clientprofile.Default, ","), "client profiles to dial")
 		perGroup    = fs.Bool("per-group", false, "also dial each key exchange group on its own")
+		perAddress  = fs.Bool("per-address", false, "probe every A/AAAA record of each name")
 		invFile     = fs.String("inventory", "", "Ansible INI inventory")
 		groups      = fs.String("group", "", "inventory groups")
 		listFile    = fs.String("list", "", "flat target list")
@@ -178,12 +212,32 @@ func cmdProbe(args []string) int {
 		sel = append(sel, clientprofile.GroupProbes()...)
 	}
 
+	// The names are kept, so the pool can be reported per name after the run.
+	names := make([]string, len(targets))
+	for i, t := range targets {
+		names[i] = t.ServerName()
+	}
+	if *perAddress {
+		expanded, errs := probe.ExpandAddresses(context.Background(), net.DefaultResolver, targets)
+		for _, err := range errs {
+			fmt.Fprintln(os.Stderr, "pqprobe:", err)
+		}
+		targets = expanded
+		names = make([]string, len(targets))
+		for i, t := range targets {
+			names[i] = t.ServerName()
+		}
+	}
+
 	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn), Confirm: *confirm}
 	opt := verdict.DefaultOptions()
 	opt.ExpiryWarnDays, opt.ExpiryBadDays = *expWarn, *expBad
 	opt.Now = time.Now()
 
 	reps := run(context.Background(), dialer, targets, sel, opt, *concurrency)
+	if *perAddress {
+		addressFindings(names, reps)
+	}
 
 	var err error
 	switch {

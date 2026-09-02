@@ -9,10 +9,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"io"
 	"math/big"
 	"net"
+	"os"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -531,5 +534,133 @@ func TestMutualTLSOnTLS12IsDistinguishableFromAGroupRefusal(t *testing.T) {
 	}
 	if !res.ClientCertRequested {
 		t.Error("without this the failure is indistinguishable from a group refusal, which is the whole point")
+	}
+}
+
+// fakeResolver answers from a table, so the expansion can be asserted without
+// DNS — which is both flaky and somebody else's infrastructure.
+type fakeResolver struct {
+	table map[string][]string
+	err   error
+	calls int
+}
+
+func (f *fakeResolver) LookupIPAddr(_ context.Context, host string) ([]net.IPAddr, error) {
+	f.calls++
+	if f.err != nil {
+		return nil, f.err
+	}
+	var out []net.IPAddr
+	for _, s := range f.table[host] {
+		out = append(out, net.IPAddr{IP: net.ParseIP(s)})
+	}
+	return out, nil
+}
+
+// PQ-12. A hostname behind several A/AAAA records is several stacks, and one bad
+// node out of six is exactly the shape that survives a manual check. Each
+// address is probed by address while the name still travels as the SNI — the
+// `1.2.3.4=origin.example` form the tool already had, applied automatically.
+func TestExpandAddressesProbesEveryStackByAddress(t *testing.T) {
+	r := &fakeResolver{table: map[string][]string{
+		"origin.example": {"192.0.2.1", "192.0.2.2", "2001:db8::1"},
+	}}
+
+	got, errs := ExpandAddresses(context.Background(), r, []Target{
+		{Host: "origin.example", Port: "443"},
+	})
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(got) != 3 {
+		t.Fatalf("got %d targets, want one per address: %+v", len(got), got)
+	}
+	for _, tg := range got {
+		if net.ParseIP(tg.Host) == nil {
+			t.Errorf("%s is not an address — the point is to dial the stack, not the name", tg.Host)
+		}
+		if tg.SNI != "origin.example" {
+			t.Errorf("sni = %q, want the name: dialling an address with the wrong server name probes a different vhost", tg.SNI)
+		}
+		if tg.Port != "443" {
+			t.Errorf("port = %q, want 443", tg.Port)
+		}
+	}
+}
+
+// An explicit SNI must survive: `1.2.3.4=origin.example` and `--sni` exist
+// because the name being sent is the interesting variable.
+func TestExpandAddressesKeepsAnExplicitSNI(t *testing.T) {
+	r := &fakeResolver{table: map[string][]string{"lb.example": {"192.0.2.9"}}}
+
+	got, _ := ExpandAddresses(context.Background(), r, []Target{
+		{Host: "lb.example", Port: "443", SNI: "origin.example"},
+	})
+	if len(got) != 1 || got[0].SNI != "origin.example" {
+		t.Fatalf("got %+v, want the SNI preserved", got)
+	}
+}
+
+// An address needs no resolving, and resolving it would be a DNS lookup nobody
+// asked for.
+func TestExpandAddressesLeavesLiteralsAlone(t *testing.T) {
+	r := &fakeResolver{}
+	got, _ := ExpandAddresses(context.Background(), r, []Target{
+		{Host: "192.0.2.5", Port: "8443", SNI: "origin.example"},
+	})
+	if len(got) != 1 || got[0].Host != "192.0.2.5" || got[0].Port != "8443" {
+		t.Fatalf("got %+v, want the literal untouched", got)
+	}
+	if r.calls != 0 {
+		t.Errorf("resolver was called %d times for an address literal", r.calls)
+	}
+}
+
+// A name that does not resolve keeps its target: the normal dial then reports it
+// as a DNS failure, with the same wording as every other run. Dropping it would
+// make an endpoint vanish from a fleet report, which is the one thing a
+// monitoring tool must never do.
+func TestExpandAddressesKeepsATargetThatDoesNotResolve(t *testing.T) {
+	r := &fakeResolver{err: errors.New("no such host")}
+	got, errs := ExpandAddresses(context.Background(), r, []Target{
+		{Host: "gone.example", Port: "443"},
+	})
+	if len(got) != 1 || got[0].Host != "gone.example" {
+		t.Fatalf("got %+v, want the target kept for the dialler to report", got)
+	}
+	if len(errs) != 1 {
+		t.Fatalf("errs = %v, want the resolution failure reported once", errs)
+	}
+}
+
+// PQ-12, found by running --per-address on a host with no IPv6 route: an
+// address that cannot be reached *from here* was classified as "other", which
+// the verdict then read as tls-broken — "the port answered but no profile
+// completed a handshake". The port never answered. A local routing gap must
+// never be reported as a property of somebody else's endpoint.
+func TestNoRouteIsItsOwnKindNotAnEndpointProblem(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{"host unreachable", &net.OpError{Op: "dial", Err: os.NewSyscallError("connect", syscall.EHOSTUNREACH)}},
+		{"network unreachable", &net.OpError{Op: "dial", Err: os.NewSyscallError("connect", syscall.ENETUNREACH)}},
+	} {
+		kind, _ := classify(tc.err)
+		if kind != KindUnroutable {
+			t.Errorf("%s: kind = %q, want %q", tc.name, kind, KindUnroutable)
+		}
+		if kind.Abrupt() {
+			t.Errorf("%s: a route that does not exist is not a peer cutting us off", tc.name)
+		}
+	}
+}
+
+// A refused connection still means something is there to refuse: the two must
+// not collapse into one word.
+func TestRefusedIsNotUnroutable(t *testing.T) {
+	kind, _ := classify(&net.OpError{Op: "dial", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)})
+	if kind != KindRefused {
+		t.Errorf("kind = %q, want %q", kind, KindRefused)
 	}
 }

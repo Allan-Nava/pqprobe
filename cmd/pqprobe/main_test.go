@@ -45,6 +45,18 @@ func TestValidStatus(t *testing.T) {
 	}
 }
 
+// PQ-12. --per-address turns one name into one target per A/AAAA record, so it
+// multiplies the connections a run makes: off by default, and a boolean.
+func TestPerAddressIsABooleanFlag(t *testing.T) {
+	if takesValue("--per-address") {
+		t.Fatal("--per-address takes no value")
+	}
+	got := permute([]string{"--per-address", "origin.example"})
+	if len(got) != 2 || got[1] != "origin.example" {
+		t.Fatalf("permute = %v, want the target kept as an operand", got)
+	}
+}
+
 // PQ-23. --confirm is a boolean too, and it defaults to on: the second dial
 // only ever happens on an abrupt failure, so a healthy fleet pays nothing for
 // it, and a BAD verdict nobody can reproduce costs an afternoon.
@@ -81,6 +93,7 @@ func TestUsageDocumentsEveryFlagTheProbeAccepts(t *testing.T) {
 		"--profile", "--per-group", "--inventory", "--group", "--list", "--port",
 		"--sni", "--alpn", "--timeout", "--concurrency", "--json", "--findings",
 		"--min-severity", "--exit-on", "--expiry-warn", "--expiry-bad", "--confirm",
+		"--per-address",
 	} {
 		if !strings.Contains(b.String(), flag) {
 			t.Errorf("%s is not in --help", flag)
