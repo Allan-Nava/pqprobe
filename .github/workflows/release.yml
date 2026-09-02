@@ -165,7 +165,7 @@ jobs:
           sha256sum -- pqprobe_* | sort -k2 > SHA256SUMS
           cat SHA256SUMS
 
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/pqprobe_*
 
@@ -212,7 +212,7 @@ jobs:
             ghcr.io/allan-nava/pqprobe:${{ needs.gates.outputs.version }}
             ghcr.io/allan-nava/pqprobe:latest
 
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/allan-nava/pqprobe
           subject-digest: ${{ steps.push.outputs.digest }}
