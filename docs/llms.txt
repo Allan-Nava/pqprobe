@@ -1,0 +1,48 @@
+# pqprobe 0.16.0
+
+> pqprobe dials one TLS endpoint with several deliberately different client shapes and reports which classes of client can still complete a handshake — and whether the others are refused politely or cut off mid-hello. One static Go binary, zero dependencies, no application data ever sent.
+
+Documentation: https://allan-nava.github.io/pqprobe/
+Source: https://github.com/Allan-Nava/pqprobe
+
+## What it is
+
+pqprobe dials one TLS endpoint with several deliberately different client shapes
+and reports which classes of client can still complete a handshake with it, now
+that post-quantum key exchange (hybrid ML-KEM, X25519MLKEM768) is on by default
+in browsers and CDNs. One static Go binary, zero dependencies, no application
+data ever sent: it handshakes and closes.
+
+## The distinction it exists for
+
+A peer that answers a post-quantum ClientHello with a TLS **alert** has parsed
+it and declined a group: a policy, a pinned group list, a negotiation that
+worked. A peer that **resets, times out or vanishes** choked on the hello
+itself, and is broken for every client that so much as offers ML-KEM — however
+happy that client would have been with X25519. Only the second is an outage
+waiting for a CDN to flip a default, and no other tool reports the difference.
+
+## Classes
+
+- pq-ready — hybrid key exchange works, including for a client that requires it
+- pq-capable — ML-KEM is negotiated when offered, but a post-quantum-only client did not connect
+- pq-blind — no post-quantum support; capable clients still connect on a classical group
+- pq-refusing — capable clients are refused with an alert while classical ones connect
+- pq-intolerant — capable clients are cut off while classical ones connect
+- no-tls13 — TLS 1.2 is the ceiling, so post-quantum key exchange is out of reach
+- mtls-required — the peer wants a client certificate; not a grade
+- unreachable — nothing answered; not a grade
+- tls-broken — the port answered and no profile completed a handshake; not a grade
+
+## Pages
+
+- https://allan-nava.github.io/pqprobe/ — everything: classes, profiles, install, flags, findings, scope
+- https://github.com/Allan-Nava/pqprobe/blob/main/INTENT.md — why it exists, and what is deliberately out of scope
+- https://github.com/Allan-Nava/pqprobe/blob/main/BACKLOG.md — planned work
+- https://github.com/Allan-Nava/pqprobe/blob/main/CHANGELOG.md — what changed, per tagged release
+
+## Not
+
+Not a TLS scanner (testssl.sh, sslyze), not a certificate monitor (checkfleet),
+not a load generator (crowdsim), not a fingerprinting tool: profiles are
+capability classes, and Go's crypto/tls cannot reproduce a browser ClientHello.

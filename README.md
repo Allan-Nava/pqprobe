@@ -239,11 +239,14 @@ Everything else that can be a script is one, and CI runs all of them:
 | `scripts/release-notes.sh` | a release's notes come out of `CHANGELOG.md`, never retyped |
 | `scripts/release.sh` | a release runs every gate, tags — and never pushes |
 | `scripts/version.sh` | every commit is a tagged `vX.Y.Z` the CHANGELOG names |
+| `scripts/seo.sh` | the sitemap, robots.txt and llms.txt agree with the page |
+| `scripts/action.sh` | `action.yml` is valid, with no expression inside a run block |
 
 Each of those has a fixture test that runs in CI — `backlog_test.sh`,
 `backlog_issues_test.sh`, `docs_test.sh`, `assets_test.sh`,
-`repo-meta_test.sh`, `release_test.sh`, `version_test.sh` — because a gate
-nobody tests is a gate that passes for the wrong reason.
+`repo-meta_test.sh`, `release_test.sh`, `version_test.sh`, `brew_test.sh`,
+`seo_test.sh`, `action_test.sh` — because a gate nobody tests is a gate that
+passes for the wrong reason.
 
 **Every commit ships as a tagged version.** `scripts/release.sh <X.Y.Z>
 --commit` is how a change lands: one commit, one `vX.Y.Z` tag, its own dated

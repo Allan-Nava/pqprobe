@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**35 items · 28 shipped · 7 open · 5 milestones.**
+**36 items · 29 shipped · 7 open · 5 milestones.**
 
 ## At a glance
 
@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.2.0` | **now** | `#######...` 67% | 2 | 4 |
-| **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 80% | 2 | 8 |
+| **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 82% | 2 | 9 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
@@ -59,7 +59,7 @@ Target `v0.2.0` · **now** · 2 open · 4 shipped · `#######...` 67%
 
 ### M3 — Fit the toolchain
 
-Target `v0.3.0` · next · 2 open · 8 shipped · `########..` 80%
+Target `v0.3.0` · next · 2 open · 9 shipped · `########..` 82%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
@@ -73,6 +73,7 @@ Target `v0.3.0` · next · 2 open · 8 shipped · `########..` 80%
 | **PQ-29** — Brand assets | med | S | docs,project | shipped `0.2.0` |
 | **PQ-30** — The About box as data | med | S | project,delivery | shipped `0.2.0` |
 | **PQ-31** — Backlog to issues, automatically | med | S | project | shipped `0.2.0` |
+| **PQ-36** — SEO for the published page | med | S | docs,delivery | shipped `0.16.0` |
 
 ### M4 — Later
 
@@ -108,8 +109,8 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 | `cli` | 6 | 1 |
 | `integration` | 1 | 1 |
 | `output` | 4 | 1 |
-| `delivery` | 3 | 0 |
-| `docs` | 5 | 0 |
+| `delivery` | 4 | 0 |
+| `docs` | 6 | 0 |
 | `inventory` | 2 | 0 |
 | `project` | 5 | 0 |
 | `release` | 2 | 0 |

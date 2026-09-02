@@ -89,6 +89,12 @@ jobs:
         run: ./scripts/repo-meta.sh lint
       - name: The metadata gate itself
         run: sh scripts/repo-meta_test.sh
+      # Everything a search result is built from fails silently: a canonical
+      # that drifted, a sitemap naming an old URL, JSON-LD truncated by an edit.
+      - name: The site's SEO files agree with the page
+        run: sh scripts/seo.sh check
+      - name: The SEO gate itself
+        run: sh scripts/seo_test.sh
 
   release-tooling:
     runs-on: ubuntu-latest
@@ -129,12 +135,18 @@ jobs:
           fi
 
   # PQ-27: the action is delivery, so it is tested the way it will be used —
+  # and validated first, because actionlint reads workflows, not action
+  # metadata, and the first version of this file failed to load entirely.
   # `uses: ./` against this very commit. `version: ${{ github.sha }}` is
   # fetchable by definition here, since CI only runs on commits GitHub has.
   action:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: action.yml is valid, with no expression inside a run block
+        run: sh scripts/action.sh check
+      - name: The action gate itself
+        run: sh scripts/action_test.sh
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"

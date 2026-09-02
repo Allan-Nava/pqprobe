@@ -6,6 +6,41 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.16.0] - 2026-09-02
+
+### Added
+
+- **SEO for the published page** (PQ-36) — the crawler-facing half of the site,
+  generated from the page rather than maintained beside it: `sitemap.xml`,
+  `robots.txt`, and an [llms.txt](docs/llms.txt) for the crawlers that read
+  prose rather than markup. In the page: `robots`, `theme-color` and
+  `og:locale` meta, `og:image:alt`, a JSON-LD `SoftwareApplication` graph with
+  its author and site, and width/height on the external badges so they cannot
+  shift the hero as they arrive — layout shift is a ranking factor and the
+  badges are the only external requests on the page.
+
+  `scripts/seo.sh check` is a CI gate, because every failure here is silent: a
+  canonical that drifted from the About box, a sitemap naming last month's URL,
+  a JSON-LD block truncated by an edit. Nothing renders differently and the page
+  quietly stops being found. Two things stated rather than glossed: the classes
+  table is **not** marked up as an `FAQPage` — it is documentation, and claiming
+  otherwise to chase a rich result would be a claim about the content that is not
+  true — and `robots.txt` on a GitHub *project* page is read by nobody, since
+  crawlers only fetch the domain root's, which belongs to another repository. It
+  ships because it costs nothing and becomes correct on a custom domain.
+
+### Fixed
+
+- **The GitHub Action failed to load** (PQ-27) — with `An expression was
+  expected`, because GitHub evaluates `${{ … }}` anywhere in a `run` string
+  **including inside a shell comment**, and the comment explaining that inputs
+  must not travel through an expression was itself an empty one. Neither
+  `bash -n` nor actionlint caught it: actionlint reads workflows, not action
+  metadata. There is now `scripts/action.sh check` with seven fixture tests,
+  enforcing exactly the rule that comment was trying to state — no expression
+  inside a run block, ever — so the day somebody writes the explanation again it
+  cannot break the file. CI validates the action before using it.
+
 ## [0.15.0] - 2026-09-02
 
 ### Added
@@ -404,6 +439,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.16.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.16.0
 [0.15.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.15.0
 [0.14.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.14.0
 [0.13.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.13.0

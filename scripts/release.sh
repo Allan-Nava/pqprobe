@@ -149,6 +149,9 @@ sh scripts/render-assets.sh --check
 sh scripts/assets_test.sh >/dev/null && echo "asset tests OK"
 sh scripts/version_test.sh >/dev/null && echo "version tests OK"
 sh scripts/brew_test.sh >/dev/null && echo "formula tests OK"
+sh scripts/seo_test.sh >/dev/null && echo "SEO tests OK"
+sh scripts/action.sh check >/dev/null && echo "action.yml OK"
+sh scripts/action_test.sh >/dev/null && echo "action tests OK"
 
 [ "${RELEASE_DRY_RUN:-0}" = 1 ] && { say "dry run — nothing was rewritten"; exit 0; }
 
@@ -189,6 +192,11 @@ sed "s/ver=unreleased/ver=$version/g" BACKLOG.md > "$tmp" && mv "$tmp" BACKLOG.m
 say "Formula/pqprobe.rb"
 ./scripts/brew.sh write
 
+# The sitemap's lastmod and llms.txt's version belong to this release, so they
+# are rendered inside its commit for the same reason the formula is.
+say "docs/sitemap.xml, robots.txt, llms.txt"
+sh scripts/seo.sh render
+
 fi
 
 say "the diff"
@@ -215,6 +223,7 @@ echo "committed $(git rev-parse --short HEAD) and tagged $tag"
 # to: the tag matches the CHANGELOG, and the formula installs it.
 ./scripts/version.sh check
 ./scripts/brew.sh check
+sh scripts/seo.sh check
 
 cat <<MSG
 

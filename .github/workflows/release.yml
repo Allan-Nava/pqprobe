@@ -76,6 +76,10 @@ jobs:
           sh scripts/brew_test.sh
           ./scripts/brew.sh check
           ./scripts/version.sh check
+          sh scripts/seo.sh check
+          sh scripts/seo_test.sh
+          sh scripts/action.sh check
+          sh scripts/action_test.sh
 
       # The notes are the CHANGELOG section for this version. No section means no
       # release: an empty release body is worse than a failed workflow, because

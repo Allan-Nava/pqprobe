@@ -130,6 +130,19 @@ prints what to pick up.
   in [checkfleet](https://github.com/Allan-Nava/checkfleet) so a fleet already
   described in `checkfleet.yml` gains the check without a second inventory.
   <!-- pq: prio=high size=M labels=integration -->
+- [x] **PQ-36 — SEO for the published page**: the crawler-facing half of the
+  site, generated from the page rather than maintained beside it —
+  `sitemap.xml`, `robots.txt` and an `llms.txt` for the crawlers that read prose
+  — plus `robots`/`theme-color`/`og:locale` meta, a JSON-LD `SoftwareApplication`
+  graph, and width/height on the external badges so they cannot shift the hero
+  as they load. `scripts/seo.sh check` is a CI gate because every failure here
+  is silent: a canonical that drifted from the About box, a sitemap naming last
+  month's URL, a JSON-LD block truncated by an edit. The classes table is
+  deliberately *not* marked up as an `FAQPage`: it is documentation, and
+  claiming otherwise to chase a rich result would be a claim about the content
+  that is not true. `robots.txt` on a project page is shipped knowing crawlers
+  read only the domain root's, which belongs to another repository.
+  <!-- pq: prio=med size=S labels=docs,delivery ver=0.16.0 -->
 - [ ] **PQ-15 — Prometheus textfile output**: `--textfile` writing
   `pqprobe_class{target=…}` for a node exporter, so the state is graphable
   without a scraper of its own. <!-- pq: prio=med size=S labels=output -->

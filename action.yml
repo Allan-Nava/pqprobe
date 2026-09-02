@@ -58,8 +58,14 @@ runs:
       run: |
         set -o pipefail
 
-        # The inputs reach the shell through the environment, never through
-        # ${{ }} inside this script: a workflow input is somebody else's string.
+        # The inputs reach the shell through the environment above, never
+        # through GitHub expression interpolation inside this script: a workflow
+        # input is somebody else's string, and an expression here is code.
+        #
+        # And not even in a comment. GitHub evaluates expressions anywhere in a
+        # run string, so the first version of this very sentence — written with
+        # the braces — made the action fail to load with "An expression was
+        # expected". scripts/action.sh now refuses any of them in a run block.
         # shellcheck disable=SC2086
         set -- $EXTRA $TARGETS
 

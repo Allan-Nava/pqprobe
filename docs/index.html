@@ -7,7 +7,11 @@
 <meta name="description" content="pqprobe dials one TLS endpoint with several deliberately different client shapes and reports which classes of client can still complete a handshake — and whether the others are refused politely or cut off mid-hello. One static Go binary, zero dependencies, no application data ever sent.">
 <meta name="keywords" content="post-quantum TLS, ML-KEM, X25519MLKEM768, ClientHello size, TLS 1.3, CDN outage, TLS intolerance, Go binary, handshake probe">
 <meta name="author" content="Allan Nava">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <link rel="canonical" href="https://allan-nava.github.io/pqprobe/">
+<link rel="sitemap" type="application/xml" href="sitemap.xml">
 
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -20,10 +24,59 @@
 <meta property="og:image" content="https://allan-nava.github.io/pqprobe/assets/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="pqprobe — a terminal showing a classical client connecting while the post-quantum-capable one is cut off">
+<meta property="og:locale" content="en_GB">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="pqprobe — which classes of client can still handshake with this endpoint?">
 <meta name="twitter:description" content="An endpoint can be up for curl and down for a CDN. pqprobe tells you which, in one command.">
 <meta name="twitter:image" content="https://allan-nava.github.io/pqprobe/assets/og-card.png">
+
+<!-- Structured data. SoftwareApplication because that is what this is; the
+     classes table is deliberately *not* marked up as an FAQPage, since it is
+     documentation rather than questions somebody asked, and marking it as one
+     to chase a rich result would be a claim about the content that is not
+     true. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://allan-nava.github.io/pqprobe/#software",
+      "name": "pqprobe",
+      "url": "https://allan-nava.github.io/pqprobe/",
+      "description": "pqprobe dials one TLS endpoint with several deliberately different client shapes and reports which classes of client can still complete a handshake with it — and whether the others are refused politely or cut off mid-hello.",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "Command-line network diagnostic",
+      "operatingSystem": "Linux, macOS, Windows",
+      "softwareRequirements": "Go 1.25 or newer to build; no runtime dependencies",
+      "downloadUrl": "https://github.com/Allan-Nava/pqprobe/releases",
+      "codeRepository": "https://github.com/Allan-Nava/pqprobe",
+      "programmingLanguage": "Go",
+      "license": "https://opensource.org/licenses/MIT",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "author": { "@id": "https://allan-nava.github.io/pqprobe/#author" },
+      "keywords": "post-quantum TLS, ML-KEM, X25519MLKEM768, TLS 1.3, ClientHello size, TLS intolerance, CDN, SRE"
+    },
+    {
+      "@type": "Person",
+      "@id": "https://allan-nava.github.io/pqprobe/#author",
+      "name": "Allan Nava",
+      "url": "https://github.com/Allan-Nava"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://allan-nava.github.io/pqprobe/#website",
+      "url": "https://allan-nava.github.io/pqprobe/",
+      "name": "pqprobe",
+      "inLanguage": "en",
+      "about": { "@id": "https://allan-nava.github.io/pqprobe/#software" },
+      "publisher": { "@id": "https://allan-nava.github.io/pqprobe/#author" }
+    }
+  ]
+}
+</script>
 
 <script>
 // Resolve the colour scheme before the first paint: an explicit choice wins,
@@ -120,8 +173,8 @@ button.theme:hover { color:var(--heading); border-color:var(--border-str); }
 .hero h1 i { color:var(--brand); font-style:normal; }
 .lede { font-size:1.16rem; color:var(--text); max-width:70ch; }
 .lede strong { color:var(--heading); }
-.badges { display:flex; gap:8px; flex-wrap:wrap; margin:18px 0 22px; }
-.badges img { height:20px; }
+.badges { display:flex; gap:8px; flex-wrap:wrap; margin:18px 0 22px; min-height:20px; }
+.badges img { height:20px; width:auto; }
 .cta { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:6px; }
 .btn {
   display:inline-block; padding:10px 18px; border-radius:10px; font-weight:600; font-size:.94rem;
@@ -221,10 +274,10 @@ footer a:hover { color:var(--link-hover); }
       data ever sent.
     </p>
     <div class="badges">
-      <img src="https://github.com/Allan-Nava/pqprobe/actions/workflows/ci.yml/badge.svg" alt="CI status">
-      <img src="https://img.shields.io/badge/license-MIT-8b5cf6" alt="MIT licence">
-      <img src="https://img.shields.io/badge/go-1.25%2B-00ADD8" alt="Go 1.25+">
-      <img src="https://img.shields.io/badge/dependencies-none-22d3ee" alt="No dependencies">
+      <img src="https://github.com/Allan-Nava/pqprobe/actions/workflows/ci.yml/badge.svg" alt="CI status" width="90" height="20" loading="lazy">
+      <img src="https://img.shields.io/badge/license-MIT-8b5cf6" alt="MIT licence" width="86" height="20" loading="lazy">
+      <img src="https://img.shields.io/badge/go-1.25%2B-00ADD8" alt="Go 1.25+" width="76" height="20" loading="lazy">
+      <img src="https://img.shields.io/badge/dependencies-none-22d3ee" alt="No dependencies" width="126" height="20" loading="lazy">
     </div>
     <div class="term">
       <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
