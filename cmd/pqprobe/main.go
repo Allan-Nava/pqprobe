@@ -42,6 +42,8 @@ func main() {
 		os.Exit(cmdProbe(os.Args[2:]))
 	case "profiles":
 		os.Exit(cmdProfiles())
+	case "explain":
+		os.Exit(explainTo(os.Stdout, os.Args[2:]))
 	case "version", "--version", "-v":
 		fmt.Println("pqprobe", version)
 		return
@@ -131,6 +133,7 @@ func usageTo(w io.Writer) {
 usage:
   pqprobe probe <target>... [flags]
   pqprobe profiles
+  pqprobe explain [class]        what a class means, and what to do about it
   pqprobe version
 
 targets:
@@ -182,6 +185,41 @@ pqprobe opens TLS connections and sends no application data: no request, no
 body, no credentials. It is safe to point at production, and it says nothing
 about a client's exact ClientHello fingerprint — only about capability classes.
 `)
+}
+
+// explainTo prints what a class means, who it affects and what to do — with no
+// network call, because it is meant to be runnable while the incident is still
+// on and the endpoint is still refusing. With no argument it lists them all,
+// for somebody who half-remembers the word.
+func explainTo(w io.Writer, args []string) int {
+	if len(args) == 0 {
+		fmt.Fprintln(w, "classes (pqprobe explain <class> for the rest):")
+		for _, c := range verdict.Classes() {
+			e, _ := verdict.Explain(c)
+			fmt.Fprintf(w, "  %-14s %-5s %s\n", c, e.Status, verdict.Describe(c))
+		}
+		return 0
+	}
+
+	// A leading -- is what a hand types out of habit; refusing it teaches
+	// nothing that accepting it does not.
+	name := strings.TrimLeft(args[0], "-")
+	e, ok := verdict.Explain(verdict.Class(name))
+	if !ok {
+		fmt.Fprintf(w, "pqprobe: %q is not a class. These are:\n", args[0])
+		for _, c := range verdict.Classes() {
+			fmt.Fprintf(w, "  %s\n", c)
+		}
+		return 2
+	}
+
+	fmt.Fprintf(w, "%s  (%s)\n\n", e.Class, e.Status)
+	fmt.Fprintf(w, "means      %s\n\n", e.Meaning)
+	if e.Affected != "" {
+		fmt.Fprintf(w, "affects    %s\n\n", e.Affected)
+	}
+	fmt.Fprintf(w, "do         %s\n", e.Action)
+	return 0
 }
 
 func cmdProfiles() int {

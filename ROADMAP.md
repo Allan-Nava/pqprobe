@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**35 items · 25 shipped · 10 open · 5 milestones.**
+**35 items · 26 shipped · 9 open · 5 milestones.**
 
 ## At a glance
 
@@ -16,7 +16,7 @@
 | **M2** — Say it more precisely | `v0.2.0` | **now** | `#######...` 67% | 2 | 4 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 80% | 2 | 8 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
-| **M5** — Make the verdict actionable | `v0.4.0` | **now** | `######....` 63% | 3 | 5 |
+| **M5** — Make the verdict actionable | `v0.4.0` | **now** | `########..` 75% | 2 | 6 |
 
 ## Next up
 
@@ -28,7 +28,6 @@ The open items with the highest priority in the milestones that are in flight.
 - **PQ-27** — Pull-request delivery · `med` · size `M` · delivery,output (M5, target `v0.4.0`)
 - **PQ-35** — Egress through a proxy, but only SOCKS5 · `med` · size `M` · probe,cli (M5, target `v0.4.0`)
 - **PQ-13** — Watch mode · `low` · size `M` · cli (M2, target `v0.2.0`)
-- **PQ-28** — `explain <class>` · `low` · size `S` · cli,docs (M5, target `v0.4.0`)
 
 ## Milestones
 
@@ -89,30 +88,30 @@ Target `ongoing` · later · 3 open · 0 shipped · `..........` 0%
 
 ### M5 — Make the verdict actionable
 
-Target `v0.4.0` · **now** · 3 open · 5 shipped · `######....` 63%
+Target `v0.4.0` · **now** · 2 open · 6 shipped · `########..` 75%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-27** — Pull-request delivery | med | M | delivery,output | open |
 | **PQ-35** — Egress through a proxy, but only SOCKS5 | med | M | probe,cli | open |
-| **PQ-28** — `explain <class>` | low | S | cli,docs | open |
 | **PQ-22** — Per-group capability map | high | M | probe,profile | shipped `0.3.0` |
 | **PQ-23** — Confirm before condemning | high | S | probe,verdict | shipped `0.5.0` |
 | **PQ-24** — Baseline diff | high | M | output,cli | shipped `0.8.0` |
 | **PQ-26** — mTLS is not a refusal | high | M | probe,verdict | shipped `0.6.0` |
 | **PQ-25** — ALPN as a variable | med | S | probe,verdict | shipped `0.11.0` |
+| **PQ-28** — `explain <class>` | low | S | cli,docs | shipped `0.13.0` |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `cli` | 6 | 3 |
 | `probe` | 12 | 3 |
+| `cli` | 6 | 2 |
 | `output` | 4 | 2 |
 | `profile` | 5 | 2 |
 | `delivery` | 3 | 1 |
-| `docs` | 5 | 1 |
 | `integration` | 1 | 1 |
+| `docs` | 5 | 0 |
 | `inventory` | 2 | 0 |
 | `project` | 5 | 0 |
 | `release` | 2 | 0 |

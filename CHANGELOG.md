@@ -6,6 +6,19 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.13.0] - 2026-09-02
+
+### Added
+
+- **`pqprobe explain <class>`** (PQ-28) — what a class means, which real clients
+  it affects and what to do next, with **no network call**: runnable while the
+  incident is still on, which is the point, since the hints otherwise exist only
+  inside a run and finding out what the word meant would mean reproducing the
+  failure. No argument lists every class; a leading `--` is tolerated because
+  that is what a hand types; an unknown word prints the vocabulary and exits 2.
+  A table-driven test asserts every class has an explanation whose status agrees
+  with the grading table, so a class added later cannot arrive without one.
+
 ## [0.12.0] - 2026-09-02
 
 ### Added
@@ -345,6 +358,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.13.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.13.0
 [0.12.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.12.0
 [0.11.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.11.0
 [0.10.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.10.0

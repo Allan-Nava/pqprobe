@@ -272,7 +272,11 @@ how the answer reaches a pull request without a second tool.
   binary safe to point at production — so it stays out, and the flag says
   `--socks5` rather than `--proxy` to make that explicit rather than
   disappointing. <!-- pq: prio=med size=M labels=probe,cli -->
-- [ ] **PQ-28 — `explain <class>`**: print what a class means, which real
-  clients it affects and what to do next, without a network call — the hint text
-  an operator gets at 03:00, reachable before the incident and quotable in a
-  ticket. <!-- pq: prio=low size=S labels=cli,docs -->
+- [x] **PQ-28 — `explain <class>`**: meaning, affected clients and next action
+  for any class, with no network call, so it is runnable while the endpoint is
+  still refusing. No argument lists them all, a leading `--` is tolerated
+  because that is what a hand types, and an unknown word is a usage error that
+  prints the vocabulary. A table-driven test asserts that *every* class has an
+  explanation and that its status matches the grading table, so a class added
+  later cannot arrive without one.
+  <!-- pq: prio=low size=S labels=cli,docs ver=0.13.0 -->

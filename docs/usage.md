@@ -3,8 +3,13 @@
 ```
 pqprobe probe <target>... [flags]
 pqprobe profiles
+pqprobe explain [class]
 pqprobe version
 ```
+
+`pqprobe explain pq-intolerant` prints what the class means, which real clients
+it affects and what to do next — with **no network call**, so it is runnable
+while the incident is still on. With no argument it lists every class.
 
 ## Targets
 

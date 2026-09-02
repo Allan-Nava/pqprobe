@@ -151,6 +151,10 @@ OK    google.com:443  pq-ready
 3 endpoint(s): 1 pq-blind, 2 pq-ready · worst: 0 ERROR, 0 BAD, 1 WARN, 2 OK
 ```
 
+`pqprobe explain pq-intolerant` prints the same knowledge without a run —
+meaning, affected clients, next action — which is the version you want at 03:00,
+when reproducing the failure to find out what the word meant is not an option.
+
 ## Install
 
 ```sh

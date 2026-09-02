@@ -825,3 +825,58 @@ func TestACustomGroupSetIsVisibleButDoesNotGrade(t *testing.T) {
 		t.Error("the caller asked for that dial and has to see its result")
 	}
 }
+
+// PQ-28. The hints only exist inside a run, so at 03:00 the only way to find
+// out what a class means is to reproduce it. `explain` lifts them out — and
+// this test is the reason a class added later cannot arrive without one.
+func TestEveryClassCanBeExplained(t *testing.T) {
+	all := []Class{
+		PQReady, PQCapable, PQBlind, PQIntolerant, PQRefusing,
+		NoTLS13, MTLSRequired, Unreachable, TLSBroken,
+	}
+	if len(Classes()) != len(all) {
+		t.Fatalf("Classes() has %d entries and this test knows %d — one of them is out of date",
+			len(Classes()), len(all))
+	}
+
+	for _, c := range all {
+		e, ok := Explain(c)
+		if !ok {
+			t.Errorf("%s has no explanation", c)
+			continue
+		}
+		if e.Meaning == "" || e.Action == "" {
+			t.Errorf("%s: meaning=%q action=%q, both are required", c, e.Meaning, e.Action)
+		}
+		if e.Status != StatusOf(c) {
+			t.Errorf("%s: status %s disagrees with the grading table (%s)", c, e.Status, StatusOf(c))
+		}
+	}
+}
+
+// The classes that describe a post-quantum refusal have to name who is
+// affected: the class name alone tells an operator nothing, which is the whole
+// reason this exists.
+func TestTheRefusalClassesNameTheAffectedClients(t *testing.T) {
+	for _, c := range []Class{PQIntolerant, PQRefusing, PQBlind} {
+		e, _ := Explain(c)
+		if !strings.Contains(e.Affected, "Chrome") && !strings.Contains(e.Affected, "CDN") {
+			t.Errorf("%s: affected = %q, want the real clients named", c, e.Affected)
+		}
+	}
+	// And the two that are not grades must say so rather than inventing a
+	// population of affected clients.
+	for _, c := range []Class{Unreachable, TLSBroken, MTLSRequired} {
+		e, _ := Explain(c)
+		if !strings.Contains(strings.ToLower(e.Meaning), "no") && !strings.Contains(strings.ToLower(e.Action), "not a grade") {
+			t.Errorf("%s: %q / %q — this is not a capability verdict and has to read like it", c, e.Meaning, e.Action)
+		}
+	}
+}
+
+// A word that is not a class is a usage error listing the ones that are.
+func TestExplainingSomethingElseFails(t *testing.T) {
+	if _, ok := Explain(Class("pq-maybe")); ok {
+		t.Fatal("pq-maybe is not a class")
+	}
+}

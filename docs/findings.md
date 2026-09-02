@@ -37,6 +37,9 @@ twice.
 
 ## Classes
 
+`pqprobe explain <class>` prints any of these out of context — meaning,
+affected clients, next action — without touching the network.
+
 | Class | Status | Meaning |
 |---|---|---|
 | `pq-ready` | OK | hybrid key exchange works, including for a client that requires it |

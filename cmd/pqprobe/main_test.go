@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Allan-Nava/pqprobe/internal/verdict"
 )
 
 // Go's flag package stops at the first operand, so `probe host --json` would
@@ -160,5 +162,59 @@ func TestUsageDocumentsEveryFlagTheProbeAccepts(t *testing.T) {
 		if !strings.Contains(b.String(), flag) {
 			t.Errorf("%s is not in --help", flag)
 		}
+	}
+}
+
+// PQ-28. `explain` is the one command that needs no network, so it is also the
+// one an operator can run while the incident is still on.
+func TestExplainWritesTheClassOut(t *testing.T) {
+	var b strings.Builder
+	if code := explainTo(&b, []string{"pq-intolerant"}); code != 0 {
+		t.Fatalf("exit = %d, want 0", code)
+	}
+	out := b.String()
+	for _, want := range []string{"pq-intolerant", "BAD", "Chrome", "size-sweep"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("%q is missing from the explanation:\n%s", want, out)
+		}
+	}
+}
+
+// No argument lists every class, so somebody who half-remembers the word can
+// find it.
+func TestExplainWithNoArgumentListsThemAll(t *testing.T) {
+	var b strings.Builder
+	if code := explainTo(&b, nil); code != 0 {
+		t.Fatalf("exit = %d, want 0", code)
+	}
+	for _, c := range verdict.Classes() {
+		if !strings.Contains(b.String(), string(c)) {
+			t.Errorf("%s is not in the list", c)
+		}
+	}
+}
+
+// A word that is not a class is a usage error that says what the words are —
+// not a shrug.
+func TestExplainingNonsenseIsAUsageError(t *testing.T) {
+	var b strings.Builder
+	code := explainTo(&b, []string{"pq-maybe"})
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2", code)
+	}
+	if !strings.Contains(b.String(), "pq-intolerant") {
+		t.Errorf("the error has to list the classes: %q", b.String())
+	}
+}
+
+// A leading -- is what somebody types out of habit, and refusing it teaches
+// nothing.
+func TestExplainToleratesADashedClass(t *testing.T) {
+	var b strings.Builder
+	if code := explainTo(&b, []string{"--pq-blind"}); code != 0 {
+		t.Fatalf("exit = %d, want 0", code)
+	}
+	if !strings.Contains(b.String(), "pq-blind") {
+		t.Errorf("output = %q", b.String())
 	}
 }

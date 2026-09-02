@@ -57,6 +57,67 @@ const (
 	TLSBroken Class = "tls-broken"
 )
 
+// Classes is every class, in the order a reader should meet them: the good news
+// first, then the two that are somebody's outage, then the ceilings, then the
+// three that are not grades at all.
+func Classes() []Class {
+	return []Class{
+		PQReady, PQCapable, PQBlind, PQIntolerant, PQRefusing,
+		NoTLS13, MTLSRequired, Unreachable, TLSBroken,
+	}
+}
+
+// Explanation is a class, out of context: what it means, who it affects and
+// what to do about it (PQ-28).
+//
+// The hints inside a report are written for the endpoint in front of you. This
+// is the same knowledge without a run, because at 03:00 the alternative is
+// reproducing the failure to find out what the word meant.
+type Explanation struct {
+	Class    Class          `json:"class"`
+	Status   finding.Status `json:"status"`
+	Meaning  string         `json:"meaning"`
+	Affected string         `json:"affected,omitempty"`
+	Action   string         `json:"action"`
+}
+
+// Explain returns the explanation for a class.
+func Explain(c Class) (Explanation, bool) {
+	e := Explanation{Class: c, Status: StatusOf(c), Meaning: Describe(c)}
+	switch c {
+	case PQReady:
+		e.Affected = "nobody: a client that offers hybrid ML-KEM, one that requires it, and one that has never heard of it all connect"
+		e.Action = "nothing. Re-run after a change to the TLS stack, the load balancer or the CDN in front of it — this is a property of the path, and paths change without anybody touching the origin"
+	case PQCapable:
+		e.Affected = "a client configured to *require* post-quantum key exchange, which is rare today and is where the defaults are going"
+		e.Action = "find out why the post-quantum-only handshake did not complete: usually a TLS 1.3 restriction rather than a group policy. Everything in use today works"
+	case PQBlind:
+		e.Affected = "nobody today. Tomorrow: any client that requires post-quantum key exchange, and Chrome, Edge and Firefox already offer it by default"
+		e.Action = "plan the ML-KEM rollout on this endpoint. It works now because capable clients fall back to X25519, and it stops working the day one of them stops offering the fallback — or the day something on the path stops tolerating the larger hello"
+	case PQIntolerant:
+		e.Affected = "every client that merely *offers* ML-KEM: Chrome and Edge 131+, Firefox 132+, Go 1.24+, OpenSSL 3.5+, and any CDN with post-quantum enabled. curl and your existing health checks keep passing"
+		e.Action = "look at what the ClientHello has to cross, not at the TLS configuration: an old TLS library, a middlebox that reads the hello, a load balancer with its own parser, anything that assumes a handshake fits one packet. Run --size-sweep to get the byte size to quote, and --per-address in case it is one node of a pool"
+	case PQRefusing:
+		e.Affected = "the same clients as pq-intolerant, but here the peer answered: Chrome, Edge, Firefox and post-quantum-enabled CDNs are declined rather than dropped"
+		e.Action = "look at the configuration, not at the path: a pinned group list, a TLS policy, a FIPS mode, an accelerator with a fixed algorithm set. The peer parsed a hello that also offered X25519 and P-256 and still said no"
+	case NoTLS13:
+		e.Affected = "any client that requires TLS 1.3, and every post-quantum client — the key exchange lives in the 1.3 key_share extension"
+		e.Action = "enable TLS 1.3 before anything else here. This is a ceiling, not a setting: no group list can get post-quantum key exchange onto a 1.2 handshake"
+	case MTLSRequired:
+		e.Affected = "not a grade — the endpoint refused the prober, not post-quantum clients"
+		e.Action = "not a grade: pqprobe holds no key material by design, so probe this leg from somewhere that has a client certificate, or probe the front door instead"
+	case Unreachable:
+		e.Affected = "not a grade — nothing answered, so nothing is known about any client"
+		e.Action = "not a grade: fix reachability first. If this came from --per-address, check the route from this host before blaming the node — an IPv6 address probed without IPv6 egress fails exactly like this"
+	case TLSBroken:
+		e.Affected = "not a grade — the port answered and no client shape completed a handshake, so no capability conclusion is available"
+		e.Action = "not a grade: something is listening and it is not serving TLS the way any of these clients speak it. Look at the port and the terminator before reading anything about post-quantum support"
+	default:
+		return Explanation{}, false
+	}
+	return e, true
+}
+
 // Options are the thresholds a report is graded against.
 type Options struct {
 	// ExpiryWarnDays and ExpiryBadDays grade the leaf certificate.
