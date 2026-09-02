@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**32 items · 15 shipped · 17 open · 5 milestones.**
+**32 items · 16 shipped · 16 open · 5 milestones.**
 
 ## At a glance
 
@@ -16,7 +16,7 @@
 | **M2** — Say it more precisely | `v0.2.0` | **now** | `..........` 0% | 5 | 0 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 78% | 2 | 7 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
-| **M5** — Make the verdict actionable | `v0.4.0` | later | `..........` 0% | 7 | 0 |
+| **M5** — Make the verdict actionable | `v0.4.0` | **now** | `#.........` 14% | 6 | 1 |
 
 ## Next up
 
@@ -26,9 +26,10 @@ The open items with the highest priority in the milestones that are in flight.
 - **PQ-11** — ClientHello size sweep · `high` · size `M` · probe (M2, target `v0.2.0`)
 - **PQ-12** — Multi-address endpoints · `high` · size `M` · probe,inventory (M2, target `v0.2.0`)
 - **PQ-14** — checkfleet module · `high` · size `M` · integration (M3, target `v0.3.0`)
+- **PQ-23** — Confirm before condemning · `high` · size `S` · probe,verdict (M5, target `v0.4.0`)
+- **PQ-24** — Baseline diff · `high` · size `M` · output,cli (M5, target `v0.4.0`)
+- **PQ-26** — mTLS is not a refusal · `high` · size `M` · probe,verdict (M5, target `v0.4.0`)
 - **PQ-10** — Real ClientHello shapes · `med` · size `XL` · profile (M2, target `v0.2.0`)
-- **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
-- **PQ-13** — Watch mode · `low` · size `M` · cli (M2, target `v0.2.0`)
 
 ## Milestones
 
@@ -87,27 +88,27 @@ Target `ongoing` · later · 3 open · 0 shipped · `..........` 0%
 
 ### M5 — Make the verdict actionable
 
-Target `v0.4.0` · later · 7 open · 0 shipped · `..........` 0%
+Target `v0.4.0` · **now** · 6 open · 1 shipped · `#.........` 14%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-22** — Per-group capability map | high | M | probe,profile | open |
 | **PQ-23** — Confirm before condemning | high | S | probe,verdict | open |
 | **PQ-24** — Baseline diff | high | M | output,cli | open |
 | **PQ-26** — mTLS is not a refusal | high | M | probe,verdict | open |
 | **PQ-25** — ALPN as a variable | med | S | probe,verdict | open |
 | **PQ-27** — Pull-request delivery | med | M | delivery,output | open |
 | **PQ-28** — `explain <class>` | low | S | cli,docs | open |
+| **PQ-22** — Per-group capability map | high | M | probe,profile | shipped `0.3.0` |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `probe` | 11 | 9 |
+| `probe` | 11 | 8 |
 | `cli` | 4 | 3 |
 | `output` | 4 | 3 |
-| `profile` | 4 | 3 |
 | `verdict` | 4 | 3 |
+| `profile` | 4 | 2 |
 | `delivery` | 2 | 1 |
 | `docs` | 4 | 1 |
 | `integration` | 1 | 1 |

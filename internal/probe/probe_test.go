@@ -289,3 +289,44 @@ func TestTargetStringShowsSNIOnlyWhenItDiffers(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+// PQ-22, against a real listener: a server pinned to X25519 accepts exactly one
+// group when each is offered alone, and says no to the others *civilly*. The
+// point of the per-group pass is that the accepted set is read off the wire
+// rather than inferred from a profile that offered three groups at once.
+func TestGroupProbesReadTheAcceptedSetOffTheWire(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := serveTLS(t, &tls.Config{
+		Certificates:     []tls.Certificate{cert},
+		MinVersion:       tls.VersionTLS13,
+		CurvePreferences: []tls.CurveID{tls.X25519},
+	})
+
+	d := Dialer{Timeout: 5 * time.Second}
+	got := map[string]Result{}
+	for _, p := range clientprofile.GroupProbes() {
+		got[p.Name] = d.Do(context.Background(), tg, p)
+	}
+
+	x := got[clientprofile.GroupProbeName(tls.X25519)]
+	if !x.OK {
+		t.Fatalf("X25519 was pinned on the server and must be accepted: %s (%s)", x.Err, x.Kind)
+	}
+	if x.Group != "X25519" {
+		t.Fatalf("negotiated %q, want X25519 — a group probe offers one group, so the answer is unambiguous", x.Group)
+	}
+
+	pq := got[clientprofile.GroupProbeName(tls.X25519MLKEM768)]
+	if pq.OK {
+		t.Fatal("the server has no ML-KEM; the hybrid group probe must not complete")
+	}
+	if pq.Kind.Abrupt() {
+		t.Fatalf("a group the peer merely does not have must be a civil refusal, not abrupt: kind=%s err=%s", pq.Kind, pq.Err)
+	}
+
+	for _, id := range []tls.CurveID{tls.CurveP256, tls.CurveP384, tls.CurveP521} {
+		if r := got[clientprofile.GroupProbeName(id)]; r.OK {
+			t.Errorf("%s completed against a server pinned to X25519", clientprofile.GroupName(id))
+		}
+	}
+}

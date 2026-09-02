@@ -21,6 +21,15 @@ The default set is `classic,pq-preferred,pq-only`: a baseline and the two
 post-quantum questions. The version edges cost two more connections per endpoint
 and answer a different question, so they are opt-in.
 
+## Single-group probes
+
+`--per-group` adds a synthetic profile per group — `group:X25519MLKEM768`,
+`group:X25519`, `group:P-256`, `group:P-384`, `group:P-521` — each offering
+that group alone, pinned to TLS 1.3 because post-quantum key exchange lives in
+the 1.3 `key_share` extension. They are not client classes and no real client
+dials that way, so they are kept out of the verdict: they answer *which* groups
+the peer accepts, which is what a migration has to be planned against.
+
 ## Why `pq-preferred` is the one that matters
 
 It is the realistic client. It offers hybrid ML-KEM **and** classical groups, so

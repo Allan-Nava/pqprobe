@@ -13,6 +13,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -53,7 +54,12 @@ func main() {
 	}
 }
 
-func usage(w *os.File) {
+func usage(w *os.File) { usageTo(w) }
+
+// usageTo is usage() over any writer, so a test can assert that every flag the
+// probe accepts is documented — the alignment rule, enforced rather than
+// remembered.
+func usageTo(w io.Writer) {
 	fmt.Fprint(w, `pqprobe — which clients can still handshake with this endpoint?
 
 usage:
@@ -69,6 +75,9 @@ targets:
 
 flags:
   --profile a,b            client profiles to dial (default classic,pq-preferred,pq-only)
+  --per-group              also dial each key exchange group on its own and
+                           report the accepted set (one extra handshake per
+                           group, in sequence)
   --inventory FILE         Ansible INI inventory to take hosts from
   --group g,h              only these inventory groups
   --list FILE              flat list of targets, one per line
@@ -114,6 +123,7 @@ func cmdProbe(args []string) int {
 	fs.SetOutput(os.Stderr)
 	var (
 		profiles    = fs.String("profile", strings.Join(clientprofile.Default, ","), "client profiles to dial")
+		perGroup    = fs.Bool("per-group", false, "also dial each key exchange group on its own")
 		invFile     = fs.String("inventory", "", "Ansible INI inventory")
 		groups      = fs.String("group", "", "inventory groups")
 		listFile    = fs.String("list", "", "flat target list")
@@ -159,6 +169,10 @@ func cmdProbe(args []string) int {
 	if len(targets) == 0 {
 		fmt.Fprintln(os.Stderr, "pqprobe: no target to probe")
 		return 2
+	}
+
+	if *perGroup {
+		sel = append(sel, clientprofile.GroupProbes()...)
 	}
 
 	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn)}

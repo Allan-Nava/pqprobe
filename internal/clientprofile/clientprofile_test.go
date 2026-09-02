@@ -83,3 +83,53 @@ func TestGroupNameNeverEmptyForAKnownGroup(t *testing.T) {
 		t.Fatal("an unset group has no name")
 	}
 }
+
+// PQ-22. `pq-preferred` says a hybrid handshake works; it does not say *which*
+// hybrid group. The group probes answer that: one group per ClientHello, so an
+// accepted set can be read off the results instead of inferred.
+func TestGroupProbesOfferExactlyOneGroupEach(t *testing.T) {
+	probes := GroupProbes()
+	if len(probes) < 3 {
+		t.Fatalf("got %d group probes, want at least X25519MLKEM768, X25519 and P-256", len(probes))
+	}
+	seen := map[string]bool{}
+	for _, p := range probes {
+		if len(p.Groups) != 1 {
+			t.Errorf("%s offers %d groups; a group probe offers exactly one, or the answer is about the set",
+				p.Name, len(p.Groups))
+		}
+		// Post-quantum key exchange lives in the TLS 1.3 key_share extension, and
+		// a group probe that fell back to 1.2 would report "refused" for a group
+		// the peer never got the chance to pick.
+		if p.MinVersion != tls.VersionTLS13 || p.MaxVersion != tls.VersionTLS13 {
+			t.Errorf("%s is not pinned to TLS 1.3", p.Name)
+		}
+		if !IsGroupProbe(p.Name) {
+			t.Errorf("%s is not recognisable as a group probe", p.Name)
+		}
+		if seen[p.Name] {
+			t.Errorf("%s appears twice", p.Name)
+		}
+		seen[p.Name] = true
+		if want := IsPQ(p.Groups[0]); p.OffersPQ != want {
+			t.Errorf("%s: OffersPQ = %v, want %v", p.Name, p.OffersPQ, want)
+		}
+		if p.Clients == "" || p.Summary == "" {
+			t.Errorf("%s has no summary or clients text", p.Name)
+		}
+	}
+	if !seen[GroupProbeName(tls.X25519MLKEM768)] {
+		t.Errorf("the hybrid group is the one anybody is asking about, and it is missing: %v", seen)
+	}
+}
+
+// The real profiles must never be mistaken for group probes: the verdict reads
+// them, and a class derived from a single-group hello would be a different
+// statement entirely.
+func TestRealProfilesAreNotGroupProbes(t *testing.T) {
+	for _, p := range All {
+		if IsGroupProbe(p.Name) {
+			t.Errorf("%s reads as a group probe", p.Name)
+		}
+	}
+}

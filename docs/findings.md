@@ -21,6 +21,7 @@ not an endpoint that passed, and an operator has to see it first.
 |---|---|---|
 | `handshake` | `host:port/profile` | one attempt: negotiated version, group, cipher, ALPN and elapsed ms — or how it failed |
 | `verdict` | `host:port` | the class, with the affected clients named in the hint |
+| `groups` | `host:port` | with `--per-group`: which groups the peer accepted alone, and how it refused the others |
 | `expiry` | `host:port` | days to leaf expiry (`--expiry-warn`, `--expiry-bad`) |
 | `chain` | `host:port` | chain does not verify, or the peer sent the leaf alone |
 | `tls-version` | `host:port` | TLS 1.3 did not complete while 1.2 did |
@@ -41,6 +42,22 @@ twice.
 | `no-tls13` | WARN | TLS 1.2 is the ceiling, so post-quantum is out of reach here |
 | `unreachable` | ERROR | nothing answered |
 | `tls-broken` | ERROR | the port answered and no profile completed a handshake |
+
+## The per-group map
+
+`--per-group` adds one TLS 1.3 handshake per key exchange group — ML-KEM,
+X25519, P-256, P-384, P-521 — each offering that group and nothing else, in
+sequence. The `groups` finding reports what came back:
+
+```console
+OK    groups    accepted: X25519, P-256 · declined with an alert: X25519MLKEM768, P-384, P-521
+```
+
+It is a report, not a grade: no real client dials with a single group, so the
+map never moves the class. What it answers is *which* group a migration can be
+planned against, instead of "some hybrid handshake worked". The two refusals
+stay apart here too — `declined with an alert` is a policy, `cut off` is the
+failure this tool exists for, and on the hybrid group it is also a size signal.
 
 ## Alert versus reset
 

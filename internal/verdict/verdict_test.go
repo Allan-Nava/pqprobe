@@ -179,3 +179,69 @@ func TestEveryProfileGetsItsOwnFinding(t *testing.T) {
 		t.Fatalf("handshake findings = %d, want one per profile", handshakes)
 	}
 }
+
+// PQ-22. The group map is a report, not a grade: it says which groups the peer
+// accepted, and it must not move the class — a single-group ClientHello says
+// nothing about what a realistic client can do.
+func TestGroupMapReportsWithoutChangingTheClass(t *testing.T) {
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true),
+		ok("pq-only", "TLS 1.3", "X25519MLKEM768", true),
+		ok("group:X25519MLKEM768", "TLS 1.3", "X25519MLKEM768", true),
+		ok("group:X25519", "TLS 1.3", "X25519", false),
+		fail("group:P-384", probe.KindAlert),
+		fail("group:P-521", probe.KindReset),
+	}, opts())
+
+	if rep.Class != PQReady {
+		t.Fatalf("class = %s, want %s — the group probes must not decide the class", rep.Class, PQReady)
+	}
+
+	g := find(t, rep, "groups")
+	if !strings.Contains(g.Message, "X25519MLKEM768") || !strings.Contains(g.Message, "X25519") {
+		t.Errorf("the accepted groups have to be named: %q", g.Message)
+	}
+	if !strings.Contains(g.Message, "P-384") || !strings.Contains(g.Message, "P-521") {
+		t.Errorf("the refused groups have to be named too: %q", g.Message)
+	}
+	if g.Value == nil || *g.Value != 2 {
+		t.Errorf("value = %v, want 2 accepted groups", g.Value)
+	}
+	if g.Unit != "groups" {
+		t.Errorf("unit = %q, want groups", g.Unit)
+	}
+	// A group refused with an alert is a policy; a group whose hello vanished is
+	// the failure this whole tool exists for. One message must not blur them.
+	if !strings.Contains(g.Message, "alert") || !strings.Contains(g.Message, "cut off") {
+		t.Errorf("the two kinds of refusal must stay apart: %q", g.Message)
+	}
+}
+
+// One `groups` finding, not five handshake findings: the per-group pass would
+// otherwise treble the output of every run that used it.
+func TestGroupProbesDoNotEmitHandshakeFindings(t *testing.T) {
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		fail("group:P-521", probe.KindAlert),
+	}, opts())
+
+	for _, f := range rep.Finding {
+		if f.Check == "handshake" && strings.Contains(f.Target, "group:") {
+			t.Fatalf("a group probe got its own handshake finding: %+v", f)
+		}
+	}
+}
+
+// Without the flag there are no group results, and then there is nothing to say.
+func TestNoGroupFindingWhenNoGroupWasProbed(t *testing.T) {
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+	}, opts())
+
+	for _, f := range rep.Finding {
+		if f.Check == "groups" {
+			t.Fatalf("a groups finding with no group probes: %+v", f)
+		}
+	}
+}

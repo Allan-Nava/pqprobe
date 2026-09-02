@@ -11,8 +11,10 @@ package verdict
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/Allan-Nava/pqprobe/internal/clientprofile"
 	"github.com/Allan-Nava/pqprobe/internal/finding"
 	"github.com/Allan-Nava/pqprobe/internal/probe"
 )
@@ -104,16 +106,35 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 		opt.Now = time.Now()
 	}
 	rep := Report{Target: target, Results: results}
-	by := map[string]probe.Result{}
+
+	// The per-group pass (PQ-22) is held apart from the classification. A
+	// single-group ClientHello answers "does the peer accept this group", which
+	// is not the question the class answers — no realistic client dials that
+	// way, and grading on it would call a peer intolerant for declining P-521.
+	var client, groups []probe.Result
 	for _, r := range results {
+		if clientprofile.IsGroupProbe(r.Profile) {
+			groups = append(groups, r)
+			continue
+		}
+		client = append(client, r)
+	}
+
+	by := map[string]probe.Result{}
+	for _, r := range client {
 		by[r.Profile] = r
 	}
 
 	// Every handshake attempt is a finding of its own: the class is a summary,
 	// and a summary that cannot be traced back to the attempt behind it is not
-	// evidence.
-	for _, r := range results {
+	// evidence. The group probes are the exception — five more handshake
+	// findings per endpoint would bury the three that carry the answer, so they
+	// arrive as one map instead.
+	for _, r := range client {
 		rep.Finding = append(rep.Finding, handshakeFinding(target, r))
+	}
+	if f, ok := groupsFinding(target, groups); ok {
+		rep.Finding = append(rep.Finding, f)
 	}
 
 	classic, haveClassic := by["classic"]
@@ -123,9 +144,9 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	// No baseline, nothing reachable: say so and stop. Grading post-quantum
 	// support on an endpoint that never answered is how a monitoring system
 	// starts lying.
-	if !anyOK(results) {
+	if !anyOK(client) {
 		rep.Class = TLSBroken
-		if allKinds(results, probe.KindDNS, probe.KindRefused) {
+		if allKinds(client, probe.KindDNS, probe.KindRefused) {
 			rep.Class = Unreachable
 		}
 		rep.Finding = append(rep.Finding, finding.Finding{
@@ -206,9 +227,70 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 		}
 	}
 
-	rep.Finding = append(rep.Finding, chainFindings(target, results, opt)...)
+	rep.Finding = append(rep.Finding, chainFindings(target, client, opt)...)
 	finding.SortWorstFirst(rep.Finding)
 	return rep
+}
+
+// groupsFinding is the per-group capability map: which key exchange groups the
+// peer accepted when each was offered alone, and how it refused the others.
+//
+// The two refusals stay apart here as they do everywhere else. A group declined
+// with an alert is a policy — a pinned list, a FIPS mode, an accelerator with a
+// fixed algorithm set. A group whose hello was cut off is the failure this tool
+// exists for, and on a single-group hello it is also a size signal: the hybrid
+// one is 1.2 KB larger than the rest.
+func groupsFinding(target string, results []probe.Result) (finding.Finding, bool) {
+	if len(results) == 0 {
+		return finding.Finding{}, false
+	}
+
+	var accepted, byAlert, cutOff []string
+	for _, r := range results {
+		name := strings.TrimPrefix(r.Profile, clientprofile.GroupPrefix)
+		switch {
+		case r.OK:
+			accepted = append(accepted, name)
+		case r.Kind.Abrupt():
+			cutOff = append(cutOff, name)
+		default:
+			byAlert = append(byAlert, name)
+		}
+	}
+
+	var parts []string
+	if len(accepted) > 0 {
+		parts = append(parts, "accepted: "+strings.Join(accepted, ", "))
+	} else {
+		parts = append(parts, "no group was accepted on its own")
+	}
+	if len(byAlert) > 0 {
+		parts = append(parts, "declined with an alert: "+strings.Join(byAlert, ", "))
+	}
+	if len(cutOff) > 0 {
+		parts = append(parts, "cut off: "+strings.Join(cutOff, ", "))
+	}
+
+	status := finding.OK
+	hint := "one TLS 1.3 handshake per group, in sequence — this is what the peer accepts when a group is the only one offered, which is what a migration has to be planned against"
+	if len(accepted) == 0 {
+		status = finding.WARN
+		hint = "no single-group handshake completed: either TLS 1.3 is not reachable here (see the verdict) or the peer needs a choice of groups to negotiate at all"
+	}
+	if len(cutOff) > 0 {
+		status = finding.WARN
+		hint = "a group whose hello was cut off was not declined, it was mishandled — on the hybrid group that is the 1.2 KB ClientHello, and it is the same failure the verdict describes"
+	}
+
+	return finding.Finding{
+		Check:   "groups",
+		Target:  target,
+		Status:  status,
+		Message: strings.Join(parts, " · "),
+		Value:   finding.Num(float64(len(accepted))),
+		Unit:    "groups",
+		Hint:    hint,
+	}, true
 }
 
 // handshakeFinding states one attempt. A refused post-quantum handshake is a

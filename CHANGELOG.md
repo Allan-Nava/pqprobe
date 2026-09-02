@@ -6,6 +6,25 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.3.0] - 2026-09-02
+
+### Added
+
+- **Per-group capability map** (PQ-22) — `--per-group` dials each key exchange
+  group on its own (X25519MLKEM768, X25519, P-256, P-384, P-521, pinned to TLS
+  1.3 because that is where `key_share` lives) and reports the accepted set in
+  one `groups` finding: `accepted: X25519, P-256 · declined with an alert:
+  X25519MLKEM768, P-384, P-521`. It answers *which* group a migration can be
+  planned against instead of "some hybrid handshake worked". One handshake per
+  group, in sequence, and no request — as ever.
+
+  It is a **report, not a grade**: the single-group profiles are held out of the
+  classification, because no real client offers one group and a peer that
+  declines P-521 is not intolerant. They also emit one finding rather than five
+  handshake findings, which would have buried the three that carry the answer.
+  The alert-versus-cut-off distinction survives inside the map, where on the
+  hybrid group it is a size symptom.
+
 ## [0.2.0] - 2026-09-02
 
 ### Added
@@ -138,5 +157,6 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.3.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.1.0

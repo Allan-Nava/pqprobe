@@ -23,6 +23,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | Flag | Default | What it does |
 |---|---|---|
 | `--profile a,b` | `classic,pq-preferred,pq-only` | client profiles to dial |
+| `--per-group` | — | also dial each key exchange group on its own, and report the accepted set |
 | `--inventory FILE` | — | Ansible INI inventory to take hosts from |
 | `--group g,h` | all | restrict to these inventory groups |
 | `--list FILE` | — | flat list of targets, one per line |

@@ -83,6 +83,17 @@ pq-only       TLS 1.3 offering only hybrid ML-KEM — no classical fallback
 pins its own group list and version window, so upgrading the Go toolchain can
 never quietly change what a run proves.
 
+`--per-group` answers the next question — *which* group, not whether some hybrid
+handshake worked — with one TLS 1.3 handshake per group, in sequence:
+
+```console
+$ pqprobe probe --per-group github.com
+  OK    groups    accepted: X25519, P-256 · declined with an alert: X25519MLKEM768, P-384, P-521
+```
+
+It is a report, not a grade: no real client offers a single group, so the map
+never moves the class.
+
 **A profile is a capability class, never a fingerprint.** pqprobe builds its
 ClientHello with Go's `crypto/tls`: it cannot reproduce Chrome's extension
 order, and it never claims to. What it pins down is which key exchange groups

@@ -114,6 +114,58 @@ var All = []Profile{
 // version edges, which answer a different question and double the connections.
 var Default = []string{"classic", "pq-preferred", "pq-only"}
 
+// GroupPrefix marks a synthetic profile that offers a single key exchange
+// group. It is a prefix rather than a flag because the name travels through
+// every result, finding and JSON document, and one place has to be able to say
+// "this was a group probe, not a client".
+const GroupPrefix = "group:"
+
+// Probed is the group set the per-group pass walks: every group Go can offer,
+// hybrid first. Written out rather than derived, for the same reason a profile
+// pins its groups — a toolchain upgrade must not change what a run proves.
+var Probed = []tls.CurveID{
+	tls.X25519MLKEM768,
+	tls.X25519,
+	tls.CurveP256,
+	tls.CurveP384,
+	tls.CurveP521,
+}
+
+// GroupProbeName is the profile name for a single-group probe.
+func GroupProbeName(id tls.CurveID) string { return GroupPrefix + GroupName(id) }
+
+// IsGroupProbe reports whether a profile name came from GroupProbes. The
+// verdict uses it to keep these results out of the classification: a
+// single-group ClientHello answers "does the peer accept this group", which is
+// a different question from "can a realistic client connect".
+func IsGroupProbe(name string) bool {
+	return len(name) > len(GroupPrefix) && name[:len(GroupPrefix)] == GroupPrefix
+}
+
+// GroupProbes is one profile per group in Probed, each offering that group
+// alone.
+//
+// TLS 1.3 is pinned at both ends deliberately: post-quantum key exchange lives
+// in the 1.3 key_share extension, and a probe that fell back to 1.2 would
+// report a group as refused when the peer never had the chance to pick it.
+func GroupProbes() []Profile {
+	out := make([]Profile, 0, len(Probed))
+	for _, id := range Probed {
+		name := GroupName(id)
+		out = append(out, Profile{
+			Name:       GroupProbeName(id),
+			Summary:    "TLS 1.3 offering " + name + " and nothing else",
+			Clients:    "no real client dials like this — it is a question about " + name + ", not a client class",
+			Groups:     []tls.CurveID{id},
+			MinVersion: tls.VersionTLS13,
+			MaxVersion: tls.VersionTLS13,
+			OffersPQ:   IsPQ(id),
+			RequiresPQ: IsPQ(id),
+		})
+	}
+	return out
+}
+
 // ByName returns the named profile.
 func ByName(name string) (Profile, bool) {
 	for _, p := range All {

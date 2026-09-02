@@ -173,19 +173,20 @@ prints what to pick up.
   TLS all handshake, and none of them are covered by a web-shaped probe.
   <!-- pq: prio=low size=L labels=probe -->
 
-## M5 — Make the verdict actionable <!-- ms: target=v0.4.0 phase=later -->
+## M5 — Make the verdict actionable <!-- ms: target=v0.4.0 phase=now -->
 
 The class is the answer; these items are what an operator needs *around* it —
 which group exactly, was it a flap or a wall, what changed since yesterday, and
 how the answer reaches a pull request without a second tool.
 
-- [ ] **PQ-22 — Per-group capability map**: `pq-preferred` says a hybrid
-  handshake works; it does not say *which* hybrid group. Dial each group Go can
-  offer on its own and report the accepted set, so a migration can be planned
-  against the group the peer actually supports rather than against the one this
-  binary happened to put first. Still capability classes: one connection per
-  group, in sequence, and no claim about extension order.
-  <!-- pq: prio=high size=M labels=probe,profile -->
+- [x] **PQ-22 — Per-group capability map**: `pq-preferred` says a hybrid
+  handshake works; it does not say *which* hybrid group. `--per-group` dials
+  each group Go can offer on its own — ML-KEM, X25519, P-256, P-384, P-521,
+  pinned to TLS 1.3 — and the `groups` finding reports the accepted set with the
+  two refusals kept apart, so a migration can be planned against the group the
+  peer actually supports. The single-group profiles are held out of the verdict:
+  no real client dials that way, and grading on it would call a peer intolerant
+  for declining P-521. <!-- pq: prio=high size=M labels=probe,profile ver=0.3.0 -->
 - [ ] **PQ-23 — Confirm before condemning**: `pq-intolerant` is the finding an
   operator will take to a CDN vendor, and a single reset can also be a
   half-closed conntrack entry. Re-dial an abrupt result once before the class is
