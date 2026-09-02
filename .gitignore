@@ -1,0 +1,15 @@
+/pqprobe
+/dist/
+/cover.out
+/coverage.html
+.DS_Store
+
+# A target list is a map of somebody's infrastructure — origin addresses,
+# internal hostnames, the endpoints that are not public. Lists stay out of this
+# repository; docs/example-targets.txt is written by hand and survives the rule.
+/*.targets
+/targets.txt
+!/docs/example-targets.txt
+
+# The rendered documentation site, generated from docs/.
+/_site/

@@ -1,0 +1,9 @@
+# A flat target list: one per line, "#" and ";" are comments.
+# Written by hand for the docs — no production endpoint is listed here.
+example.com
+example.com:8443
+https://example.com/ignored/path
+
+# Dial the address, send the public name — what a CDN does, and how you probe
+# one node of a pool that is fronted by a single hostname.
+127.0.0.1=example.com

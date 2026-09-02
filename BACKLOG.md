@@ -1,0 +1,128 @@
+# Backlog — pqprobe
+
+Single source of truth for what is planned. Items keep a stable `PQ-n` id so
+commits, the CHANGELOG and issues can reference them. New ideas go here rather
+than into scattered TODO comments.
+
+[ROADMAP.md](ROADMAP.md) is a **generated** view of this file, grouped by
+milestone. Do not edit it by hand — run `scripts/backlog.sh roadmap` after
+touching this file, or CI will fail.
+
+## How to write an item
+
+```
+## M3 — Title of the milestone <!-- ms: target=v0.2.0 phase=now -->
+
+- [ ] **PQ-15 — Short name**: what it is, why it earns its place, what it
+  needs to touch. <!-- pq: prio=high size=L labels=probe,verdict -->
+```
+
+- The **id never changes**. Adding an item means taking the next free number,
+  never reusing a retired one. Moving an item to a different milestone is fine;
+  renumbering it is not.
+- `- [ ]` is open, `- [x]` is shipped, and a shipped item carries the release it
+  went out in: `ver=0.1.0`.
+- Metadata lives in a trailing `<!-- pq: ... -->` comment. Keys: `prio`
+  (`high|med|low`), `size` (`S|M|L|XL`), `labels` (comma-separated, from the
+  vocabulary below), `ver` (shipped items only).
+- Milestone metadata is a trailing `<!-- ms: ... -->` on the heading. Keys:
+  `target` (the release it aims at, or `ongoing`) and `phase`
+  (`shipped|now|next|later|ongoing`).
+- Labels: `probe`, `profile`, `verdict`, `inventory`, `output`, `cli`,
+  `delivery`, `integration`, `tests`, `docs`, `release`, `project`.
+
+`scripts/backlog.sh lint` enforces all of the above; `scripts/backlog.sh next`
+prints what to pick up.
+
+## M1 — Tell the two refusals apart <!-- ms: target=v0.1.0 phase=shipped -->
+
+- [x] **PQ-1 — Client profiles as capability classes**: `classic`,
+  `pq-preferred`, `pq-only`, `tls13-only` and `tls12`, each pinning its own
+  group list and TLS version window so an upgrade of the Go toolchain cannot
+  quietly change what a run proves. Each profile names the real clients it
+  stands for, and nothing in the code branches on that name.
+  <!-- pq: prio=high size=M labels=profile ver=0.1.0 -->
+- [x] **PQ-2 — Abrupt vs civil refusal**: the classification the whole tool
+  rests on. A TLS alert means the peer parsed the ClientHello and declined the
+  group; a reset, a timeout, an EOF or a non-TLS record means it choked on the
+  hello itself, which is the failure a CDN turns into an outage. `Kind.Abrupt()`
+  is the one predicate the verdict reads.
+  <!-- pq: prio=high size=M labels=probe ver=0.1.0 -->
+- [x] **PQ-3 — Handshake and certificate graded separately**: the dialler never
+  verifies, the chain is verified afterwards from the certificates the peer
+  sent. An expired certificate must not be reported as "this endpoint refuses
+  post-quantum clients", and a capability answer must not depend on the local
+  trust store. <!-- pq: prio=high size=S labels=probe ver=0.1.0 -->
+- [x] **PQ-4 — Verdict against a baseline**: every post-quantum conclusion is
+  conditional on the classical profile having connected. An endpoint that
+  answered nothing is `unreachable` with an ERROR finding, never
+  `pq-intolerant`. <!-- pq: prio=high size=M labels=verdict ver=0.1.0 -->
+- [x] **PQ-5 — The size-intolerant server, in a test**: a listener that serves
+  TLS normally under a ClientHello size limit and drops the connection above it,
+  reproducing the real failure offline and deterministically. Without it the
+  classifier is an opinion. <!-- pq: prio=high size=M labels=tests ver=0.1.0 -->
+- [x] **PQ-6 — Fleet input**: targets from arguments, a flat list, or an Ansible
+  INI inventory — with `ansible_host` winning over the alias and `[group:vars]`
+  never read as hosts. `1.2.3.4=origin.example` dials an address while sending a
+  server name, which is the only way to reproduce a CDN-only failure from a
+  workstation. <!-- pq: prio=high size=M labels=inventory ver=0.1.0 -->
+- [x] **PQ-7 — Three renderers**: text worst-first with the hint on its own
+  line, `--json` with every per-profile result, `--findings` as the flat array
+  the rest of the toolchain already speaks (empty array, never `null`).
+  <!-- pq: prio=high size=M labels=output ver=0.1.0 -->
+- [x] **PQ-8 — Exit 0 whenever the probe ran**: findings are output, not an
+  error. Only `--exit-on` produces exit 1; a usage error is 2. A wrapper that
+  treats a WARN as a broken check teaches everyone to ignore the check.
+  <!-- pq: prio=high size=S labels=cli ver=0.1.0 -->
+
+## M2 — Say it more precisely <!-- ms: target=v0.2.0 phase=now -->
+
+- [ ] **PQ-9 — HelloRetryRequest visibility**: a peer that answers the hybrid
+  key share with an HRR down to X25519 costs an extra round trip and is a
+  different state from one that never saw ML-KEM. Go does not expose it, so this
+  needs `tls.Config.KeyLogWriter` plumbing or a hand-parsed ServerHello.
+  <!-- pq: prio=high size=L labels=probe -->
+- [ ] **PQ-10 — Real ClientHello shapes**: profiles built with uTLS so a run can
+  claim a browser fingerprint, not only a capability class. Behind a build tag
+  and clearly separated, because the zero-dependency default is what makes the
+  binary safe to run anywhere. <!-- pq: prio=med size=XL labels=profile -->
+- [ ] **PQ-11 — ClientHello size sweep**: pad the hello in steps and report the
+  byte size at which the peer stops answering, so an intolerant middlebox can be
+  shown the number rather than argued with.
+  <!-- pq: prio=high size=M labels=probe -->
+- [ ] **PQ-12 — Multi-address endpoints**: a hostname behind several A/AAAA
+  records is several stacks. Probe each address and report the inconsistent one,
+  because one bad node out of six is exactly the shape that survives a manual
+  check. <!-- pq: prio=high size=M labels=probe,inventory -->
+- [ ] **PQ-13 — Watch mode**: re-probe on an interval and print only the
+  transitions, for the window in which a CDN or a load balancer is being
+  changed. <!-- pq: prio=low size=M labels=cli -->
+
+## M3 — Fit the toolchain <!-- ms: target=v0.3.0 phase=next -->
+
+- [ ] **PQ-14 — checkfleet module**: emit the same findings under a `pq` module
+  in [checkfleet](https://github.com/Allan-Nava/checkfleet) so a fleet already
+  described in `checkfleet.yml` gains the check without a second inventory.
+  <!-- pq: prio=high size=M labels=integration -->
+- [ ] **PQ-15 — Prometheus textfile output**: `--textfile` writing
+  `pqprobe_class{target=…}` for a node exporter, so the state is graphable
+  without a scraper of its own. <!-- pq: prio=med size=S labels=output -->
+- [ ] **PQ-16 — Release pipeline**: tag-driven archives for six platforms with
+  `SHA256SUMS`, a sigstore attestation, the `ghcr.io` image and release notes
+  lifted from the CHANGELOG section. <!-- pq: prio=high size=M labels=release -->
+- [ ] **PQ-17 — Docs site**: `docs/` published with the same POSIX-sh generator
+  the sibling tools use, with a dead-link gate in CI.
+  <!-- pq: prio=med size=M labels=docs -->
+
+## M4 — Later <!-- ms: target=ongoing phase=later -->
+
+- [ ] **PQ-18 — Beyond key exchange**: post-quantum *authentication* (ML-DSA
+  certificates) is the next migration, and the failure mode is again a size one
+  — a chain several kilobytes long. Worth a profile once there is anything to
+  probe. <!-- pq: prio=low size=L labels=profile -->
+- [ ] **PQ-19 — QUIC**: the same question over HTTP/3, where a large
+  ClientHello has to fit an initial packet and the failure is even quieter.
+  <!-- pq: prio=med size=XL labels=probe -->
+- [ ] **PQ-20 — Non-HTTPS ports**: SMTP STARTTLS, IMAP, syslog-TLS and MySQL
+  TLS all handshake, and none of them are covered by a web-shaped probe.
+  <!-- pq: prio=low size=L labels=probe -->

@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l ./cmd ./internal)
+          if [ -n "$unformatted" ]; then
+            echo "::error::these files are not gofmt'd:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - run: go vet ./...
+
+      - name: Test with coverage
+        run: |
+          go test -coverprofile=cover.out ./...
+          go tool cover -func=cover.out | tail -1
+
+      # The probe fans out over endpoints and folds the results back into one
+      # slice. That is worth the race detector on every run.
+      - name: Test with the race detector
+        run: go test -race ./...
+
+      - run: go build ./...
+
+      # No dependencies is a property worth defending: it is why the binary is
+      # static, small and auditable. A stray require would end that quietly.
+      - name: Still zero dependencies
+        run: |
+          if [ -f go.sum ] && [ -s go.sum ]; then
+            echo "::error::go.sum is non-empty — pqprobe is meant to have no dependencies"
+            cat go.sum
+            exit 1
+          fi
+          if grep -qE '^\s*(require|replace)\b' go.mod; then
+            echo "::error::go.mod declares requirements — pqprobe is meant to have no dependencies"
+            cat go.mod
+            exit 1
+          fi
+
+      # pqprobe opens TLS connections and sends nothing. An import of net/http
+      # would make it possible to send a request by accident, and os/exec has no
+      # business in a tool people point at production: both are build failures
+      # rather than review comments.
+      - name: No requests, no subprocesses
+        run: |
+          if grep -rnE '"(net/http|os/exec)"' cmd internal --include='*.go' | grep -v '_test.go'; then
+            echo "::error::pqprobe handshakes and closes; it must not speak HTTP or run programs"
+            exit 1
+          fi
+
+  backlog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint the backlog
+        run: ./scripts/backlog.sh lint
+      - name: ROADMAP.md is in sync with BACKLOG.md
+        run: ./scripts/backlog.sh check
+      - name: The roadmap generator and the linter
+        run: sh scripts/backlog_test.sh
+      - name: The issue planner
+        run: sh scripts/backlog_issues_test.sh
+
+  actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+      - run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
+      - run: actionlint .github/workflows/*.yml
+
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: govulncheck ./...
+
+  build-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: go build -trimpath -o /dev/null ./cmd/pqprobe
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image and probe a public endpoint with it
+        run: |
+          docker build -t pqprobe:test --build-arg VERSION=ci-${{ github.sha }} .
+          docker run --rm pqprobe:test probe example.com --timeout 15s
