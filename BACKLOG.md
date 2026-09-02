@@ -80,12 +80,23 @@ prints what to pick up.
 - [ ] **PQ-9 — HelloRetryRequest visibility**: a peer that answers the hybrid
   key share with an HRR down to X25519 costs an extra round trip and is a
   different state from one that never saw ML-KEM. Go does not expose it, so this
-  needs `tls.Config.KeyLogWriter` plumbing or a hand-parsed ServerHello.
-  <!-- pq: prio=high size=L labels=probe -->
+  needs `tls.Config.KeyLogWriter` plumbing or a hand-parsed ServerHello. The
+  cost of going hybrid belongs here too — the delta between the `classic` and
+  `pq-preferred` handshakes is already measured per profile, and it means
+  something only next to the round trip an HRR adds. It is not a separate item:
+  a finding that graded latency on its own would be a performance check, and
+  that is a different tool. <!-- pq: prio=high size=L labels=probe -->
 - [ ] **PQ-10 — Real ClientHello shapes**: profiles built with uTLS so a run can
   claim a browser fingerprint, not only a capability class. Behind a build tag
   and clearly separated, because the zero-dependency default is what makes the
   binary safe to run anywhere. <!-- pq: prio=med size=XL labels=profile -->
+- [ ] **PQ-34 — An ad-hoc capability class**: `--groups X25519MLKEM768,X25519`
+  to dial with exactly the set somebody is migrating to, instead of the three
+  the profiles fix and the one-at-a-time of `--per-group`. The realistic
+  question is often "what does *my* CDN offer", and today it cannot be asked.
+  Half of it exists already in the group probes; the rest is one flag, a name
+  for the synthetic profile and a refusal to accept a group Go cannot offer.
+  <!-- pq: prio=med size=S labels=cli,profile -->
 - [ ] **PQ-11 — ClientHello size sweep**: pad the hello in steps and report the
   byte size at which the peer stops answering, so an intolerant middlebox can be
   shown the number rather than argued with.
@@ -243,6 +254,13 @@ how the answer reaches a pull request without a second tool.
   renderer, so the fleet table lands in a PR comment or a job summary with the
   worst endpoint first. The same findings, a shape a review can read; no new
   checks. <!-- pq: prio=med size=M labels=delivery,output -->
+- [ ] **PQ-35 — Egress through a proxy, but only SOCKS5**: from many corporate
+  networks the only way out is a proxy, and today pqprobe reaches nothing from
+  there. SOCKS5 is a handshake on a raw socket and fits; HTTP `CONNECT` is a
+  *request*, and sending one would trade away the property that makes this
+  binary safe to point at production — so it stays out, and the flag says
+  `--socks5` rather than `--proxy` to make that explicit rather than
+  disappointing. <!-- pq: prio=med size=M labels=probe,cli -->
 - [ ] **PQ-28 — `explain <class>`**: print what a class means, which real
   clients it affects and what to do next, without a network call — the hint text
   an operator gets at 03:00, reachable before the incident and quotable in a

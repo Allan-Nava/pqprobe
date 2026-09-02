@@ -6,6 +6,19 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.8.1] - 2026-09-02
+
+### Changed
+
+- **Planned work, not shipped work**: `PQ-34` (an ad-hoc `--groups` capability
+  class) and `PQ-35` (egress through SOCKS5 only — HTTP `CONNECT` is a request
+  and stays out) are now in [BACKLOG.md](BACKLOG.md), and `PQ-9` says that the
+  cost of going hybrid belongs with the HelloRetryRequest work rather than in an
+  item of its own: a finding that graded latency alone would be a performance
+  check, which is a different tool. No behaviour changed — this section exists
+  because a commit here is a version, and the dated history of what got planned
+  is worth as much as the history of what got built.
+
 ## [0.8.0] - 2026-09-02
 
 ### Added
@@ -259,6 +272,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.8.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.8.1
 [0.8.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.8.0
 [0.7.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.7.0
 [0.6.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.6.0

@@ -6,17 +6,17 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**33 items · 21 shipped · 12 open · 5 milestones.**
+**35 items · 21 shipped · 14 open · 5 milestones.**
 
 ## At a glance
 
 | Milestone | Target | Phase | Progress | Open | Shipped |
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
-| **M2** — Say it more precisely | `v0.2.0` | **now** | `##........` 20% | 4 | 1 |
+| **M2** — Say it more precisely | `v0.2.0` | **now** | `##........` 17% | 5 | 1 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 80% | 2 | 8 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
-| **M5** — Make the verdict actionable | `v0.4.0` | **now** | `######....` 57% | 3 | 4 |
+| **M5** — Make the verdict actionable | `v0.4.0` | **now** | `#####.....` 50% | 4 | 4 |
 
 ## Next up
 
@@ -29,7 +29,7 @@ The open items with the highest priority in the milestones that are in flight.
 - **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
 - **PQ-25** — ALPN as a variable · `med` · size `S` · probe,verdict (M5, target `v0.4.0`)
 - **PQ-27** — Pull-request delivery · `med` · size `M` · delivery,output (M5, target `v0.4.0`)
-- **PQ-13** — Watch mode · `low` · size `M` · cli (M2, target `v0.2.0`)
+- **PQ-34** — An ad-hoc capability class · `med` · size `S` · cli,profile (M2, target `v0.2.0`)
 
 ## Milestones
 
@@ -50,13 +50,14 @@ Target `v0.1.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 ### M2 — Say it more precisely
 
-Target `v0.2.0` · **now** · 4 open · 1 shipped · `##........` 20%
+Target `v0.2.0` · **now** · 5 open · 1 shipped · `##........` 17%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-9** — HelloRetryRequest visibility | high | L | probe | open |
 | **PQ-11** — ClientHello size sweep | high | M | probe | open |
 | **PQ-10** — Real ClientHello shapes | med | XL | profile | open |
+| **PQ-34** — An ad-hoc capability class | med | S | cli,profile | open |
 | **PQ-13** — Watch mode | low | M | cli | open |
 | **PQ-12** — Multi-address endpoints | high | M | probe,inventory | shipped `0.7.0` |
 
@@ -89,12 +90,13 @@ Target `ongoing` · later · 3 open · 0 shipped · `..........` 0%
 
 ### M5 — Make the verdict actionable
 
-Target `v0.4.0` · **now** · 3 open · 4 shipped · `######....` 57%
+Target `v0.4.0` · **now** · 4 open · 4 shipped · `#####.....` 50%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-25** — ALPN as a variable | med | S | probe,verdict | open |
 | **PQ-27** — Pull-request delivery | med | M | delivery,output | open |
+| **PQ-35** — Egress through a proxy, but only SOCKS5 | med | M | probe,cli | open |
 | **PQ-28** — `explain <class>` | low | S | cli,docs | open |
 | **PQ-22** — Per-group capability map | high | M | probe,profile | shipped `0.3.0` |
 | **PQ-23** — Confirm before condemning | high | S | probe,verdict | shipped `0.5.0` |
@@ -105,10 +107,10 @@ Target `v0.4.0` · **now** · 3 open · 4 shipped · `######....` 57%
 
 | Label | Items | Open |
 |---|---|---|
-| `probe` | 11 | 5 |
-| `cli` | 4 | 2 |
+| `probe` | 12 | 6 |
+| `cli` | 6 | 4 |
+| `profile` | 5 | 3 |
 | `output` | 4 | 2 |
-| `profile` | 4 | 2 |
 | `delivery` | 3 | 1 |
 | `docs` | 5 | 1 |
 | `integration` | 1 | 1 |
