@@ -114,7 +114,7 @@ prints what to pick up.
   no release bot: the pipeline has as few dependencies as the binary.
   `scripts/release.sh` runs every gate, rewrites the CHANGELOG and the backlog
   ticks, tags — and never pushes.
-  <!-- pq: prio=high size=M labels=release ver=unreleased -->
+  <!-- pq: prio=high size=M labels=release ver=0.2.0 -->
 - [x] **PQ-30 — The About box as data**: the description, homepage and topics
   live in `.github/repo-meta` and go to GitHub through
   `scripts/repo-meta.sh apply`. They are the only part of the project that lives
@@ -124,19 +124,27 @@ prints what to pick up.
   homepage disagrees with the canonical URL of the published page. Fixtures
   first: the test suite is what found the word-splitting bug that would have
   sent `post quantum` to GitHub as two topics.
-  <!-- pq: prio=med size=S labels=project,delivery ver=unreleased -->
+  <!-- pq: prio=med size=S labels=project,delivery ver=0.2.0 -->
+- [x] **PQ-32 — Every commit is a version**: a commit lands with its own dated
+  CHANGELOG section and a `vX.Y.Z` tag on it, so the changelog is the dated
+  history of the tool rather than of the code. `scripts/release.sh` is how you
+  commit — gates, section, backlog ticks, roadmap, one commit, one tag — and
+  `scripts/version.sh check` is the gate that keeps it honest, strict on a tag
+  and warning-only on a branch push, because the branch and the tag are two
+  pushes and a check that is red between them gets switched off.
+  <!-- pq: prio=high size=S labels=release,project ver=0.2.0 -->
 - [x] **PQ-31 — Backlog to issues, automatically**: the existing planner runs on
   a push that touches `BACKLOG.md`, so the issues are a view of the backlog
   without anybody remembering to sync them. One direction only: ticking an item
   closes its issue, closing an issue changes nothing.
-  <!-- pq: prio=med size=S labels=project ver=unreleased -->
+  <!-- pq: prio=med size=S labels=project ver=0.2.0 -->
 - [x] **PQ-17 — Docs site**: `docs/` published to GitHub Pages as a single
   committed static page — no generator, no build step and no external request
   beyond the badges, which is the same property the binary has. A POSIX-sh
   dead-link gate (`scripts/docs.sh`) runs in CI and again before every deploy,
   because nothing builds the page and a link that stopped resolving would
   otherwise be found by a reader.
-  <!-- pq: prio=med size=M labels=docs ver=unreleased -->
+  <!-- pq: prio=med size=M labels=docs ver=0.2.0 -->
 - [x] **PQ-29 — Brand assets**: a mark that states what the tool measures — one
   client class arrives, the oversized hybrid hello is cut off before the wall —
   as `logo.svg`, `favicon.svg`, a wordmark and a 1200×630 social card, with
@@ -144,13 +152,13 @@ prints what to pick up.
   `--check` failing CI when a PNG is older than its SVG — asserted against a
   fixture, browser-free, because a gate CI cannot run is a gate that gets
   deleted. Hand-written SVG: an icon is not worth a dependency.
-  <!-- pq: prio=med size=S labels=docs,project ver=unreleased -->
+  <!-- pq: prio=med size=S labels=docs,project ver=0.2.0 -->
 - [x] **PQ-21 — Intent document**: [INTENT.md](INTENT.md) — why the tool
   exists, the goals in priority order, the non-goals as decisions rather than
   gaps, and where the boundary with `testssl.sh`, checkfleet and crowdsim runs.
   The one document a proposal is measured against before anybody writes it, and
   the only way an agent can tell "missing" apart from "deliberately absent".
-  <!-- pq: prio=high size=S labels=docs,project ver=unreleased -->
+  <!-- pq: prio=high size=S labels=docs,project ver=0.2.0 -->
 
 ## M4 — Later <!-- ms: target=ongoing phase=later -->
 

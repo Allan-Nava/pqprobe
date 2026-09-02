@@ -60,10 +60,19 @@ there is a decision, not a gap.
 - **Align everything**: a new profile, class or flag lands in the same commit as
   its README row, its `--help` text, its tests, the backlog tick and the
   CHANGELOG line.
-- **Releases**: every release is a tagged `vX.Y.Z` with a new `CHANGELOG.md`
-  section (Keep a Changelog). `minor` for new profiles, classes or flags;
-  `patch` for fixes. **Never `git push`**, tags included — that is the
-  maintainer's call. No `Co-Authored-By` trailers.
+- **Every commit is a version.** Not "releases happen when enough has piled
+  up": a commit lands with its own dated `## [X.Y.Z]` section (Keep a Changelog)
+  and an annotated `vX.Y.Z` tag on it. `scripts/release.sh <X.Y.Z> --commit` is
+  how you commit here — it runs every gate, dates the section, rewrites
+  `ver=unreleased` in the backlog, regenerates the roadmap, then makes **one**
+  commit and the tag. `minor` when a capability appears (a profile, a class, a
+  flag, an output, a delivery route); `patch` for fixes and documentation.
+  `scripts/version.sh check` is the gate that keeps it honest, and CI runs it.
+  The point is that `CHANGELOG.md` becomes the dated history of the *tool*
+  rather than of the code, and `git log` can answer "when did this behaviour
+  change?" without reading diffs.
+- **Never `git push`**, tags included — that is the maintainer's call. No
+  `Co-Authored-By` trailers.
 
 ## Pattern for adding a profile or a class
 
@@ -82,8 +91,9 @@ there is a decision, not a gap.
    *and correctly attributed*, and one that asserts a healthy endpoint stays
    quiet.
 6. `go test -race ./...`, `gofmt`, `go vet`.
-7. **Close the loop**: CHANGELOG referencing the `PQ-n`, tick the backlog with
-   `ver=X.Y.Z`, regenerate the roadmap, tag. No push.
+7. **Close the loop**: a CHANGELOG entry referencing the `PQ-n`, then
+   `scripts/release.sh <X.Y.Z> --commit` — it ticks the backlog, regenerates the
+   roadmap, commits and tags. No push.
 
 ## Known traps / technical rules
 

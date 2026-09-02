@@ -705,8 +705,9 @@ go test -race ./...
 ./scripts/repo-meta.sh lint
 sh scripts/render-assets.sh --check
 
-<span class="c-dim"># a release: every gate, the changelog section, the tag — and no push</span>
-./scripts/release.sh 0.2.0</code></pre>
+<span class="c-dim"># every commit is a version: gates, changelog section, one commit, one tag</span>
+./scripts/release.sh 0.2.0 --commit
+./scripts/version.sh check   <span class="c-dim"># HEAD is the version the changelog names</span></code></pre>
     </div>
   </div>
 </section>

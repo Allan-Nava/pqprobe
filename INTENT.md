@@ -142,6 +142,7 @@ None of these is a gap waiting to be filled. Each one is a decision.
 | **`[group:vars]` is never a list of hosts** | Otherwise a fleet run acquires an endpoint called `ansible_user`, and a page of DNS errors that looks like a real finding. |
 | **The failing test lands first** | The classifier is otherwise an opinion. The size-intolerant listener exists because the production failure had to be reproducible offline before anything could be believed about it. |
 | **`BACKLOG.md` is the source, `ROADMAP.md` is generated** | Two hand-maintained plans disagree, and the one that matters is whichever nobody opened. CI fails on a stale roadmap. |
+| **Every commit ships as a tagged version** | The CHANGELOG becomes the dated history of the tool rather than of the code, and `git log` can answer "when did this behaviour change?" without reading diffs. It also keeps each release small enough that its notes get read. `scripts/version.sh` is the gate; `scripts/release.sh` is the only way to commit. |
 | **A feature lands aligned** | A profile, class or flag ships in the same commit as its README row, its `--help` text, its tests, its backlog tick and its CHANGELOG line — or the documentation starts describing a different tool. |
 
 ## 6. Boundaries — what lives where

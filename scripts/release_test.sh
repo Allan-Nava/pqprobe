@@ -102,5 +102,64 @@ got=0; sh "$release" 1.2 >/dev/null 2>&1 || got=$?
 got=0; sh "$release" not-a-version >/dev/null 2>&1 || got=$?
 [ "$got" -eq 2 ] && ok "a non-numeric version is refused" || notok "prose exited $got, wanted 2"
 
+# The documented flow is two steps: look at the diff, then --commit. After the
+# first step there is no [Unreleased] section any more — it has become
+# [X.Y.Z] - <today> — and the second step must recognise its own work instead of
+# refusing with "nothing to release".
+printf '\nrelease.sh state:\n'
+
+state() { CHANGELOG_FILE="$1" sh "$release" "$2" --state 2>/dev/null || :; }
+
+cat > "$tmp/fresh.md" <<'MD'
+# Changelog
+
+## [Unreleased]
+
+### Added
+
+- **A thing** (PQ-1) — in flight.
+
+## [0.1.0] - 2026-08-01
+
+First.
+MD
+got=$(state "$tmp/fresh.md" 0.2.0)
+[ "$got" = "prepare" ] && ok "an Unreleased section with entries is ready to prepare" ||
+	notok "state gave \`$got\`, wanted prepare"
+
+cat > "$tmp/prepared.md" <<'MD'
+# Changelog
+
+## [0.2.0] - 2026-09-02
+
+### Added
+
+- **A thing** (PQ-1) — released.
+
+## [0.1.0] - 2026-08-01
+
+First.
+MD
+got=$(state "$tmp/prepared.md" 0.2.0)
+[ "$got" = "already-prepared" ] && ok "a CHANGELOG already dated for this version is recognised, not refused" ||
+	notok "state gave \`$got\`, wanted already-prepared"
+
+got=$(state "$tmp/prepared.md" 0.3.0)
+[ "$got" = "nothing" ] && ok "a different version with nothing pending is nothing to release" ||
+	notok "state gave \`$got\`, wanted nothing"
+
+cat > "$tmp/empty.md" <<'MD'
+# Changelog
+
+## [Unreleased]
+
+## [0.1.0] - 2026-08-01
+
+First.
+MD
+got=$(state "$tmp/empty.md" 0.2.0)
+[ "$got" = "nothing" ] && ok "an Unreleased section with no entries is nothing to release" ||
+	notok "state gave \`$got\`, wanted nothing"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

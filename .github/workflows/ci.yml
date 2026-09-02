@@ -100,6 +100,26 @@ jobs:
         run: sh scripts/release_test.sh
       - name: The newest CHANGELOG section is extractable
         run: ./scripts/release-notes.sh >/dev/null
+      - name: The version gate itself
+        run: sh scripts/version_test.sh
+
+  # Every commit ships as a tagged vX.Y.Z with its own CHANGELOG section. On a
+  # tag that is a hard requirement; on a branch push the tag is usually a second
+  # push away, so a missing one is a warning and only a *contradicting* tag
+  # fails. Needs the tags, hence fetch-depth: 0.
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: HEAD is the version the CHANGELOG names
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            ./scripts/version.sh check
+          else
+            ./scripts/version.sh check --warn
+          fi
 
   backlog:
     runs-on: ubuntu-latest

@@ -6,7 +6,7 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
-## [Unreleased]
+## [0.2.0] - 2026-09-02
 
 ### Added
 
@@ -26,6 +26,14 @@ fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
   class arriving and the oversized hybrid hello cut off before the wall.
   `scripts/render-assets.sh` rasterises the Open Graph card and the iOS icon,
   the two places SVG is not accepted.
+- **Every commit is a version** (PQ-32) — the house rule, now enforceable:
+  a commit lands with its own dated `## [X.Y.Z]` section and a `vX.Y.Z` tag on
+  it. `scripts/release.sh <X.Y.Z> --commit` is how you commit — it expects the
+  dirty tree in front of you, runs every gate, dates the section, ticks the
+  backlog, regenerates the roadmap and makes one commit plus an annotated tag.
+  `scripts/version.sh check` is the gate: strict on a tag, warning-only on a
+  branch push, because the branch and the tag are two pushes and a check that is
+  red between them is a check people switch off.
 - **Release pipeline** (PQ-16) — a tag is the only trigger: archives for six
   platforms, one `SHA256SUMS`, a provenance attestation, the multi-arch
   `ghcr.io/allan-nava/pqprobe` image smoke-tested after it is pushed, and
@@ -130,4 +138,5 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.2.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.1.0
