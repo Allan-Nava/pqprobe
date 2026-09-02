@@ -467,3 +467,69 @@ func TestConfirmCanBeTurnedOff(t *testing.T) {
 		t.Errorf("attempts = %d, want 1", res.Attempts)
 	}
 }
+
+// PQ-26. A mutual-TLS origin is not a peer that refuses post-quantum clients.
+// On TLS 1.3 its rejection arrives *after* the client's Finished, so the
+// handshake completes and the key exchange answer is sound — but a report that
+// said nothing would let somebody read "pq-ready" as "usable". The peer's
+// CertificateRequest is recorded instead.
+func TestMutualTLSIsRecordedNotMistakenForARefusal(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := serveTLS(t, &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS13,
+		ClientAuth:   tls.RequireAnyClientCert,
+	})
+
+	p, _ := clientprofile.ByName("pq-only")
+	d := Dialer{Timeout: 5 * time.Second}
+	res := d.Do(context.Background(), tg, p)
+
+	if !res.OK {
+		t.Fatalf("on TLS 1.3 the handshake completes before the peer can object: %s (%s)", res.Err, res.Kind)
+	}
+	if !res.ClientCertRequested {
+		t.Error("the peer sent a CertificateRequest and the result has to say so")
+	}
+	if res.Group != "X25519MLKEM768" {
+		t.Errorf("group = %q — the key exchange still happened and is still the answer", res.Group)
+	}
+}
+
+// An endpoint that asks for nothing must not grow a mutual-TLS note.
+func TestNoCertificateRequestIsNotRecorded(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := serveTLS(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13})
+
+	p, _ := clientprofile.ByName("pq-preferred")
+	res := Dialer{Timeout: 5 * time.Second}.Do(context.Background(), tg, p)
+	if res.ClientCertRequested {
+		t.Error("nothing asked for a client certificate")
+	}
+}
+
+// TLS 1.2 is where it actually bites: client auth happens inside the handshake,
+// so the peer's alert is indistinguishable from "no mutually supported group" by
+// its error string alone. The recorded request is what tells them apart.
+func TestMutualTLSOnTLS12IsDistinguishableFromAGroupRefusal(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := serveTLS(t, &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS12,
+		MaxVersion:   tls.VersionTLS12,
+		ClientAuth:   tls.RequireAnyClientCert,
+	})
+
+	p, _ := clientprofile.ByName("tls12")
+	res := Dialer{Timeout: 5 * time.Second}.Do(context.Background(), tg, p)
+
+	if res.OK {
+		t.Fatal("the peer wanted a certificate pqprobe does not have")
+	}
+	if res.Kind.Abrupt() {
+		t.Errorf("this is a civil refusal: kind = %s", res.Kind)
+	}
+	if !res.ClientCertRequested {
+		t.Error("without this the failure is indistinguishable from a group refusal, which is the whole point")
+	}
+}

@@ -47,6 +47,11 @@ const (
 	NoTLS13 Class = "no-tls13"
 	// Unreachable: nothing answered. No TLS conclusion is available.
 	Unreachable Class = "unreachable"
+	// MTLSRequired: the peer asked for a client certificate and no handshake
+	// survived it. pqprobe has no certificate to offer and never will, so
+	// nothing about post-quantum capability can be concluded — the endpoint
+	// refused the prober, not post-quantum clients.
+	MTLSRequired Class = "mtls-required"
 	// TLSBroken: something answered and no profile completed a handshake.
 	TLSBroken Class = "tls-broken"
 )
@@ -93,6 +98,8 @@ func Describe(c Class) string {
 		return "TLS 1.2 is the ceiling, so post-quantum key exchange is not reachable here"
 	case Unreachable:
 		return "nothing answered; no TLS conclusion available"
+	case MTLSRequired:
+		return "the peer requires a client certificate, so no capability conclusion is available"
 	case TLSBroken:
 		return "the port answered but no client profile completed a handshake"
 	}
@@ -136,6 +143,9 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	if f, ok := groupsFinding(target, groups); ok {
 		rep.Finding = append(rep.Finding, f)
 	}
+	if f, ok := clientAuthFinding(target, client); ok {
+		rep.Finding = append(rep.Finding, f)
+	}
 
 	classic, haveClassic := by["classic"]
 	pref, havePref := by["pq-preferred"]
@@ -146,15 +156,26 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	// starts lying.
 	if !anyOK(client) {
 		rep.Class = TLSBroken
+		if anyClientCertRequested(client) {
+			// The peer asked for something pqprobe does not have. Grading
+			// post-quantum support on that would be a fabrication.
+			rep.Class = MTLSRequired
+		}
 		if allKinds(client, probe.KindDNS, probe.KindRefused) {
 			rep.Class = Unreachable
+		}
+		hint := "fix reachability first — no statement about post-quantum readiness can be made from a probe that never completed a handshake"
+		if rep.Class == MTLSRequired {
+			// A different failure and a different next step: the endpoint is
+			// working, it just will not talk to a client without a certificate.
+			hint = "the peer requested a client certificate and pqprobe has none — it holds no key material by design. Probe this leg from somewhere that has a certificate, or probe the front door instead; nothing here says anything about post-quantum support"
 		}
 		rep.Finding = append(rep.Finding, finding.Finding{
 			Check:   "verdict",
 			Target:  target,
 			Status:  finding.ERROR,
 			Message: Describe(rep.Class),
-			Hint:    "fix reachability first — no statement about post-quantum readiness can be made from a probe that never completed a handshake",
+			Hint:    hint,
 		})
 		finding.SortWorstFirst(rep.Finding)
 		return rep
@@ -237,6 +258,46 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	rep.Finding = append(rep.Finding, chainFindings(target, client, opt)...)
 	finding.SortWorstFirst(rep.Finding)
 	return rep
+}
+
+// anyClientCertRequested reports whether the peer asked for a client
+// certificate on any attempt.
+func anyClientCertRequested(rs []probe.Result) bool {
+	for _, r := range rs {
+		if r.ClientCertRequested {
+			return true
+		}
+	}
+	return false
+}
+
+// clientAuthFinding says the endpoint is mutual TLS (PQ-26).
+//
+// It is a fact rather than a problem, so it is an OK finding when the
+// handshakes completed: the key exchange is what pqprobe grades, and it
+// happened. What it prevents is somebody reading "pq-ready" as "usable", since
+// a client without a certificate is rejected right after the handshake that
+// pqprobe just called successful — on TLS 1.3 the objection arrives after the
+// client is finished, and pqprobe never reads.
+func clientAuthFinding(target string, results []probe.Result) (finding.Finding, bool) {
+	if !anyClientCertRequested(results) {
+		return finding.Finding{}, false
+	}
+
+	completed := anyOK(results)
+	f := finding.Finding{
+		Check:   "client-auth",
+		Target:  target,
+		Status:  finding.OK,
+		Message: "mutual TLS: the peer requested a client certificate",
+		Hint:    "the key exchange is what pqprobe grades and it completed, so the class stands. A client with no certificate is still rejected immediately after this handshake — on TLS 1.3 that objection arrives after the client is finished, which is why nothing failed here",
+	}
+	if !completed {
+		f.Status = finding.WARN
+		f.Message = "mutual TLS: the peer requested a client certificate and no handshake survived it"
+		f.Hint = "pqprobe holds no key material and never will, so this endpoint cannot be graded from outside: probe it from somewhere with a client certificate, or probe the front door instead of the mutual-TLS leg"
+	}
+	return f, true
 }
 
 // groupsFinding is the per-group capability map: which key exchange groups the

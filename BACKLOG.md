@@ -218,11 +218,17 @@ how the answer reaches a pull request without a second tool.
   hello bare and drops it with ALPN is size-intolerant with a threshold in
   between, and today that reads as a flap.
   <!-- pq: prio=med size=S labels=probe,verdict -->
-- [ ] **PQ-26 — mTLS is not a refusal**: an endpoint that asks for a client
-  certificate fails the handshake *after* the key exchange it was being asked
-  about. Detect the client-auth stage and say so — `pq-ready, client
-  certificate required` — instead of grading a mutual-TLS origin as a peer that
-  refuses post-quantum clients. <!-- pq: prio=high size=M labels=probe,verdict -->
+- [x] **PQ-26 — mTLS is not a refusal**: the peer's `CertificateRequest` is
+  recorded during the handshake, through `GetClientCertificate` — the only
+  reliable signal, since on TLS 1.2 the alert that follows is indistinguishable
+  from "no mutually supported group" by its text. The premise needed correcting:
+  on **TLS 1.3** the handshake does not fail at all, because the objection
+  arrives after the client is finished and pqprobe never reads, so the class was
+  never wrong there — what was missing was the note that keeps `pq-ready` from
+  being read as "usable". Where a certificate request does break every profile
+  the class is `mtls-required` with an ERROR: the endpoint refused the prober,
+  not post-quantum clients, and pqprobe holds no key material by design.
+  <!-- pq: prio=high size=M labels=probe,verdict ver=0.6.0 -->
 - [ ] **PQ-27 — Pull-request delivery**: an `action.yml` and a `--markdown`
   renderer, so the fleet table lands in a PR comment or a job summary with the
   worst endpoint first. The same findings, a shape a review can read; no new

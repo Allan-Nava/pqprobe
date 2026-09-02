@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**33 items · 18 shipped · 15 open · 5 milestones.**
+**33 items · 19 shipped · 14 open · 5 milestones.**
 
 ## At a glance
 
@@ -16,7 +16,7 @@
 | **M2** — Say it more precisely | `v0.2.0` | **now** | `..........` 0% | 5 | 0 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 80% | 2 | 8 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
-| **M5** — Make the verdict actionable | `v0.4.0` | **now** | `###.......` 29% | 5 | 2 |
+| **M5** — Make the verdict actionable | `v0.4.0` | **now** | `####......` 43% | 4 | 3 |
 
 ## Next up
 
@@ -27,9 +27,9 @@ The open items with the highest priority in the milestones that are in flight.
 - **PQ-12** — Multi-address endpoints · `high` · size `M` · probe,inventory (M2, target `v0.2.0`)
 - **PQ-14** — checkfleet module · `high` · size `M` · integration (M3, target `v0.3.0`)
 - **PQ-24** — Baseline diff · `high` · size `M` · output,cli (M5, target `v0.4.0`)
-- **PQ-26** — mTLS is not a refusal · `high` · size `M` · probe,verdict (M5, target `v0.4.0`)
 - **PQ-10** — Real ClientHello shapes · `med` · size `XL` · profile (M2, target `v0.2.0`)
 - **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
+- **PQ-25** — ALPN as a variable · `med` · size `S` · probe,verdict (M5, target `v0.4.0`)
 
 ## Milestones
 
@@ -89,31 +89,31 @@ Target `ongoing` · later · 3 open · 0 shipped · `..........` 0%
 
 ### M5 — Make the verdict actionable
 
-Target `v0.4.0` · **now** · 5 open · 2 shipped · `###.......` 29%
+Target `v0.4.0` · **now** · 4 open · 3 shipped · `####......` 43%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-24** — Baseline diff | high | M | output,cli | open |
-| **PQ-26** — mTLS is not a refusal | high | M | probe,verdict | open |
 | **PQ-25** — ALPN as a variable | med | S | probe,verdict | open |
 | **PQ-27** — Pull-request delivery | med | M | delivery,output | open |
 | **PQ-28** — `explain <class>` | low | S | cli,docs | open |
 | **PQ-22** — Per-group capability map | high | M | probe,profile | shipped `0.3.0` |
 | **PQ-23** — Confirm before condemning | high | S | probe,verdict | shipped `0.5.0` |
+| **PQ-26** — mTLS is not a refusal | high | M | probe,verdict | shipped `0.6.0` |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `probe` | 11 | 7 |
+| `probe` | 11 | 6 |
 | `cli` | 4 | 3 |
 | `output` | 4 | 3 |
 | `profile` | 4 | 2 |
-| `verdict` | 4 | 2 |
 | `delivery` | 3 | 1 |
 | `docs` | 5 | 1 |
 | `integration` | 1 | 1 |
 | `inventory` | 2 | 1 |
+| `verdict` | 4 | 1 |
 | `project` | 5 | 0 |
 | `release` | 2 | 0 |
 | `tests` | 1 | 0 |

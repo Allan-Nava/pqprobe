@@ -327,3 +327,62 @@ func TestASingleAttemptSaysNothingAboutAttempts(t *testing.T) {
 		}
 	}
 }
+
+// PQ-26. Mutual TLS does not change what the key exchange proved, so the class
+// stands — and the report says the peer asked, because "pq-ready" alone would
+// be read as "usable".
+func TestMutualTLSIsANoteNotAGrade(t *testing.T) {
+	mark := func(r probe.Result) probe.Result { r.ClientCertRequested = true; return r }
+	rep := Evaluate("h:443", []probe.Result{
+		mark(ok("classic", "TLS 1.3", "X25519", false)),
+		mark(ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true)),
+		mark(ok("pq-only", "TLS 1.3", "X25519MLKEM768", true)),
+	}, opts())
+
+	if rep.Class != PQReady {
+		t.Fatalf("class = %s, want %s: the key exchange completed", rep.Class, PQReady)
+	}
+	f := find(t, rep, "client-auth")
+	if f.Status != finding.OK {
+		t.Errorf("status = %s: a deliberate mutual-TLS origin is a fact, not a problem", f.Status)
+	}
+	if !strings.Contains(f.Message, "client certificate") {
+		t.Errorf("message = %q", f.Message)
+	}
+}
+
+// When the certificate request is what broke every handshake, the endpoint has
+// not refused post-quantum clients — it has refused *pqprobe*, and saying
+// anything about capability would be a fabrication.
+func TestNothingIsGradedWhenTheClientCertificateIsWhatFailed(t *testing.T) {
+	mark := func(r probe.Result) probe.Result { r.ClientCertRequested = true; return r }
+	rep := Evaluate("h:443", []probe.Result{
+		mark(fail("classic", probe.KindAlert)),
+		mark(fail("pq-preferred", probe.KindAlert)),
+		mark(fail("pq-only", probe.KindAlert)),
+	}, opts())
+
+	if rep.Class != MTLSRequired {
+		t.Fatalf("class = %s, want %s", rep.Class, MTLSRequired)
+	}
+	v := find(t, rep, "verdict")
+	if v.Status != finding.ERROR {
+		t.Errorf("status = %s, want ERROR — this is not a grade", v.Status)
+	}
+	if !strings.Contains(v.Hint, "certificate") {
+		t.Errorf("the hint has to name what to do: %q", v.Hint)
+	}
+}
+
+// A plain alert with no certificate request is still tls-broken: the new class
+// must not swallow the old one.
+func TestAlertsWithoutACertificateRequestStayTLSBroken(t *testing.T) {
+	rep := Evaluate("h:443", []probe.Result{
+		fail("classic", probe.KindAlert),
+		fail("pq-preferred", probe.KindAlert),
+	}, opts())
+
+	if rep.Class != TLSBroken {
+		t.Fatalf("class = %s, want %s", rep.Class, TLSBroken)
+	}
+}

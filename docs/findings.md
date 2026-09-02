@@ -24,6 +24,7 @@ not an endpoint that passed, and an operator has to see it first.
 | `groups` | `host:port` | with `--per-group`: which groups the peer accepted alone, and how it refused the others |
 | `expiry` | `host:port` | days to leaf expiry (`--expiry-warn`, `--expiry-bad`) |
 | `chain` | `host:port` | chain does not verify, or the peer sent the leaf alone |
+| `client-auth` | `host:port` | the peer requested a client certificate: this endpoint is mutual TLS |
 | `tls-version` | `host:port` | TLS 1.3 did not complete while 1.2 did |
 
 A failed handshake is a `WARN` on its own, never a `BAD`: whether it matters is
@@ -40,6 +41,7 @@ twice.
 | `pq-refusing` | BAD | capable clients are refused **with an alert** while classical ones connect |
 | `pq-intolerant` | BAD | capable clients are **cut off** while classical ones connect |
 | `no-tls13` | WARN | TLS 1.2 is the ceiling, so post-quantum is out of reach here |
+| `mtls-required` | ERROR | the peer wants a client certificate and no handshake survived it — not a grade |
 | `unreachable` | ERROR | nothing answered |
 | `tls-broken` | ERROR | the port answered and no profile completed a handshake |
 
@@ -74,6 +76,22 @@ An alert is never re-dialled: it is an answer the peer chose to give.
 
 A flap never becomes a `BAD` class: the endpoint connected, so it is graded on
 that, and the instability is reported next to it. `--confirm=false` dials once.
+
+## Mutual TLS
+
+An endpoint that asks for a client certificate has not refused post-quantum
+clients — it has refused *pqprobe*, which holds no key material by design.
+
+On **TLS 1.3** it does not even fail: the peer's objection arrives after the
+client's Finished, and pqprobe never reads, so the handshake completes and the
+key exchange answer is sound. The `client-auth` finding is there so nobody reads
+`pq-ready` as "usable".
+
+On **TLS 1.2** client auth happens inside the handshake, and the alert that
+comes back is indistinguishable from "no mutually supported group" by its text
+alone. The peer's `CertificateRequest` is recorded during the handshake — that
+is what tells the two apart, and when it broke every profile the class is
+`mtls-required` with an ERROR rather than a capability verdict.
 
 ## Alert versus reset
 

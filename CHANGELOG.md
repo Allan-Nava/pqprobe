@@ -6,6 +6,27 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.6.0] - 2026-09-02
+
+### Added
+
+- **Mutual TLS is told apart from a refusal** (PQ-26) — the peer's
+  `CertificateRequest` is recorded during the handshake (via
+  `GetClientCertificate`, which changes nothing about it and still holds no key
+  material), and reported as a `client-auth` finding. A new `mtls-required`
+  class covers the case where the certificate request is what broke every
+  profile: the endpoint refused *pqprobe*, not post-quantum clients, so it gets
+  an ERROR and no capability verdict.
+
+  The item's premise turned out to be wrong, and the tests are what showed it:
+  on **TLS 1.3** a mutual-TLS origin does not fail at all — the objection
+  arrives after the client's Finished and pqprobe never reads — so the class was
+  never mistaken there. What was missing was the note that keeps `pq-ready` from
+  being read as "usable". On **TLS 1.2**, where client auth happens inside the
+  handshake, the alert is indistinguishable from "no mutually supported group"
+  by its text alone, and the recorded request is the only thing that tells them
+  apart.
+
 ## [0.5.0] - 2026-09-02
 
 ### Added
@@ -198,6 +219,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.6.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.6.0
 [0.5.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.4.0
 [0.3.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.3.0

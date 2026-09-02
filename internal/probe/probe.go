@@ -133,6 +133,14 @@ type Result struct {
 	// connected. The endpoint works and is unstable, which is a third state and
 	// must not render as either of the other two.
 	Flapped bool `json:"flapped,omitempty"`
+	// ClientCertRequested is true when the peer sent a CertificateRequest: this
+	// endpoint is mutual TLS. On TLS 1.3 that does not stop the handshake —
+	// the peer's objection arrives after the client is finished, and pqprobe
+	// never reads — so the key exchange answer stands and this is the note that
+	// keeps "pq-ready" from being read as "usable". On TLS 1.2 client auth
+	// happens inside the handshake, and then this is the only thing that tells
+	// the failure apart from "no mutually supported group".
+	ClientCertRequested bool `json:"client_cert_requested,omitempty"`
 	// PeerChainLen is how many certificates the peer sent. One means the peer
 	// sent the leaf alone: browsers with a cached intermediate will be fine and
 	// a fresh client will not, which is the most confusing class of bug there
@@ -223,8 +231,24 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 	}
 	defer raw.Close()
 
-	conn := tls.Client(raw, p.TLSConfig(t.ServerName(), d.ALPN))
+	cfg := p.TLSConfig(t.ServerName(), d.ALPN)
+
+	// GetClientCertificate is called exactly when the peer sends a
+	// CertificateRequest, which is the only reliable way to know an endpoint is
+	// mutual TLS: the alert a TLS 1.2 server sends afterwards is
+	// indistinguishable from "no mutually supported group" by its text, and on
+	// TLS 1.3 there is no error at all. Returning an empty certificate is what
+	// Go's own default does, so recording this changes nothing about the
+	// handshake — and pqprobe still holds no key material of any kind.
+	requested := false
+	cfg.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+		requested = true
+		return &tls.Certificate{}, nil
+	}
+
+	conn := tls.Client(raw, cfg)
 	err = conn.HandshakeContext(ctx)
+	res.ClientCertRequested = requested
 	res.Elapsed = time.Since(start)
 	if err != nil {
 		res.Kind, res.Err = classify(err)
