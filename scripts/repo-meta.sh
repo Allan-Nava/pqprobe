@@ -3,8 +3,9 @@
 #
 #   scripts/repo-meta.sh lint     validate .github/repo-meta (no network)
 #   scripts/repo-meta.sh show     print what would be applied
+#   scripts/repo-meta.sh plan     print the commands apply would run
 #   scripts/repo-meta.sh check    compare with what GitHub currently has (gh)
-#   scripts/repo-meta.sh apply    write it to GitHub (gh repo edit)
+#   scripts/repo-meta.sh apply    write it to GitHub
 #
 # The description, the homepage and the topics are the only part of this project
 # that lives outside git by default, which is how they end up eighteen months
@@ -18,6 +19,12 @@
 # `apply` changes something people see outside this repository, so it is a
 # maintainer action like a push: nothing runs it on your behalf except the Repo
 # metadata workflow, which a maintainer starts by hand.
+#
+# The topics are **set**, not added: `gh repo edit --add-topic` can only add, so
+# a topic dropped from the file would stay on GitHub, `check` would report drift
+# for ever, and the workflow that applies this file would fail on every push
+# with no way to make it pass. `PUT /repos/{owner}/{repo}/topics` replaces the
+# list, which is what converging means.
 #
 # POSIX sh and awk only — this repository has no dependencies, and neither does
 # its tooling. REPO_META, DOCS_HTML and REPO override the data file, the
@@ -149,33 +156,53 @@ check() {
 	return 1
 }
 
+# The commands apply would run, one per line. `plan` prints them and touches
+# nothing — the same separation `backlog.sh issues` keeps, and the only way to
+# assert the topic list is set rather than appended without a network call.
+plan_cmds() {
+	repo=$(repo_arg)
+	printf 'gh repo edit %s --description %s --homepage %s\n' \
+		"$repo" "'$description'" "'$homepage'"
+	printf 'gh api -X PUT repos/%s/topics' "$repo"
+	oldifs=$IFS; IFS='
+'
+	for t in $topics; do
+		[ -n "$t" ] && printf ' -f names[]=%s' "$t"
+	done
+	IFS=$oldifs
+	printf '\n'
+}
+
 apply() {
 	need_gh
 	lint >/dev/null
 	repo=$(repo_arg)
-	set -- gh repo edit "$repo" --description "$description" --homepage "$homepage"
-	# Line by line, for the same reason lint checks it that way.
+
+	gh repo edit "$repo" --description "$description" --homepage "$homepage" >/dev/null
+
+	# One -f names[]= per topic, built line by line so a topic containing a space
+	# cannot become two.
+	set -- gh api -X PUT "repos/$repo/topics"
 	oldifs=$IFS; IFS='
 '
 	for t in $topics; do
-		[ -n "$t" ] && set -- "$@" --add-topic "$t"
+		[ -n "$t" ] && set -- "$@" -f "names[]=$t"
 	done
 	IFS=$oldifs
 	"$@" >/dev/null
+
 	printf 'applied to %s:\n\n' "$repo"
 	show
-	echo ""
-	echo "note: --add-topic only adds. A topic dropped from .github/repo-meta stays"
-	echo "      on GitHub until it is removed there — \`repo-meta.sh check\` says so."
 }
 
 case "$mode" in
 lint)  lint ;;
 show)  show ;;
+plan)  plan_cmds ;;
 check) check ;;
 apply) apply ;;
 *)
-	echo "usage: scripts/repo-meta.sh [lint|show|check|apply]" >&2
+	echo "usage: scripts/repo-meta.sh [lint|show|plan|check|apply]" >&2
 	exit 2
 	;;
 esac

@@ -17,14 +17,23 @@
 # Not checked: external URLs. A gate that fails the build because somebody
 # else's site is down is a gate people disable.
 #
+# The lists are read line by line, from a file rather than through a pipe: a
+# path with a space in it (`docs/release notes.md` is one commit away) would
+# otherwise be split into two links, and the gate would fail CI over a file that
+# is right there — while a pipe would put the counters in a subshell, where the
+# findings go to die.
+#
 # POSIX sh and awk only — this repository has no dependencies, and neither does
-# its tooling. DOCS_ROOT overrides the tree, so the gate can be tested against
-# a fixture rather than against this repository.
+# its tooling. DOCS_ROOT overrides the tree, so the gate can be tested against a
+# fixture rather than against this repository.
 
 set -eu
 
 root="${DOCS_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
 mode="${1:-check}"
+
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/pqprobe-docs.XXXXXX")
+trap 'rm -rf "$tmp"' EXIT INT HUP TERM
 
 bad=0
 n=0
@@ -39,35 +48,34 @@ report() { # report <file> <link> <why>
 # ---------------------------------------------------------------------------
 html="$root/docs/index.html"
 if [ -f "$html" ]; then
-	ids=$(awk '{ while (match($0, /id="[^"]+"/)) {
+	awk '{ while (match($0, /id="[^"]+"/)) {
 			print substr($0, RSTART + 4, RLENGTH - 5)
-			$0 = substr($0, RSTART + RLENGTH) } }' "$html" | sort -u)
+			$0 = substr($0, RSTART + RLENGTH) } }' "$html" | sort -u > "$tmp/ids"
 
-	refs=$(awk '{ while (match($0, /(href|src)="[^"]*"/)) {
+	awk '{ while (match($0, /(href|src)="[^"]*"/)) {
 			r = substr($0, RSTART, RLENGTH)
 			sub(/^(href|src)="/, "", r); sub(/"$/, "", r)
 			if (r != "") print r
-			$0 = substr($0, RSTART + RLENGTH) } }' "$html" | sort -u)
+			$0 = substr($0, RSTART + RLENGTH) } }' "$html" | sort -u > "$tmp/refs"
 
-	for ref in $refs; do
+	while IFS= read -r ref; do
+		[ -n "$ref" ] || continue
 		case "$ref" in
 		http://*|https://*|mailto:*|data:*) continue ;;
 		'#'*)
 			n=$((n + 1))
-			id=${ref#\#}
-			printf '%s\n' "$ids" | grep -qx -- "$id" ||
+			grep -qx -- "${ref#\#}" "$tmp/ids" ||
 				report "docs/index.html" "$ref" "no element carries that id"
-			[ "$mode" = links ] && printf '  docs/index.html  %s\n' "$ref"
 			;;
 		*)
 			n=$((n + 1))
 			path=${ref%%#*}
 			[ -e "$root/docs/$path" ] ||
 				report "docs/index.html" "$ref" "docs/$path does not exist"
-			[ "$mode" = links ] && printf '  docs/index.html  %s\n' "$ref"
 			;;
 		esac
-	done
+		[ "$mode" = links ] && printf '  %-16s %s\n' "docs/index.html" "$ref"
+	done < "$tmp/refs"
 fi
 
 # ---------------------------------------------------------------------------
@@ -78,22 +86,22 @@ for md in "$root"/*.md "$root"/docs/*.md; do
 	rel=${md#"$root"/}
 	dir=$(dirname -- "$md")
 
-	# One link per line, so a path with no spaces survives the shell loop.
-	links=$(awk '{ while (match($0, /\]\([^)]+\)/)) {
+	awk '{ while (match($0, /\]\([^)]+\)/)) {
 			l = substr($0, RSTART + 2, RLENGTH - 3)
 			if (l != "") print l
-			$0 = substr($0, RSTART + RLENGTH) } }' "$md" | sort -u)
+			$0 = substr($0, RSTART + RLENGTH) } }' "$md" | sort -u > "$tmp/links"
 
-	for l in $links; do
+	while IFS= read -r l; do
+		[ -n "$l" ] || continue
 		case "$l" in
 		http://*|https://*|mailto:*|'#'*) continue ;;
 		esac
 		n=$((n + 1))
 		path=${l%%#*}
-		[ -z "$path" ] && continue
+		[ -n "$path" ] || continue
 		[ -e "$dir/$path" ] || report "$rel" "$l" "$path does not exist"
 		[ "$mode" = links ] && printf '  %-16s %s\n' "$rel" "$l"
-	done
+	done < "$tmp/links"
 done
 
 if [ "$bad" -gt 0 ]; then

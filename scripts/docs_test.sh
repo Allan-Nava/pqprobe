@@ -73,5 +73,17 @@ fixture "$tmp/ext"
 printf '[down right now](https://example.invalid/nope)\n' >> "$tmp/ext/README.md"
 expect 0 "an external URL is never checked" "$tmp/ext"
 
+# A space in a path is not exotic — `docs/release notes.md` is one commit away —
+# and word splitting turns one live link into two dead ones, which fails CI over
+# a file that is right there.
+fixture "$tmp/space"
+printf 'x' > "$tmp/space/docs/release notes.md"
+printf '[the notes](docs/release notes.md)\n' >> "$tmp/space/README.md"
+expect 0 "a link whose path contains a space is one link, and it resolves" "$tmp/space"
+
+fixture "$tmp/spacegone"
+printf '[the notes](docs/release notes.md)\n' >> "$tmp/spacegone/README.md"
+expect 1 "a missing path containing a space still fails" "$tmp/spacegone"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

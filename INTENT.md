@@ -113,10 +113,10 @@ None of these is a gap waiting to be filled. Each one is a decision.
   `net/http` or `os/exec`. A zero-dependency static binary is what makes it
   reasonable to run this inside somebody else's production network on somebody
   else's say-so.
-- **Not a monitoring system.** No time series, no dashboard, no alert routing,
-  no state between runs beyond what a `--baseline` file is handed. It emits
-  findings; Prometheus, checkfleet and whatever already pages get to keep their
-  jobs.
+- **Not a monitoring system.** No time series, no dashboard, no alert routing
+  and, today, no state between runs at all — comparing a run against a stored
+  one is planned (`PQ-24`) and does not exist yet. It emits findings;
+  Prometheus, checkfleet and whatever already pages get to keep their jobs.
 - **No real hostnames, anywhere.** No production endpoint is named in a test, a
   fixture or a commit message. Test conditions are planted in a local listener —
   a restricted group list, a version ceiling, a ClientHello size limit — which

@@ -56,6 +56,24 @@ fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
   label bootstrap alike; a label with no colour or description is a hard error;
   and `backlog_issues_test.sh` compares the two lists so they cannot drift
   again.
+- **`repo-meta.sh apply` could not remove a topic** (PQ-30) — it used
+  `gh repo edit --add-topic`, which only ever adds, so a topic dropped from
+  `.github/repo-meta` stayed on GitHub: `check` would report drift for ever and,
+  with a token in CI, the workflow would fail on every push with no way to make
+  it pass. The topics are now **set** through `PUT /repos/{owner}/{repo}/topics`,
+  and a new `plan` mode prints the commands `apply` would run so the whole-list
+  behaviour is assertable without a network call.
+- **The dispatch input reached the shell through `${{ }}`** (PQ-31) — the
+  milestone filter of the Backlog issues workflow was interpolated straight into
+  a `run:` block. It now travels in the environment and is validated (`M` and
+  digits, comma-separated) before it is used as an argument. Only a maintainer
+  can dispatch that workflow, but it holds a token that can write issues, and
+  that is not a reason to paste a string into a command line.
+- **The dead-link gate split a path containing a space into two links** (PQ-17)
+  — `docs/release notes.md` would have been reported as two dead links, failing
+  CI over a file that was right there. The link lists are now read line by line
+  from a file rather than through a pipe, so the counters stay in the shell that
+  reports them.
 - **The Repo metadata workflow failed for a state it could not change** (PQ-30)
   — the default `GITHUB_TOKEN` cannot edit repository metadata
   (`administration` is not a grantable workflow permission), so a drift check on

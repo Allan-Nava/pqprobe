@@ -10,6 +10,13 @@ name: Backlog issues
 #
 # It runs only when the backlog or its tooling changes, because nothing else can
 # alter the plan, and on demand so the first run can be done deliberately.
+#
+# The dispatch input reaches the shell through the environment, never through
+# `${{ }}` inside a `run:` block. Only somebody who can already dispatch a
+# workflow can set it, but this job holds a token that can write issues, and
+# "the person who could abuse it is trusted" is not a reason to paste a string
+# straight into a command line. It is also validated before use: a milestone
+# filter is `M` and digits, comma-separated, and nothing else.
 
 on:
   push:
@@ -54,10 +61,21 @@ jobs:
       - name: Plan
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MILESTONES: ${{ inputs.milestones }}
         run: |
-          ./scripts/backlog.sh issues \
-            ${{ github.event.inputs.milestones && format('--milestones {0}', github.event.inputs.milestones) || '' }} \
-            | tee "$RUNNER_TEMP/plan.txt"
+          if [ -n "${MILESTONES:-}" ]; then
+            case "$MILESTONES" in
+              M[0-9]*) ;;
+              *) echo "::error::milestones must look like M2 or M2,M5"; exit 1 ;;
+            esac
+            case "$MILESTONES" in
+              *[!M0-9,]*) echo "::error::milestones must look like M2 or M2,M5"; exit 1 ;;
+            esac
+            set -- --milestones "$MILESTONES"
+          else
+            set --
+          fi
+          ./scripts/backlog.sh issues "$@" | tee "$RUNNER_TEMP/plan.txt"
           {
             echo "### Backlog issue sync — plan"
             echo '```'
@@ -66,9 +84,14 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Apply
-        if: github.event.inputs.dry_run != 'true'
+        if: inputs.dry_run != true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MILESTONES: ${{ inputs.milestones }}
         run: |
-          ./scripts/backlog.sh issues --apply \
-            ${{ github.event.inputs.milestones && format('--milestones {0}', github.event.inputs.milestones) || '' }}
+          if [ -n "${MILESTONES:-}" ]; then
+            set -- --milestones "$MILESTONES"
+          else
+            set --
+          fi
+          ./scripts/backlog.sh issues --apply "$@"

@@ -79,6 +79,41 @@ expect 1 "no topics fails" "$tmp/notopics"
 meta "$tmp/dupe" "Fine." "https://example.test/thing/" "tls, ml-kem, tls"
 expect 1 "the same topic twice fails" "$tmp/dupe"
 
+printf '\nrepo-meta.sh plan:\n'
+
+# `apply` used to run `gh repo edit --add-topic`, which only ever adds: a topic
+# dropped from the file stayed on GitHub, so `check` reported drift for ever —
+# and with a token in CI, that is a job that fails on every push and can never
+# be made to pass. The topics have to be *set*, as a whole list.
+plan=$(REPO_META="$tmp/good" DOCS_HTML="$tmp/index.html" REPO=owner/repo sh "$gate" plan 2>&1 || :)
+
+case "$plan" in
+*--add-topic*) notok "plan still adds topics one by one — a removal can never converge" ;;
+*) ok "topics are not added one by one" ;;
+esac
+
+case "$plan" in
+*"repos/owner/repo/topics"*) ok "plan sets the whole topic list through the topics API" ;;
+*) notok "plan does not set the topic list wholesale: $plan" ;;
+esac
+
+n=$(printf '%s\n' "$plan" | grep -o 'names\[\]=' | wc -l | tr -d ' ')
+[ "$n" -eq 3 ] && ok "one names[] entry per topic in the file" ||
+	notok "$n names[] entries, wanted 3"
+
+case "$plan" in
+*"--description"*) ok "plan still sets the description" ;;
+*) notok "plan does not set the description" ;;
+esac
+
+# plan must be readable without touching anything, like `backlog.sh issues`.
+case "$plan" in
+*"gh api"*|*"gh repo edit"*) ok "plan prints the commands rather than running them" ;;
+*) notok "plan prints nothing runnable: $plan" ;;
+esac
+
+printf '\nrepo-meta.sh usage:\n'
+
 got=0; REPO_META="$tmp/missing" sh "$gate" lint >/dev/null 2>&1 || got=$?
 [ "$got" -eq 2 ] && ok "a missing data file is a usage error" ||
 	notok "a missing data file exited $got, wanted 2"
