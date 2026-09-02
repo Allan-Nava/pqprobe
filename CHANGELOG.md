@@ -6,6 +6,32 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [Unreleased]
+
+### Added
+
+- **Intent document** (PQ-21) — [INTENT.md](INTENT.md): why pqprobe exists, its
+  goals in priority order, its non-goals as decisions rather than gaps, the
+  invariants with their reasons, and where the boundary with `testssl.sh`,
+  checkfleet and crowdsim runs.
+- **Documentation site** (PQ-17) — [docs/](docs/index.html) published to GitHub
+  Pages at <https://allan-nava.github.io/pqprobe/>: one committed static page
+  covering the classes, the profiles, install, every flag, the exit codes, the
+  findings reference and the scope, with no build step and no external request
+  beyond the badges. `scripts/docs.sh check` is a POSIX-sh dead-link gate that
+  runs in CI and again before each deploy; `scripts/docs_test.sh` tests the gate
+  against a fixture.
+- **Logo and social card** (PQ-29) — hand-written SVG in
+  [docs/assets/](docs/assets): the mark shows what the tool measures, one client
+  class arriving and the oversized hybrid hello cut off before the wall.
+  `scripts/render-assets.sh` rasterises the Open Graph card and the iOS icon,
+  the two places SVG is not accepted.
+- **M5 — Make the verdict actionable** (PQ-22…PQ-28) planned in
+  [BACKLOG.md](BACKLOG.md): a per-group capability map, a re-dial before an
+  abrupt result is condemned, `--baseline` transitions, ALPN as a variable,
+  mutual TLS told apart from a refusal, pull-request delivery and
+  `explain <class>`.
+
 ## [0.1.0] - 2026-09-02
 
 First release: the asymmetry between a classical client and a

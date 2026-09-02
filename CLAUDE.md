@@ -13,6 +13,10 @@ This file is the Claude Code copy of the operating brief. [AGENTS.md](AGENTS.md)
 is the original — when the two disagree, AGENTS.md wins and this file gets
 fixed.
 
+[INTENT.md](INTENT.md) says **why** the tool exists, what it commits to and what
+is deliberately out of scope. Read it before proposing a feature: a non-goal
+there is a decision, not a gap.
+
 ## Working rules (ALWAYS)
 
 - **Every feature earns its place against one sentence**: *say which client

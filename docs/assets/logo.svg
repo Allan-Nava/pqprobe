@@ -1,0 +1,53 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="pqprobe logo">
+  <defs>
+    <linearGradient id="pq-bg" x1="64" y1="24" x2="448" y2="488" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#17274a"/>
+      <stop offset="0.55" stop-color="#0e1830"/>
+      <stop offset="1" stop-color="#0a1020"/>
+    </linearGradient>
+    <linearGradient id="pq-rim" x1="256" y1="8" x2="256" y2="248" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <!-- the hybrid hello: the ~1.2 KB key share, and the brand colour -->
+    <linearGradient id="pq-hello" x1="56" y1="288" x2="300" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="0.6" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <!-- the classical hello: small, and it always arrives -->
+    <linearGradient id="pq-classic" x1="56" y1="176" x2="404" y2="176" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#10b981"/>
+    </linearGradient>
+    <linearGradient id="pq-wall" x1="412" y1="96" x2="456" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#94a3b8"/>
+      <stop offset="1" stop-color="#4b5c74"/>
+    </linearGradient>
+  </defs>
+
+  <!-- app-icon plate: dark slate with a top rim light, same family as segcheck -->
+  <rect x="8" y="8" width="496" height="496" rx="116" fill="url(#pq-bg)"/>
+  <rect x="8" y="8" width="496" height="496" rx="116" fill="url(#pq-rim)"/>
+  <rect x="8.75" y="8.75" width="494.5" height="494.5" rx="115.25" fill="none" stroke="#ffffff" stroke-opacity="0.09" stroke-width="1.5"/>
+
+  <!-- the endpoint: one wall, two clients, two different answers -->
+  <rect x="412" y="96" width="44" height="320" rx="22" fill="url(#pq-wall)" fill-opacity="0.85"/>
+
+  <!-- upper lane — the classical client, and every health check you already run -->
+  <rect x="56" y="148" width="64" height="56" rx="18" fill="url(#pq-classic)"/>
+  <path d="M132 176 H404" stroke="url(#pq-classic)" stroke-width="26" stroke-linecap="round"/>
+
+  <!-- lower lane — the post-quantum-capable client: a hello large enough to be
+       split across TCP segments, and a path that ends before the wall -->
+  <rect x="56" y="290" width="132" height="92" rx="28" fill="url(#pq-hello)"/>
+  <path d="M200 336 H298" stroke="url(#pq-hello)" stroke-width="34" stroke-linecap="round"/>
+  <g fill="#8b5cf6">
+    <circle cx="360" cy="336" r="10" fill-opacity="0.34"/>
+    <circle cx="382" cy="336" r="8" fill-opacity="0.22"/>
+    <circle cx="401" cy="336" r="6" fill-opacity="0.13"/>
+  </g>
+
+  <!-- the refusal: no alert, no log line, the connection simply ends -->
+  <path d="M310 384 L344 288" stroke="#f87171" stroke-width="22" stroke-linecap="round"/>
+</svg>

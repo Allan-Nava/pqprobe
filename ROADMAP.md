@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**20 items · 8 shipped · 12 open · 4 milestones.**
+**29 items · 11 shipped · 18 open · 5 milestones.**
 
 ## At a glance
 
@@ -14,8 +14,9 @@
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.2.0` | **now** | `..........` 0% | 5 | 0 |
-| **M3** — Fit the toolchain | `v0.3.0` | next | `..........` 0% | 4 | 0 |
+| **M3** — Fit the toolchain | `v0.3.0` | next | `#####.....` 50% | 3 | 3 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
+| **M5** — Make the verdict actionable | `v0.4.0` | later | `..........` 0% | 7 | 0 |
 
 ## Next up
 
@@ -28,7 +29,7 @@ The open items with the highest priority in the milestones that are in flight.
 - **PQ-16** — Release pipeline · `high` · size `M` · release (M3, target `v0.3.0`)
 - **PQ-10** — Real ClientHello shapes · `med` · size `XL` · profile (M2, target `v0.2.0`)
 - **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
-- **PQ-17** — Docs site · `med` · size `M` · docs (M3, target `v0.3.0`)
+- **PQ-13** — Watch mode · `low` · size `M` · cli (M2, target `v0.2.0`)
 
 ## Milestones
 
@@ -61,14 +62,16 @@ Target `v0.2.0` · **now** · 5 open · 0 shipped · `..........` 0%
 
 ### M3 — Fit the toolchain
 
-Target `v0.3.0` · next · 4 open · 0 shipped · `..........` 0%
+Target `v0.3.0` · next · 3 open · 3 shipped · `#####.....` 50%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-14** — checkfleet module | high | M | integration | open |
 | **PQ-16** — Release pipeline | high | M | release | open |
 | **PQ-15** — Prometheus textfile output | med | S | output | open |
-| **PQ-17** — Docs site | med | M | docs | open |
+| **PQ-21** — Intent document | high | S | docs,project | done, unreleased |
+| **PQ-17** — Docs site | med | M | docs | done, unreleased |
+| **PQ-29** — Brand assets | med | S | docs,project | done, unreleased |
 
 ### M4 — Later
 
@@ -80,17 +83,33 @@ Target `ongoing` · later · 3 open · 0 shipped · `..........` 0%
 | **PQ-18** — Beyond key exchange | low | L | profile | open |
 | **PQ-20** — Non-HTTPS ports | low | L | probe | open |
 
+### M5 — Make the verdict actionable
+
+Target `v0.4.0` · later · 7 open · 0 shipped · `..........` 0%
+
+| Item | Priority | Size | Labels | Status |
+|---|---|---|---|---|
+| **PQ-22** — Per-group capability map | high | M | probe,profile | open |
+| **PQ-23** — Confirm before condemning | high | S | probe,verdict | open |
+| **PQ-24** — Baseline diff | high | M | output,cli | open |
+| **PQ-26** — mTLS is not a refusal | high | M | probe,verdict | open |
+| **PQ-25** — ALPN as a variable | med | S | probe,verdict | open |
+| **PQ-27** — Pull-request delivery | med | M | delivery,output | open |
+| **PQ-28** — `explain <class>` | low | S | cli,docs | open |
+
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `probe` | 7 | 5 |
-| `profile` | 3 | 2 |
-| `cli` | 2 | 1 |
-| `docs` | 1 | 1 |
+| `probe` | 11 | 9 |
+| `cli` | 4 | 3 |
+| `output` | 4 | 3 |
+| `profile` | 4 | 3 |
+| `verdict` | 4 | 3 |
+| `delivery` | 1 | 1 |
+| `docs` | 4 | 1 |
 | `integration` | 1 | 1 |
 | `inventory` | 2 | 1 |
-| `output` | 2 | 1 |
 | `release` | 1 | 1 |
+| `project` | 2 | 0 |
 | `tests` | 1 | 0 |
-| `verdict` | 1 | 0 |

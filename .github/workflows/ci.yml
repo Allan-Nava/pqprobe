@@ -67,6 +67,17 @@ jobs:
             exit 1
           fi
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The site is one committed static file that nothing builds, so a link
+      # that stops resolving would otherwise be found by a reader.
+      - name: No dead links in the documentation
+        run: ./scripts/docs.sh check
+      - name: The link gate itself
+        run: sh scripts/docs_test.sh
+
   backlog:
     runs-on: ubuntu-latest
     steps:

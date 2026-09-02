@@ -110,9 +110,25 @@ prints what to pick up.
 - [ ] **PQ-16 — Release pipeline**: tag-driven archives for six platforms with
   `SHA256SUMS`, a sigstore attestation, the `ghcr.io` image and release notes
   lifted from the CHANGELOG section. <!-- pq: prio=high size=M labels=release -->
-- [ ] **PQ-17 — Docs site**: `docs/` published with the same POSIX-sh generator
-  the sibling tools use, with a dead-link gate in CI.
-  <!-- pq: prio=med size=M labels=docs -->
+- [x] **PQ-17 — Docs site**: `docs/` published to GitHub Pages as a single
+  committed static page — no generator, no build step and no external request
+  beyond the badges, which is the same property the binary has. A POSIX-sh
+  dead-link gate (`scripts/docs.sh`) runs in CI and again before every deploy,
+  because nothing builds the page and a link that stopped resolving would
+  otherwise be found by a reader.
+  <!-- pq: prio=med size=M labels=docs ver=unreleased -->
+- [x] **PQ-29 — Brand assets**: a mark that states what the tool measures — one
+  client class arrives, the oversized hybrid hello is cut off before the wall —
+  as `logo.svg`, `favicon.svg`, a wordmark and a 1200×630 social card, with
+  `scripts/render-assets.sh` rasterising the two places SVG is not accepted.
+  Hand-written SVG: an icon is not worth a dependency.
+  <!-- pq: prio=med size=S labels=docs,project ver=unreleased -->
+- [x] **PQ-21 — Intent document**: [INTENT.md](INTENT.md) — why the tool
+  exists, the goals in priority order, the non-goals as decisions rather than
+  gaps, and where the boundary with `testssl.sh`, checkfleet and crowdsim runs.
+  The one document a proposal is measured against before anybody writes it, and
+  the only way an agent can tell "missing" apart from "deliberately absent".
+  <!-- pq: prio=high size=S labels=docs,project ver=unreleased -->
 
 ## M4 — Later <!-- ms: target=ongoing phase=later -->
 
@@ -126,3 +142,47 @@ prints what to pick up.
 - [ ] **PQ-20 — Non-HTTPS ports**: SMTP STARTTLS, IMAP, syslog-TLS and MySQL
   TLS all handshake, and none of them are covered by a web-shaped probe.
   <!-- pq: prio=low size=L labels=probe -->
+
+## M5 — Make the verdict actionable <!-- ms: target=v0.4.0 phase=later -->
+
+The class is the answer; these items are what an operator needs *around* it —
+which group exactly, was it a flap or a wall, what changed since yesterday, and
+how the answer reaches a pull request without a second tool.
+
+- [ ] **PQ-22 — Per-group capability map**: `pq-preferred` says a hybrid
+  handshake works; it does not say *which* hybrid group. Dial each group Go can
+  offer on its own and report the accepted set, so a migration can be planned
+  against the group the peer actually supports rather than against the one this
+  binary happened to put first. Still capability classes: one connection per
+  group, in sequence, and no claim about extension order.
+  <!-- pq: prio=high size=M labels=probe,profile -->
+- [ ] **PQ-23 — Confirm before condemning**: `pq-intolerant` is the finding an
+  operator will take to a CDN vendor, and a single reset can also be a
+  half-closed conntrack entry. Re-dial an abrupt result once before the class is
+  assigned, record both attempts, and say in the finding whether the refusal
+  reproduced. A flap and a wall must not render identically.
+  <!-- pq: prio=high size=S labels=probe,verdict -->
+- [ ] **PQ-24 — Baseline diff**: `--baseline run.json` compares this run against
+  a stored one and reports the *transitions* — `pq-ready` → `pq-intolerant` is
+  the finding, and an endpoint that was already broken yesterday is not news at
+  the top of the output. The complement of watch mode (PQ-13) for anything that
+  runs on a schedule. <!-- pq: prio=high size=M labels=output,cli -->
+- [ ] **PQ-25 — ALPN as a variable**: ALPN is bytes in the same hello, and a CDN
+  offers `h2,http/1.1` where a health check offers nothing. Dial `pq-preferred`
+  both ways and report when the answer differs — an endpoint that takes a hybrid
+  hello bare and drops it with ALPN is size-intolerant with a threshold in
+  between, and today that reads as a flap.
+  <!-- pq: prio=med size=S labels=probe,verdict -->
+- [ ] **PQ-26 — mTLS is not a refusal**: an endpoint that asks for a client
+  certificate fails the handshake *after* the key exchange it was being asked
+  about. Detect the client-auth stage and say so — `pq-ready, client
+  certificate required` — instead of grading a mutual-TLS origin as a peer that
+  refuses post-quantum clients. <!-- pq: prio=high size=M labels=probe,verdict -->
+- [ ] **PQ-27 — Pull-request delivery**: an `action.yml` and a `--markdown`
+  renderer, so the fleet table lands in a PR comment or a job summary with the
+  worst endpoint first. The same findings, a shape a review can read; no new
+  checks. <!-- pq: prio=med size=M labels=delivery,output -->
+- [ ] **PQ-28 — `explain <class>`**: print what a class means, which real
+  clients it affects and what to do next, without a network call — the hint text
+  an operator gets at 03:00, reachable before the incident and quotable in a
+  ticket. <!-- pq: prio=low size=S labels=cli,docs -->

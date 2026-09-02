@@ -13,6 +13,10 @@ This file is the operating brief for agents working in the repo.
 [CLAUDE.md](CLAUDE.md) is a copy of it for Claude Code — when they disagree,
 this file wins and CLAUDE.md gets fixed.
 
+[INTENT.md](INTENT.md) says **why** the tool exists, what it commits to and what
+is deliberately out of scope. Read it before proposing a feature: a non-goal
+there is a decision, not a gap.
+
 ## Working rules (ALWAYS)
 
 - **Every feature earns its place against one sentence**: *say which client
