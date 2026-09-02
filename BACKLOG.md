@@ -98,10 +98,16 @@ prints what to pick up.
   Half of it exists already in the group probes; the rest is one flag, a name
   for the synthetic profile and a refusal to accept a group Go cannot offer.
   <!-- pq: prio=med size=S labels=cli,profile -->
-- [ ] **PQ-11 — ClientHello size sweep**: pad the hello in steps and report the
-  byte size at which the peer stops answering, so an intolerant middlebox can be
-  shown the number rather than argued with.
-  <!-- pq: prio=high size=M labels=probe -->
+- [x] **PQ-11 — ClientHello size sweep**: `--size-sweep` grows the hybrid hello
+  through 2048…12288 bytes, stops at the first size that goes unanswered, and
+  reports the bracket in *measured* bytes — the number that went on the wire,
+  not the one the sweep asked for. The padding is ALPN entries, which is the
+  only field Go lets a client grow (no padding extension, and the TLS 1.3
+  cipher list is fixed); the finding says so, because a peer that inspects ALPN
+  may treat it differently from a hello made large by a key share, and a number
+  quoted without its method is a number that gets argued with. Asserted offline
+  against a listener that dies above a limit.
+  <!-- pq: prio=high size=M labels=probe ver=0.10.0 -->
 - [x] **PQ-12 — Multi-address endpoints**: `--per-address` resolves each name
   and probes every A/AAAA record by address with the name still as the SNI, and
   one `addresses` finding per name names the node that answers differently —

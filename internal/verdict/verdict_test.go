@@ -659,3 +659,76 @@ func TestNoRetryMeansNoRetryClause(t *testing.T) {
 		}
 	}
 }
+
+// PQ-11. The sweep produces one finding with the bracket in it, and it does not
+// touch the class: a padded hello answers "how big is too big", not "can a
+// realistic client connect".
+func TestTheSizeSweepReportsABracketWithoutGrading(t *testing.T) {
+	small := ok("size:2048", "TLS 1.3", "X25519MLKEM768", true)
+	small.HelloBytes = 2050
+	mid := ok("size:3072", "TLS 1.3", "X25519MLKEM768", true)
+	mid.HelloBytes = 3080
+	big := fail("size:4096", probe.KindTimeout)
+	big.HelloBytes = 4100
+
+	rep := Evaluate("h:443", []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true),
+		ok("pq-only", "TLS 1.3", "X25519MLKEM768", true),
+		small, mid, big,
+	}, opts())
+
+	if rep.Class != PQReady {
+		t.Fatalf("class = %s, want %s: a padded hello must not decide the class", rep.Class, PQReady)
+	}
+
+	f := find(t, rep, "size-limit")
+	if f.Status != finding.BAD {
+		t.Errorf("status = %s, want BAD: a hello this peer will not answer is an outage for somebody", f.Status)
+	}
+	if !strings.Contains(f.Message, "3080") || !strings.Contains(f.Message, "4100") {
+		t.Errorf("the bracket has to be in the message, measured: %q", f.Message)
+	}
+	if f.Value == nil || *f.Value != 3080 {
+		t.Errorf("value = %v, want the largest hello that was answered", f.Value)
+	}
+	if f.Unit != "bytes" {
+		t.Errorf("unit = %q, want bytes", f.Unit)
+	}
+	if !strings.Contains(f.Hint, "ALPN") {
+		t.Errorf("the hint has to admit how the padding was done: %q", f.Hint)
+	}
+	for _, x := range rep.Finding {
+		if x.Check == "handshake" && strings.Contains(x.Target, "size:") {
+			t.Errorf("a size probe got its own handshake finding: %+v", x)
+		}
+	}
+}
+
+// Every size answered: say so, once, with the largest one — that is the number
+// somebody wanted.
+func TestASweepThatFindsNoLimitSaysSo(t *testing.T) {
+	a := ok("size:2048", "TLS 1.3", "X25519MLKEM768", true)
+	a.HelloBytes = 2050
+	b := ok("size:12288", "TLS 1.3", "X25519MLKEM768", true)
+	b.HelloBytes = 12300
+
+	rep := Evaluate("h:443", []probe.Result{ok("classic", "TLS 1.3", "X25519", false), a, b}, opts())
+	f := find(t, rep, "size-limit")
+	if f.Status != finding.OK {
+		t.Errorf("status = %s, want OK", f.Status)
+	}
+	if !strings.Contains(f.Message, "12300") {
+		t.Errorf("message = %q, want the largest hello answered", f.Message)
+	}
+}
+
+// No sweep, no finding.
+func TestNoSizeFindingWithoutASweep(t *testing.T) {
+	rep := Evaluate("h:443", []probe.Result{ok("classic", "TLS 1.3", "X25519", false)}, opts())
+	for _, f := range rep.Finding {
+		if f.Check == "size-limit" {
+			t.Fatalf("unexpected size finding: %+v", f)
+		}
+	}
+}

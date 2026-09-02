@@ -14,7 +14,11 @@
 // a guarantee that the named client sends this exact ClientHello.
 package clientprofile
 
-import "crypto/tls"
+import (
+	"crypto/tls"
+	"fmt"
+	"strings"
+)
 
 // Profile is one client shape to dial with.
 type Profile struct {
@@ -34,6 +38,10 @@ type Profile struct {
 	// RequiresPQ is true when *only* post-quantum groups are offered, so a peer
 	// without ML-KEM has no fallback and must refuse.
 	RequiresPQ bool
+	// Pad is roughly how many bytes of filler to add to the ClientHello, for
+	// the size sweep. See TLSConfig: the filler is ALPN, because Go exposes no
+	// padding extension and in TLS 1.3 the cipher list is fixed.
+	Pad int
 }
 
 // TLSConfig builds the client configuration for the profile.
@@ -44,6 +52,9 @@ type Profile struct {
 // true. The chain is verified separately, from the certificates the peer
 // actually sent, so an expiry problem is reported as an expiry problem.
 func (p Profile) TLSConfig(serverName string, alpn []string) *tls.Config {
+	if p.Pad > 0 {
+		alpn = append(append([]string{}, alpn...), padProtos(p.Pad)...)
+	}
 	return &tls.Config{
 		ServerName:         serverName,
 		InsecureSkipVerify: true, //nolint:gosec // verified separately; see doc comment
@@ -162,6 +173,74 @@ func GroupProbes() []Profile {
 			OffersPQ:   IsPQ(id),
 			RequiresPQ: IsPQ(id),
 		})
+	}
+	return out
+}
+
+// SizePrefix marks a profile that exists to make the ClientHello a given size.
+const SizePrefix = "size:"
+
+// SizeTargets is the sweep, in bytes of ClientHello. The first is above what a
+// hybrid hello already costs (~1.5 KB), and the rest climb past the sizes that
+// break things in practice: one TCP segment, two, four, and the largest record
+// a TLS implementation has to accept.
+var SizeTargets = []int{2048, 3072, 4096, 6144, 8192, 12288}
+
+// IsSizeProbe reports whether a profile name came from SizeProbes. The verdict
+// keeps these out of the classification: a padded hello answers "how big is too
+// big", not "can a realistic client connect".
+func IsSizeProbe(name string) bool {
+	return len(name) > len(SizePrefix) && name[:len(SizePrefix)] == SizePrefix
+}
+
+// SizeProbes is the sweep: the realistic hybrid client, grown in steps.
+//
+// It is the hybrid hello that middleboxes choke on, so that is the shape being
+// padded — with ALPN entries, because Go exposes no padding extension and the
+// TLS 1.3 cipher list is not the caller's to grow. That has a consequence the
+// report has to carry: a peer that inspects ALPN may treat these differently
+// from a hello made large by a key share. The number is still the number at
+// which *this* peer stopped answering.
+func SizeProbes() []Profile {
+	hybrid := []tls.CurveID{tls.X25519MLKEM768, tls.X25519, tls.CurveP256}
+	out := make([]Profile, 0, len(SizeTargets))
+	for _, n := range SizeTargets {
+		out = append(out, Profile{
+			Name:       fmt.Sprintf("%s%d", SizePrefix, n),
+			Summary:    fmt.Sprintf("the hybrid client, padded to about %d bytes of ClientHello", n),
+			Clients:    "no client dials like this — it is a question about size, not about a client",
+			Groups:     hybrid,
+			MinVersion: tls.VersionTLS13,
+			MaxVersion: tls.VersionTLS13,
+			OffersPQ:   true,
+			// The hybrid hello is already around 1.5 KB, so the filler is the
+			// difference. Negative means nothing to add.
+			Pad: n - 1500,
+		})
+	}
+	return out
+}
+
+// padProtos builds ALPN entries adding about n bytes. Each entry costs one
+// length byte plus its text, and the wire format caps an entry at 255 bytes.
+func padProtos(n int) []string {
+	const max = 255
+	var out []string
+	for n > 0 {
+		size := max
+		if n < max+1 {
+			size = n - 1
+		}
+		if size < 1 {
+			break
+		}
+		// Recognisable in a packet capture, and not a real protocol name.
+		s := fmt.Sprintf("pqprobe-pad-%d", len(out))
+		if len(s) > size {
+			s = s[:size]
+		}
+		out = append(out, s+strings.Repeat("x", size-len(s)))
+		n -= size + 1
 	}
 	return out
 }

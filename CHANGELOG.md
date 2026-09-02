@@ -6,6 +6,26 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.10.0] - 2026-09-02
+
+### Added
+
+- **ClientHello size sweep** (PQ-11) — `--size-sweep` grows the hybrid hello
+  through 2048, 3072, 4096, 6144, 8192 and 12288 bytes, stops at the first size
+  the peer will not answer, and reports the bracket in one `size-limit` finding:
+  `answered up to 3080 B and stopped answering at 4100 B`. Both numbers are
+  measured on the wire, because a number taken to a vendor has to be the one
+  that was actually sent. `example.com` answers 12261 B; the sweep says so
+  rather than guessing.
+
+  The padding is ALPN entries — the only field Go lets a client grow, since
+  there is no padding extension and the TLS 1.3 cipher list is fixed — and the
+  finding states that, because a peer that inspects ALPN may treat such a hello
+  differently from one made large by a key share. Asserted offline against a
+  listener that serves TLS below a size limit and vanishes above it. The sweep
+  never touches the class: a padded hello asks how big is too big, which is not
+  whether a realistic client can connect.
+
 ## [0.9.0] - 2026-09-02
 
 ### Added
@@ -292,6 +312,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.10.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.10.0
 [0.9.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.9.0
 [0.8.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.8.1
 [0.8.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.8.0

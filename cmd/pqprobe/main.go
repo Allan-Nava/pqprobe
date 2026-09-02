@@ -144,6 +144,9 @@ flags:
   --per-group              also dial each key exchange group on its own and
                            report the accepted set (one extra handshake per
                            group, in sequence)
+  --size-sweep             also grow the ClientHello in steps and report the
+                           size at which the peer stops answering (stops at the
+                           first size that fails)
   --per-address            probe every A/AAAA record of each name, by address,
                            still sending the name (one bad node out of six is
                            invisible to a name-only probe)
@@ -197,6 +200,7 @@ func cmdProbe(args []string) int {
 	var (
 		profiles    = fs.String("profile", strings.Join(clientprofile.Default, ","), "client profiles to dial")
 		perGroup    = fs.Bool("per-group", false, "also dial each key exchange group on its own")
+		sizeSweep   = fs.Bool("size-sweep", false, "also grow the ClientHello in steps and report the limit")
 		perAddress  = fs.Bool("per-address", false, "probe every A/AAAA record of each name")
 		invFile     = fs.String("inventory", "", "Ansible INI inventory")
 		groups      = fs.String("group", "", "inventory groups")
@@ -249,6 +253,9 @@ func cmdProbe(args []string) int {
 
 	if *perGroup {
 		sel = append(sel, clientprofile.GroupProbes()...)
+	}
+	if *sizeSweep {
+		sel = append(sel, clientprofile.SizeProbes()...)
 	}
 
 	// The names are kept, so the pool can be reported per name after the run.
@@ -333,8 +340,18 @@ func run(ctx context.Context, d probe.Dialer, targets []probe.Target, profiles [
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			var results []probe.Result
+			sweepStopped := false
 			for _, p := range profiles {
-				results = append(results, d.DoConfirmed(ctx, t, p))
+				// Once a padded hello has gone unanswered, the sizes above it
+				// are a foregone conclusion and four more connections.
+				if sweepStopped && clientprofile.IsSizeProbe(p.Name) {
+					continue
+				}
+				r := d.DoConfirmed(ctx, t, p)
+				results = append(results, r)
+				if clientprofile.IsSizeProbe(p.Name) && !r.OK {
+					sweepStopped = true
+				}
 			}
 			reps[i] = verdict.Evaluate(t.String(), results, opt)
 		}(i, t)

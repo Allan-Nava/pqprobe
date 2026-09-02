@@ -133,3 +133,72 @@ func TestRealProfilesAreNotGroupProbes(t *testing.T) {
 		}
 	}
 }
+
+// PQ-11. The sweep answers "at what size does this peer stop answering" with a
+// number instead of an argument. Go exposes no padding, and in TLS 1.3 the
+// cipher list is fixed, so the only client-controlled field that can grow
+// arbitrarily without changing what the handshake means is the ALPN list.
+func TestSizeProbesGrowAndAreRecognisable(t *testing.T) {
+	probes := SizeProbes()
+	if len(probes) < 3 {
+		t.Fatalf("got %d size probes, want a sweep", len(probes))
+	}
+
+	last := 0
+	for _, p := range probes {
+		if !IsSizeProbe(p.Name) {
+			t.Errorf("%s is not recognisable as a size probe", p.Name)
+		}
+		if p.Pad <= last {
+			t.Errorf("%s pads to %d, which is not larger than the previous %d — a sweep has to climb",
+				p.Name, p.Pad, last)
+		}
+		last = p.Pad
+		// The realistic hybrid client is what a middlebox is choking on, so
+		// that is the shape being grown.
+		if !p.OffersPQ {
+			t.Errorf("%s does not offer the hybrid group: the size question is about that hello", p.Name)
+		}
+		if p.MinVersion != tls.VersionTLS13 {
+			t.Errorf("%s is not pinned to TLS 1.3", p.Name)
+		}
+	}
+
+	for _, p := range All {
+		if IsSizeProbe(p.Name) {
+			t.Errorf("%s reads as a size probe", p.Name)
+		}
+	}
+}
+
+// The padding has to land in the ALPN list and be roughly the size asked for —
+// the exact hello is measured on the wire, but a config that padded nothing
+// would make the whole sweep report the same number.
+func TestPaddingLandsInTheALPNList(t *testing.T) {
+	p := Profile{Name: "size:4096", Groups: []tls.CurveID{tls.X25519MLKEM768}, Pad: 2000}
+	cfg := p.TLSConfig("origin.example", []string{"h2"})
+
+	if len(cfg.NextProtos) < 2 || cfg.NextProtos[0] != "h2" {
+		t.Fatalf("the ALPN the caller asked for has to come first: %v", cfg.NextProtos)
+	}
+	total := 0
+	for _, s := range cfg.NextProtos {
+		total += len(s) + 1
+		if len(s) > 255 {
+			t.Errorf("an ALPN entry is %d bytes; the wire format allows 255", len(s))
+		}
+	}
+	if total < 2000 || total > 2000+300 {
+		t.Errorf("the padded ALPN list is %d bytes, want about 2000", total)
+	}
+}
+
+// No padding, no filler: every other profile must produce exactly the ALPN it
+// was given.
+func TestUnpaddedProfilesKeepTheirALPN(t *testing.T) {
+	p, _ := ByName("pq-preferred")
+	cfg := p.TLSConfig("origin.example", []string{"h2", "http/1.1"})
+	if len(cfg.NextProtos) != 2 {
+		t.Fatalf("NextProtos = %v, want exactly what was passed", cfg.NextProtos)
+	}
+}

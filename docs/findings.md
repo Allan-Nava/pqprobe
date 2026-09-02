@@ -27,6 +27,7 @@ not an endpoint that passed, and an operator has to see it first.
 | `client-auth` | `host:port` | the peer requested a client certificate: this endpoint is mutual TLS |
 | `addresses` | the name | with `--per-address`: how many addresses the name has, and which one answers differently |
 | `transition` | `host:port` | with `--baseline`: the class changed since a stored run, or the endpoint is new or gone |
+| `size-limit` | `host:port` | with `--size-sweep`: the ClientHello sizes the peer answered and the first it did not |
 | `tls-version` | `host:port` | TLS 1.3 did not complete while 1.2 did |
 
 A failed handshake is a `WARN` on its own, never a `BAD`: whether it matters is
@@ -78,6 +79,30 @@ An alert is never re-dialled: it is an answer the peer chose to give.
 
 A flap never becomes a `BAD` class: the endpoint connected, so it is graded on
 that, and the instability is reported next to it. `--confirm=false` dials once.
+
+## How big is too big
+
+`--size-sweep` grows the ClientHello in steps — 2048, 3072, 4096, 6144, 8192,
+12288 bytes — and stops at the first size the peer will not answer. One
+`size-limit` finding carries the bracket, in **measured** bytes:
+
+```console
+BAD  size-limit   answered up to 3080 B and stopped answering at 4100 B
+OK   size-limit   answered a ClientHello of 12261 B, the largest tried
+```
+
+Both numbers are what went on the wire, not what the sweep asked for: a number
+taken to a vendor has to be the one that was actually sent.
+
+**How the padding is done, because it matters.** Go exposes no padding extension
+and the TLS 1.3 cipher list is not the client's to grow, so the only field left
+is the ALPN list. A peer that inspects ALPN may treat a hello padded that way
+differently from one made large by a key share — so the finding says so, and the
+number should be quoted with the method. It still answers the question that
+matters: this peer stopped answering at that size.
+
+The sweep never changes the class. A padded hello asks "how big is too big",
+which is not "can a realistic client connect".
 
 ## The hello size, and the retry
 

@@ -58,6 +58,11 @@ shapes, and reads the *shape of the refusal*:
 | wants a **client certificate** | `mtls-required` | not a grade — it refused the prober, not post-quantum clients |
 | answers nothing | `unreachable` | not a grade — fix reachability first |
 
+`--size-sweep` turns the size argument into a number: it grows the hello in
+steps and reports the bracket — `answered up to 3080 B and stopped answering at
+4100 B` — measured on the wire, with the padding method stated, because that is
+what makes it quotable.
+
 An abrupt failure is dialled **a second time** before any of this is decided:
 `pq-intolerant` is the finding somebody takes to a vendor, and one reset is also
 what a drained node looks like. Both dials cut off reads as *reproduced*; cut

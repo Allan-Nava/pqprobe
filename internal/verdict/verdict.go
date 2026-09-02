@@ -119,13 +119,16 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	// single-group ClientHello answers "does the peer accept this group", which
 	// is not the question the class answers — no realistic client dials that
 	// way, and grading on it would call a peer intolerant for declining P-521.
-	var client, groups []probe.Result
+	var client, groups, sizes []probe.Result
 	for _, r := range results {
-		if clientprofile.IsGroupProbe(r.Profile) {
+		switch {
+		case clientprofile.IsGroupProbe(r.Profile):
 			groups = append(groups, r)
-			continue
+		case clientprofile.IsSizeProbe(r.Profile):
+			sizes = append(sizes, r)
+		default:
+			client = append(client, r)
 		}
-		client = append(client, r)
 	}
 
 	by := map[string]probe.Result{}
@@ -145,6 +148,9 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 		rep.Finding = append(rep.Finding, f)
 	}
 	if f, ok := clientAuthFinding(target, client); ok {
+		rep.Finding = append(rep.Finding, f)
+	}
+	if f, ok := sizeFinding(target, sizes); ok {
 		rep.Finding = append(rep.Finding, f)
 	}
 
@@ -420,6 +426,65 @@ func addressOf(target string) string {
 		return target[:i]
 	}
 	return target
+}
+
+// sizeFinding brackets the ClientHello size at which the peer stopped
+// answering (PQ-11).
+//
+// The sizes are the ones measured on the wire, never the ones the sweep asked
+// for: an operator taking this to a vendor needs the number that was actually
+// sent. The class is left alone — a padded hello answers "how big is too big",
+// which is not the question the class answers.
+func sizeFinding(target string, results []probe.Result) (finding.Finding, bool) {
+	if len(results) == 0 {
+		return finding.Finding{}, false
+	}
+
+	lastOK, firstBad := 0, 0
+	for _, r := range results {
+		if r.OK {
+			if r.HelloBytes > lastOK {
+				lastOK = r.HelloBytes
+			}
+			continue
+		}
+		if firstBad == 0 || r.HelloBytes < firstBad {
+			firstBad = r.HelloBytes
+		}
+	}
+
+	// The honesty clause: the filler is ALPN, because Go offers no padding
+	// extension. A peer that inspects ALPN may treat these differently from a
+	// hello made large by a key share, and a number quoted without that is a
+	// number that will be argued with.
+	const how = "the hello was padded with ALPN entries, which is the only field Go lets a client grow — a peer that inspects ALPN may treat that differently from a hello made large by a key share, so quote the number with the method"
+
+	if firstBad == 0 {
+		return finding.Finding{
+			Check:   "size-limit",
+			Target:  target,
+			Status:  finding.OK,
+			Message: fmt.Sprintf("answered a ClientHello of %d B, the largest tried", lastOK),
+			Value:   finding.Num(float64(lastOK)),
+			Unit:    "bytes",
+			Hint:    "no size limit found in the swept range; " + how,
+		}, true
+	}
+
+	msg := fmt.Sprintf("answered up to %d B and stopped answering at %d B", lastOK, firstBad)
+	if lastOK == 0 {
+		msg = fmt.Sprintf("did not answer a ClientHello of %d B, the smallest tried", firstBad)
+	}
+	return finding.Finding{
+		Check:   "size-limit",
+		Target:  target,
+		Status:  finding.BAD,
+		Message: msg,
+		Value:   finding.Num(float64(lastOK)),
+		Unit:    "bytes",
+		Hint: "that is a hello size this peer will not answer, which is an outage for every client whose hello reaches it — a hybrid ML-KEM hello is already around 1.5 KB and a client certificate or a long ALPN list adds more. " + how +
+			". Take the two numbers to whoever owns the middlebox or the terminator",
+	}, true
 }
 
 // anyClientCertRequested reports whether the peer asked for a client

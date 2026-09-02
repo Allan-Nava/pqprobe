@@ -746,3 +746,49 @@ func TestTheClientHelloSizeIsMeasured(t *testing.T) {
 		t.Errorf("the classical hello is %d bytes, which is implausible", small.HelloBytes)
 	}
 }
+
+// PQ-11. The point of the sweep is a number an operator can put in a ticket
+// instead of an argument. Against a listener that serves TLS below a hello size
+// limit and vanishes above it, the sweep has to bracket that limit — and the
+// size it reports is measured on the wire, not the size it asked for.
+func TestTheSizeSweepBracketsARealLimit(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	const limit = 3000
+	tg := intolerantServer(t, &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS13,
+	}, limit)
+
+	d := Dialer{Timeout: 5 * time.Second}
+	var lastOK, firstBad int
+	for _, p := range clientprofile.SizeProbes() {
+		res := d.Do(context.Background(), tg, p)
+		if res.HelloBytes == 0 {
+			t.Fatalf("%s: no hello size measured", p.Name)
+		}
+		// The measured size is what gets reported, and it has to be close to
+		// the size the probe was asking for or the sweep means nothing.
+		if diff := res.HelloBytes - p.Pad - 1500; diff > 400 || diff < -400 {
+			t.Errorf("%s: measured %d bytes, which is %d off the target", p.Name, res.HelloBytes, diff)
+		}
+		if res.OK {
+			lastOK = res.HelloBytes
+			continue
+		}
+		if !res.Kind.Abrupt() {
+			t.Errorf("%s: the listener vanishes rather than declining: kind=%s", p.Name, res.Kind)
+		}
+		firstBad = res.HelloBytes
+		break
+	}
+
+	if lastOK == 0 || firstBad == 0 {
+		t.Fatalf("the sweep did not bracket the limit: last ok %d, first bad %d", lastOK, firstBad)
+	}
+	if lastOK >= firstBad {
+		t.Fatalf("the bracket is inverted: %d then %d", lastOK, firstBad)
+	}
+	if lastOK > limit || firstBad < limit {
+		t.Errorf("the limit is %d and the bracket is %d..%d, which does not contain it", limit, lastOK, firstBad)
+	}
+}

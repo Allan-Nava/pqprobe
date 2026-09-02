@@ -45,6 +45,19 @@ func TestValidStatus(t *testing.T) {
 	}
 }
 
+// PQ-11. --size-sweep is a boolean, and the sweep stops at the first size the
+// peer will not answer: the bracket is the answer, and dialling four more sizes
+// past a wall proves nothing.
+func TestSizeSweepIsABooleanFlag(t *testing.T) {
+	if takesValue("--size-sweep") {
+		t.Fatal("--size-sweep takes no value")
+	}
+	got := permute([]string{"--size-sweep", "origin.example"})
+	if len(got) != 2 || got[1] != "origin.example" {
+		t.Fatalf("permute = %v, want the target kept as an operand", got)
+	}
+}
+
 // PQ-24. --baseline takes a path, so permute must consume the word after it or
 // the file name becomes a target and the run probes a JSON file.
 func TestBaselineTakesAValue(t *testing.T) {
@@ -106,7 +119,7 @@ func TestUsageDocumentsEveryFlagTheProbeAccepts(t *testing.T) {
 		"--profile", "--per-group", "--inventory", "--group", "--list", "--port",
 		"--sni", "--alpn", "--timeout", "--concurrency", "--json", "--findings",
 		"--min-severity", "--exit-on", "--expiry-warn", "--expiry-bad", "--confirm",
-		"--per-address", "--baseline",
+		"--per-address", "--baseline", "--size-sweep",
 	} {
 		if !strings.Contains(b.String(), flag) {
 			t.Errorf("%s is not in --help", flag)
