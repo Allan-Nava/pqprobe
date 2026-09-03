@@ -13,9 +13,9 @@
 | Milestone | Target | Phase | Progress | Open | Shipped |
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
-| **M2** — Say it more precisely | `v0.2.0` | **now** | `########..` 83% | 1 | 5 |
+| **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 82% | 2 | 9 |
-| **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
+| **M4** — Later | `ongoing` | later | `..........` 0% | 4 | 0 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
 ## Next up
@@ -23,7 +23,6 @@
 The open items with the highest priority in the milestones that are in flight.
 
 - **PQ-14** — checkfleet module · `high` · size `M` · integration (M3, target `v0.3.0`)
-- **PQ-10** — Real ClientHello shapes · `med` · size `XL` · profile (M2, target `v0.2.0`)
 - **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
 
 ## Milestones
@@ -45,11 +44,10 @@ Target `v0.1.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 ### M2 — Say it more precisely
 
-Target `v0.2.0` · **now** · 1 open · 5 shipped · `########..` 83%
+Target `v0.18.0` · shipped · 0 open · 5 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-10** — Real ClientHello shapes | med | XL | profile | open |
 | **PQ-9** — HelloRetryRequest visibility | high | L | probe | shipped `0.9.0` |
 | **PQ-11** — ClientHello size sweep | high | M | probe | shipped `0.10.0` |
 | **PQ-12** — Multi-address endpoints | high | M | probe,inventory | shipped `0.7.0` |
@@ -76,10 +74,11 @@ Target `v0.3.0` · next · 2 open · 9 shipped · `########..` 82%
 
 ### M4 — Later
 
-Target `ongoing` · later · 3 open · 0 shipped · `..........` 0%
+Target `ongoing` · later · 4 open · 0 shipped · `..........` 0%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
+| **PQ-10** — Real ClientHello shapes | med | XL | profile | open |
 | **PQ-19** — QUIC | med | XL | probe | open |
 | **PQ-18** — Beyond key exchange | low | L | profile | open |
 | **PQ-20** — Non-HTTPS ports | low | L | probe | open |

@@ -75,7 +75,7 @@ prints what to pick up.
   treats a WARN as a broken check teaches everyone to ignore the check.
   <!-- pq: prio=high size=S labels=cli ver=0.1.0 -->
 
-## M2 — Say it more precisely <!-- ms: target=v0.2.0 phase=now -->
+## M2 — Say it more precisely <!-- ms: target=v0.18.0 phase=shipped -->
 
 - [x] **PQ-9 — HelloRetryRequest visibility**: neither `KeyLogWriter` nor a
   hand-parsed ServerHello was needed. An HRR is precisely the case where *we*
@@ -87,10 +87,6 @@ prints what to pick up.
   so falling back to X25519 costs no retry at all; an HRR means the only group in
   common was a third one, usually P-256 or P-384. Reported as a cost, not a
   failure. <!-- pq: prio=high size=L labels=probe ver=0.9.0 -->
-- [ ] **PQ-10 — Real ClientHello shapes**: profiles built with uTLS so a run can
-  claim a browser fingerprint, not only a capability class. Behind a build tag
-  and clearly separated, because the zero-dependency default is what makes the
-  binary safe to run anywhere. <!-- pq: prio=med size=XL labels=profile -->
 - [x] **PQ-34 — An ad-hoc capability class**: `--groups X25519MLKEM768,X25519`
   dials exactly that set, in that order, with `pq-preferred`'s version window so
   the two are comparable. It is visible — its own handshake finding, since the
@@ -222,6 +218,17 @@ prints what to pick up.
 
 ## M4 — Later <!-- ms: target=ongoing phase=later -->
 
+- [ ] **PQ-10 — Real ClientHello shapes**: profiles built with uTLS so a run
+  can claim a browser *fingerprint*, not only a capability class. Moved here
+  from M2 because "behind a build tag" is not enough: uTLS is a dependency, so
+  `go.mod` would carry a `require`, and CI fails the build on exactly that —
+  the zero-dependency binary is a product property in
+  [INTENT.md](INTENT.md), not an aesthetic. The only shape that does not trade
+  it away is a **separate module**: `contrib/utls/` with its own `go.mod`, built
+  by whoever wants it, invisible to the root module and its gates. That is also
+  why this is XL rather than L — the work is not the handshake, it is mapping
+  capability classes onto fingerprints without letting the default binary imply
+  it sends them. <!-- pq: prio=med size=XL labels=profile -->
 - [ ] **PQ-18 — Beyond key exchange**: post-quantum *authentication* (ML-DSA
   certificates) is the next migration, and the failure mode is again a size one
   — a chain several kilobytes long. Worth a profile once there is anything to

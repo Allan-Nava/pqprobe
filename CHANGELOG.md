@@ -6,6 +6,29 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.18.1] - 2026-09-03
+
+### Changed
+
+- **M2 — Say it more precisely is complete** (PQ-9, PQ-11, PQ-12, PQ-13,
+  PQ-34): HelloRetryRequest and the measured ClientHello size, the size sweep,
+  every address behind a name, watch mode, and an ad-hoc `--groups` capability
+  class. Target recorded as the release that finished it rather than the one it
+  was aimed at eighteen versions ago.
+- **PQ-10 (real ClientHello shapes with uTLS) moved to M4** — with the reason
+  written into the item, because "behind a build tag" is not enough and finding
+  that out at implementation time would cost a day. uTLS is a dependency: it
+  would put a `require` in `go.mod`, and CI fails the build on exactly that,
+  because the zero-dependency binary is a product property in `INTENT.md` and
+  not an aesthetic. The only shape that keeps it is a **separate module**
+  (`contrib/utls/` with its own `go.mod`), invisible to the root module and its
+  gates — which is also why it is XL: the work is mapping capability classes
+  onto fingerprints without letting the default binary imply it sends them.
+
+  M2 therefore closes on the five items that *are* the milestone. Claiming a
+  sixth by quietly reinterpreting it would have been the other way to reach
+  100%.
+
 ## [0.18.0] - 2026-09-03
 
 ### Added
@@ -493,6 +516,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.18.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.18.1
 [0.18.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.18.0
 [0.17.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.17.0
 [0.16.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.16.1
