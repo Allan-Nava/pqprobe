@@ -6,6 +6,28 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.16.1] - 2026-09-03
+
+### Fixed
+
+- **The note about `robots.txt` on GitHub Pages was wrong** (PQ-36) — 0.16.0
+  said a project page's `robots.txt` "is read by nobody" and only becomes
+  correct on a custom domain. Half right, and the wrong half is the useful half.
+  Crawlers do read only the **host root's** — `https://allan-nava.github.io/robots.txt`
+  — but that host belongs to `Allan-Nava.github.io`, which already generates its
+  per-project `Sitemap:` lines from a daily sync (`robots-sync.yml`) that
+  enumerates the owner's non-fork repos with Pages enabled and keeps the ones
+  whose `/<repo>/sitemap.xml` answers **200**. No list to maintain, nothing to
+  declare.
+
+  So the actual rule is the opposite of "wait for a custom domain": **ship a
+  sitemap that answers 200 and the host root picks it up by itself** — which is
+  why 28 of that owner's live Pages sites are missing from it, pqprobe among
+  them until 0.16.0. Verified rather than assumed: the site, its sitemap and its
+  `llms.txt` all answer 200, and the host root currently lists `checkfleet` and
+  `Hugo-TuttoCampo`. Corrected in `scripts/seo.sh`, the generated `robots.txt`
+  header and the backlog item.
+
 ## [0.16.0] - 2026-09-02
 
 ### Added
@@ -439,6 +461,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.16.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.16.1
 [0.16.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.16.0
 [0.15.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.15.0
 [0.14.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.14.0

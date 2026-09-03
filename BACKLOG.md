@@ -141,7 +141,9 @@ prints what to pick up.
   deliberately *not* marked up as an `FAQPage`: it is documentation, and
   claiming otherwise to chase a rich result would be a claim about the content
   that is not true. `robots.txt` on a project page is shipped knowing crawlers
-  read only the domain root's, which belongs to another repository.
+  read only the host root's — which is `Allan-Nava.github.io`, and which already
+  generates its `Sitemap:` lines from a daily sync over the sitemaps that answer
+  200, so shipping one *is* the mechanism.
   <!-- pq: prio=med size=S labels=docs,delivery ver=0.16.0 -->
 - [ ] **PQ-15 — Prometheus textfile output**: `--textfile` writing
   `pqprobe_class{target=…}` for a node exporter, so the state is graphable
