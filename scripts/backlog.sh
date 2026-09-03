@@ -32,7 +32,7 @@ roadmap="${ROADMAP_FILE:-$root/ROADMAP.md}"
 # `issues --apply` creates exactly these on a repository that has none — two
 # copies of this list is how the first real sync failed with "could not add
 # label: 'probe' not found", after it had already created a milestone.
-labels="probe profile verdict inventory output cli delivery integration tests docs release project"
+labels="probe profile verdict inventory output cli delivery integration tests docs release project ux"
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/pqprobe-backlog.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT INT HUP TERM
@@ -572,6 +572,7 @@ ensure_labels() {
 		docs)        colour=0075ca; desc="Documentation and the Pages site" ;;
 		release)     colour=b60205; desc="Tagging, artefacts, attestation" ;;
 		project)     colour=6a737d; desc="Backlog, roadmap, repository hygiene" ;;
+		ux)          colour=e99695; desc="How the tool reads and embeds: output shapes somebody else has to consume" ;;
 		prio-high)   colour=b60205; desc="High priority in BACKLOG.md" ;;
 		prio-med)    colour=fbca04; desc="Medium priority in BACKLOG.md" ;;
 		prio-low)    colour=c2e0c6; desc="Low priority in BACKLOG.md" ;;

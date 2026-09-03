@@ -29,7 +29,7 @@ touching this file, or CI will fail.
   `target` (the release it aims at, or `ongoing`) and `phase`
   (`shipped|now|next|later|ongoing`).
 - Labels: `probe`, `profile`, `verdict`, `inventory`, `output`, `cli`,
-  `delivery`, `integration`, `tests`, `docs`, `release`, `project`.
+  `delivery`, `integration`, `tests`, `docs`, `release`, `project`, `ux`.
 
 `scripts/backlog.sh lint` enforces all of the above; `scripts/backlog.sh next`
 prints what to pick up.
@@ -241,7 +241,7 @@ prints what to pick up.
   Le strade sono due e vanno entrambe bene, purché se ne scelga una: emettere la
   forma avvolta (magari dietro `--findings=wrapped`), oppure correggere la riga
   del README, che oggi promette un'interoperabilità che non c'è.
-  <!-- pq: prio=medium size=M labels=output,integration -->
+  <!-- pq: prio=med size=M labels=output,integration -->
 
 - [ ] **PQ-38 — `version` non è incorporabile**: stampa `pqprobe dev`, cioè nome
   **più** versione, e `version --help` stampa la stessa cosa (il sottocomando

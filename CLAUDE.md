@@ -118,3 +118,25 @@ there is a decision, not a gap.
 - **Post-quantum key exchange is a TLS 1.3 feature.** An endpoint that tops out
   at 1.2 can never satisfy a PQ-required client, whatever its group list says —
   that is `no-tls13`, and it is a ceiling rather than a setting.
+
+## graphify
+
+**This section is deliberately Claude-only.** The rule at the top of this file —
+CLAUDE.md is a copy of [AGENTS.md](AGENTS.md), and a divergence means AGENTS.md
+wins — does not apply to it: `graphify` is a Claude Code integration written by
+`graphify claude install`, AGENTS.md stays tool-neutral (the sibling repos do
+the same), and "fixing" the divergence by deleting this would remove the only
+place the graph is documented.
+
+The graph itself is **not** in the repository: `graphify-out/` is gitignored
+because it is derived from the sources, and it is not a CI gate either — that
+would make graphify a build dependency of a project whose whole point is having
+none.
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

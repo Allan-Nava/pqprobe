@@ -79,9 +79,9 @@ Target `ongoing` · later · 6 open · 0 shipped · `..........` 0%
 |---|---|---|---|---|
 | **PQ-10** — Real ClientHello shapes | med | XL | profile | open |
 | **PQ-19** — QUIC | med | XL | probe | open |
+| **PQ-37** — `--findings` non parla la forma che i tool fratelli consumano | med | M | output,integration | open |
 | **PQ-18** — Beyond key exchange | low | L | profile | open |
 | **PQ-20** — Non-HTTPS ports | low | L | probe | open |
-| **PQ-37** — `--findings` non parla la forma che i tool fratelli consumano | medium | M | output,integration | open |
 | **PQ-38** — `version` non è incorporabile | low | S | cli,ux | open |
 
 ### M5 — Make the verdict actionable

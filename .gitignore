@@ -13,3 +13,7 @@
 
 # The rendered documentation site, generated from docs/.
 /_site/
+# graphify knowledge graph: derived from the sources and rebuilt with
+# `graphify update .` (AST-only, no API cost). See the graphify section in
+# CLAUDE.md. Regenerable, so it stays out of the history.
+/graphify-out/

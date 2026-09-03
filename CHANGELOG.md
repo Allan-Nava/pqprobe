@@ -6,6 +6,42 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.19.1] - 2026-09-03
+
+### Changed
+
+- **`ux` is a label, and `medium` is not a priority** — PQ-37 and PQ-38 arrived
+  with `prio=medium` (the vocabulary is `high|med|low`) and `labels=…,ux`, which
+  the linter rejected and so blocked the release. `ux` was clearly deliberate —
+  "how the tool reads and embeds" is not `cli` and not `docs` — so it joins the
+  vocabulary properly: one entry in `scripts/backlog.sh`, which the label gate
+  then required a colour and a description for, and a line in the backlog's own
+  how-to. `prio` was corrected to `med` rather than the vocabulary widened: a
+  fourth spelling of three priorities is how a filter starts missing items.
+- **graphify wired into this repository** — `graphify claude install` (a
+  `PreToolUse` hook in [.claude/settings.json](.claude/settings.json) plus a
+  section in `CLAUDE.md`) and `graphify hook install` (post-commit and
+  post-checkout git hooks, local to the clone). The graph is built with
+  `graphify update .`: 568 nodes, 1338 edges, 57 communities, AST-only, no API
+  key and no cost. The most connected node is `verdict.Evaluate` at 49 edges,
+  which is the right answer for this tool.
+
+  Three deliberate decisions, since each one is the kind that gets undone by
+  somebody tidying up:
+  - `graphify-out/` is **gitignored**, as in the sibling repos: it is derived
+    from the sources and rebuilt by a command.
+  - The `graphify` section lives in `CLAUDE.md` and **not** in `AGENTS.md`, so
+    the brief stays tool-neutral. Because this repository's own rule says
+    CLAUDE.md is a copy of AGENTS.md and a divergence means AGENTS.md wins, the
+    section says in as many words that it is the exception — otherwise the next
+    reader "fixes" it by deleting the only documentation of the graph.
+  - `.gitattributes` was dropped: `graphify hook install` writes a
+    `graphify-out/graph.json merge=graphify` line, and with the directory
+    ignored that attribute has nothing to apply to.
+
+  Not a CI gate, and not going to be: that would make graphify a build
+  dependency of a project whose entire argument is having none.
+
 ## [0.19.0] - 2026-09-03
 
 ### Added
@@ -543,6 +579,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.19.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.19.1
 [0.19.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.19.0
 [0.18.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.18.1
 [0.18.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.18.0
