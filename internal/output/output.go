@@ -12,8 +12,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Allan-Nava/pqprobe/internal/finding"
 	"github.com/Allan-Nava/pqprobe/internal/verdict"
@@ -148,6 +151,160 @@ func Markdown(w io.Writer, reps []verdict.Report, min finding.Status) error {
 // generator has to handle.
 func mdCell(s string) string {
 	return strings.NewReplacer("|", "\\|", "\n", " ").Replace(s)
+}
+
+// Textfile writes the run for a node exporter's textfile collector (PQ-15).
+//
+// Written to a temporary file in the same directory and renamed over the
+// target, because the collector reads whatever is in the file when it scrapes —
+// including half of it. Replaced whole rather than appended, or a target would
+// briefly hold two classes at once.
+//
+// The series are the ones an alert is actually built from: a numeric severity
+// to threshold on, the class as a label to put in the message, the certificate
+// days, the measured hello sizes, and the run timestamp — without which a probe
+// that silently stopped running looks exactly like a fleet that is fine.
+func Textfile(path string, reps []verdict.Report, now time.Time) error {
+	var b strings.Builder
+
+	fmt.Fprintf(&b, "# HELP pqprobe_last_run_timestamp_seconds When pqprobe last completed a run.\n")
+	fmt.Fprintf(&b, "# TYPE pqprobe_last_run_timestamp_seconds gauge\n")
+	fmt.Fprintf(&b, "pqprobe_last_run_timestamp_seconds %d\n", now.Unix())
+	fmt.Fprintf(&b, "# HELP pqprobe_endpoints How many endpoints the run probed.\n")
+	fmt.Fprintf(&b, "# TYPE pqprobe_endpoints gauge\n")
+	fmt.Fprintf(&b, "pqprobe_endpoints %d\n", len(reps))
+
+	if len(reps) == 0 {
+		return writeAtomic(path, b.String())
+	}
+
+	// One family at a time: HELP and TYPE may appear once each, and a collector
+	// rejects the whole file otherwise — so all the series of a family are
+	// written together rather than per endpoint.
+	fmt.Fprintf(&b, "# HELP pqprobe_class The endpoint's class, as a label. Always 1.\n")
+	fmt.Fprintf(&b, "# TYPE pqprobe_class gauge\n")
+	for _, r := range reps {
+		fmt.Fprintf(&b, "pqprobe_class{target=%q,class=%q} 1\n", r.Target, string(r.Class))
+	}
+
+	fmt.Fprintf(&b, "# HELP pqprobe_status Worst finding severity: 0 OK, 1 WARN, 2 BAD, 3 ERROR.\n")
+	fmt.Fprintf(&b, "# TYPE pqprobe_status gauge\n")
+	for _, r := range reps {
+		fmt.Fprintf(&b, "pqprobe_status{target=%q} %d\n", r.Target, promStatus(r.Worst()))
+	}
+
+	fmt.Fprintf(&b, "# HELP pqprobe_findings Findings per status.\n")
+	fmt.Fprintf(&b, "# TYPE pqprobe_findings gauge\n")
+	for _, r := range reps {
+		counts := finding.Summarize(r.Finding)
+		for _, st := range []finding.Status{finding.OK, finding.WARN, finding.BAD, finding.ERROR} {
+			if counts[st] == 0 {
+				continue
+			}
+			fmt.Fprintf(&b, "pqprobe_findings{target=%q,status=%q} %d\n",
+				r.Target, st, counts[st])
+		}
+	}
+
+	// Certificate days come from the finding rather than being recomputed: the
+	// thresholds are the run's, and two answers would drift.
+	var expiry []string
+	for _, r := range reps {
+		for _, f := range r.Finding {
+			if f.Check == "expiry" && f.Value != nil {
+				expiry = append(expiry, fmt.Sprintf("pqprobe_cert_expiry_days{target=%q} %g\n",
+					r.Target, *f.Value))
+			}
+		}
+	}
+	if len(expiry) > 0 {
+		fmt.Fprintf(&b, "# HELP pqprobe_cert_expiry_days Days until the leaf certificate expires.\n")
+		fmt.Fprintf(&b, "# TYPE pqprobe_cert_expiry_days gauge\n")
+		for _, line := range expiry {
+			b.WriteString(line)
+		}
+	}
+
+	fmt.Fprintf(&b, "# HELP pqprobe_handshake_ok Whether that client shape completed a handshake.\n")
+	fmt.Fprintf(&b, "# TYPE pqprobe_handshake_ok gauge\n")
+	for _, r := range reps {
+		for _, res := range r.Results {
+			ok := 0
+			if res.OK {
+				ok = 1
+			}
+			fmt.Fprintf(&b, "pqprobe_handshake_ok{target=%q,profile=%q} %d\n",
+				r.Target, res.Profile, ok)
+		}
+	}
+
+	var hello []string
+	for _, r := range reps {
+		for _, res := range r.Results {
+			if res.HelloBytes > 0 {
+				hello = append(hello, fmt.Sprintf("pqprobe_hello_bytes{target=%q,profile=%q} %d\n",
+					r.Target, res.Profile, res.HelloBytes))
+			}
+		}
+	}
+	if len(hello) > 0 {
+		fmt.Fprintf(&b, "# HELP pqprobe_hello_bytes Size on the wire of the ClientHello that shape sent.\n")
+		fmt.Fprintf(&b, "# TYPE pqprobe_hello_bytes gauge\n")
+		for _, line := range hello {
+			b.WriteString(line)
+		}
+	}
+
+	return writeAtomic(path, b.String())
+}
+
+// writeAtomic replaces path in one step. Same directory, because a rename
+// across filesystems is a copy and a copy is not atomic.
+func writeAtomic(path, body string) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".pqprobe-*")
+	if err != nil {
+		return fmt.Errorf("textfile: %w", err)
+	}
+	name := tmp.Name()
+	defer os.Remove(name) // a no-op once the rename succeeded
+
+	if _, err := tmp.WriteString(body); err != nil {
+		tmp.Close()
+		return fmt.Errorf("textfile: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("textfile: %w", err)
+	}
+	// The collector reads this file without asking anybody, so it is
+	// world-readable rather than 0600 as CreateTemp leaves it.
+	if err := os.Chmod(name, 0o644); err != nil {
+		return fmt.Errorf("textfile: %w", err)
+	}
+	if err := os.Rename(name, path); err != nil {
+		return fmt.Errorf("textfile: %w", err)
+	}
+	return nil
+}
+
+// Label values go through %q rather than a hand-rolled escaper: a target is a
+// string somebody else chose — an inventory alias, an SNI — and Go's quoting is
+// exactly what Prometheus wants for the three characters that matter, a quote,
+// a backslash and a newline. The first version of this escaped them itself and
+// then handed the result to %q, which escaped them twice.
+
+// promStatus is the severity as a number to threshold on: `> 1` is every state
+// somebody should be woken for.
+func promStatus(s finding.Status) int {
+	switch s {
+	case finding.WARN:
+		return 1
+	case finding.BAD:
+		return 2
+	case finding.ERROR:
+		return 3
+	}
+	return 0
 }
 
 // LoadReports reads a baseline: a document JSON wrote earlier (PQ-24).

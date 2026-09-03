@@ -148,9 +148,18 @@ prints what to pick up.
   generates its `Sitemap:` lines from a daily sync over the sitemaps that answer
   200, so shipping one *is* the mechanism.
   <!-- pq: prio=med size=S labels=docs,delivery ver=0.16.0 -->
-- [ ] **PQ-15 — Prometheus textfile output**: `--textfile` writing
-  `pqprobe_class{target=…}` for a node exporter, so the state is graphable
-  without a scraper of its own. <!-- pq: prio=med size=S labels=output -->
+- [x] **PQ-15 — Prometheus textfile output**: `--textfile FILE` writes eight
+  families for a node exporter's textfile collector — the class as a label, the
+  severity as a number to threshold on (`pqprobe_status > 1`), findings per
+  status, certificate days taken from the finding rather than recomputed, per
+  profile handshake results and the measured hello sizes, and the run
+  timestamp, without which a probe that silently stopped looks exactly like a
+  fleet that is fine. Written to a temporary file in the same directory and
+  renamed over the target, because the collector reads whatever is there when it
+  scrapes, half a file included; asserted first, before any of the metric names.
+  A side output rather than a renderer, so it combines with all of them and is
+  rewritten on every `--watch` tick.
+  <!-- pq: prio=med size=S labels=output ver=0.19.0 -->
 - [x] **PQ-33 — Homebrew and the published image**: `brew tap` on this
   repository and `brew install pqprobe`, from a `Formula/pqprobe.rb` that
   `scripts/brew.sh` renders inside the release commit — the tap is the repo, so

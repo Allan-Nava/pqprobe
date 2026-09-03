@@ -6,6 +6,33 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.19.0] - 2026-09-03
+
+### Added
+
+- **Prometheus textfile output** (PQ-15) — `--textfile
+  /var/lib/node_exporter/pqprobe.prom` writes eight families: the class as a
+  label, the severity as a number so an alert is `pqprobe_status > 1`, findings
+  per status, `pqprobe_cert_expiry_days` taken from the finding rather than
+  recomputed, `pqprobe_handshake_ok` and the measured `pqprobe_hello_bytes` per
+  profile, and `pqprobe_last_run_timestamp_seconds` — alert on that one too,
+  because a probe that silently stopped running looks exactly like a fleet that
+  is fine.
+
+  The file is written to a temporary file in the same directory and renamed over
+  the target, and that is the first thing the tests assert rather than the
+  metric names: the collector reads whatever is in the file when it scrapes,
+  including half of it, and an old run's series left behind would report one
+  target as two classes at once. It is a side output rather than a renderer, so
+  it combines with `--json`, `--markdown` or plain text, and is rewritten on
+  every `--watch` tick.
+
+  Label values go through Go's `%q`, which is exactly Prometheus escaping for
+  the three characters that matter — the first version escaped them itself and
+  then handed the result to `%q`, escaping everything twice. A target is a
+  string somebody else chose, so the test uses one with a quote and a backslash
+  in it.
+
 ## [0.18.1] - 2026-09-03
 
 ### Changed
@@ -516,6 +543,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.19.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.19.0
 [0.18.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.18.1
 [0.18.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.18.0
 [0.17.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.17.0

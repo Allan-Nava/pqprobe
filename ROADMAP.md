@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**36 items · 30 shipped · 6 open · 5 milestones.**
+**36 items · 31 shipped · 5 open · 5 milestones.**
 
 ## At a glance
 
@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
-| **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 82% | 2 | 9 |
+| **M3** — Fit the toolchain | `v0.3.0` | next | `#########.` 91% | 1 | 10 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 4 | 0 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
@@ -23,7 +23,6 @@
 The open items with the highest priority in the milestones that are in flight.
 
 - **PQ-14** — checkfleet module · `high` · size `M` · integration (M3, target `v0.3.0`)
-- **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
 
 ## Milestones
 
@@ -56,16 +55,16 @@ Target `v0.18.0` · shipped · 0 open · 5 shipped · `##########` 100%
 
 ### M3 — Fit the toolchain
 
-Target `v0.3.0` · next · 2 open · 9 shipped · `########..` 82%
+Target `v0.3.0` · next · 1 open · 10 shipped · `#########.` 91%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-14** — checkfleet module | high | M | integration | open |
-| **PQ-15** — Prometheus textfile output | med | S | output | open |
 | **PQ-16** — Release pipeline | high | M | release | shipped `0.2.0` |
 | **PQ-21** — Intent document | high | S | docs,project | shipped `0.2.0` |
 | **PQ-32** — Every commit is a version | high | S | release,project | shipped `0.2.0` |
 | **PQ-33** — Homebrew and the published image | high | S | delivery,docs | shipped `0.4.0` |
+| **PQ-15** — Prometheus textfile output | med | S | output | shipped `0.19.0` |
 | **PQ-17** — Docs site | med | M | docs | shipped `0.2.0` |
 | **PQ-29** — Brand assets | med | S | docs,project | shipped `0.2.0` |
 | **PQ-30** — The About box as data | med | S | project,delivery | shipped `0.2.0` |
@@ -105,11 +104,11 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 | `probe` | 12 | 2 |
 | `profile` | 5 | 2 |
 | `integration` | 1 | 1 |
-| `output` | 4 | 1 |
 | `cli` | 6 | 0 |
 | `delivery` | 4 | 0 |
 | `docs` | 6 | 0 |
 | `inventory` | 2 | 0 |
+| `output` | 4 | 0 |
 | `project` | 5 | 0 |
 | `release` | 2 | 0 |
 | `tests` | 1 | 0 |

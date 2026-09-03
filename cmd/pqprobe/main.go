@@ -115,7 +115,7 @@ func watchTick(w io.Writer, prev, cur []verdict.Report, now time.Time) int {
 // printed.
 func watchLoop(ctx context.Context, w io.Writer, d probe.Dialer, targets []probe.Target,
 	profiles []clientprofile.Profile, opt verdict.Options, concurrency int,
-	every time.Duration, prev []verdict.Report) int {
+	every time.Duration, prev []verdict.Report, textfile string) int {
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -141,6 +141,13 @@ func watchLoop(ctx context.Context, w io.Writer, d probe.Dialer, targets []probe
 			}
 			watchTick(w, prev, cur, time.Now())
 			prev = cur
+			// Rewritten every tick: a scrape wants the current state, and a
+			// stale file is indistinguishable from a healthy fleet.
+			if textfile != "" {
+				if err := output.Textfile(textfile, cur, time.Now()); err != nil {
+					fmt.Fprintln(w, "pqprobe:", err)
+				}
+			}
 		}
 	}
 }
@@ -258,6 +265,9 @@ flags:
   --confirm                re-dial an abrupt failure once before believing it
                            (default true; --confirm=false to dial once)
   --concurrency N          endpoints in flight (default 8)
+  --textfile FILE          also write Prometheus textfile-collector metrics to
+                           FILE, replaced atomically (works with any renderer,
+                           and is rewritten on every --watch tick)
   --watch D                re-probe every D and print only the transitions, for
                            the window in which something is being changed
                            (minimum 5s; text output only)
@@ -352,6 +362,7 @@ func cmdProbe(args []string) int {
 		timeout     = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
 		confirm     = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
 		concurrency = fs.Int("concurrency", 8, "endpoints in flight")
+		textfile    = fs.String("textfile", "", "also write Prometheus textfile metrics to this path")
 		watch       = fs.Duration("watch", 0, "re-probe every D and print only the transitions")
 		baseline    = fs.String("baseline", "", "compare against a previous --json run")
 		asMarkdown  = fs.Bool("markdown", false, "markdown for a PR comment or job summary")
@@ -494,11 +505,19 @@ func cmdProbe(args []string) int {
 		return 2
 	}
 
+	if *textfile != "" {
+		if err := output.Textfile(*textfile, reps, time.Now()); err != nil {
+			// A metrics file nobody can write is worth saying out loud, and it
+			// is not a reason to lose the findings that are already on stdout.
+			fmt.Fprintln(os.Stderr, "pqprobe:", err)
+		}
+	}
+
 	// The first report is out; from here only what moves (PQ-13). It runs until
 	// interrupted, so nothing below this line happens during a watch.
 	if *watch > 0 {
 		return watchLoop(context.Background(), os.Stdout, dialer, targets, sel, opt,
-			*concurrency, *watch, reps)
+			*concurrency, *watch, reps, *textfile)
 	}
 
 	// Exit 0 whenever the probe ran. A monitoring wrapper that treats a WARN as
@@ -645,7 +664,7 @@ func takesValue(flagArg string) bool {
 	switch name {
 	case "profile", "inventory", "group", "list", "port", "sni", "alpn",
 		"timeout", "concurrency", "min-severity", "exit-on", "expiry-warn", "expiry-bad",
-		"baseline", "groups", "socks5", "watch":
+		"baseline", "groups", "socks5", "watch", "textfile":
 		return true
 	}
 	return false

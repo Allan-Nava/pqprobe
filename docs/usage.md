@@ -43,6 +43,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--timeout D` | `10s` | per-handshake timeout |
 | `--confirm` | on | re-dial an abrupt failure once before believing it (`--confirm=false` to dial once) |
 | `--concurrency N` | `8` | endpoints in flight (profiles of one endpoint are sequential) |
+| `--textfile FILE` | — | also write Prometheus textfile-collector metrics to `FILE`, replaced atomically |
 | `--watch D` | — | re-probe every `D` and print only the transitions (minimum 5s, text output only) |
 | `--baseline FILE` | — | compare against a previous `--json` run and report the transitions |
 | `--markdown` | — | a table and collapsible detail, for a pull request comment or a CI job summary |
@@ -63,6 +64,34 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 
 Exit 0 on a WARN is deliberate. A check that fails the pipeline on every
 deviation is a check people learn to ignore.
+
+## As a metric
+
+```sh
+pqprobe probe --inventory inventory/edge --textfile /var/lib/node_exporter/pqprobe.prom
+```
+
+Eight families for a node exporter's textfile collector, replaced **atomically**
+— the collector reads whatever is in the file when it scrapes, including half of
+it:
+
+```
+pqprobe_last_run_timestamp_seconds 1788421517
+pqprobe_class{target="github.com:443",class="pq-blind"} 1
+pqprobe_status{target="github.com:443"} 1
+pqprobe_findings{target="github.com:443",status="WARN"} 2
+pqprobe_cert_expiry_days{target="github.com:443"} 87.67
+pqprobe_handshake_ok{target="github.com:443",profile="pq-only"} 0
+pqprobe_hello_bytes{target="github.com:443",profile="pq-preferred"} 1494
+```
+
+`pqprobe_status` is the severity as a number — `0` OK, `1` WARN, `2` BAD, `3`
+ERROR — so an alert is `pqprobe_status > 1`. Alert on
+`pqprobe_last_run_timestamp_seconds` too: a probe that silently stopped running
+looks exactly like a fleet that is fine.
+
+It is a side output, not a renderer, so it combines with any of them — and with
+`--watch`, where the file is rewritten on every tick.
 
 ## While something is being changed
 

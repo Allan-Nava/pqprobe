@@ -3,10 +3,15 @@ package output
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Allan-Nava/pqprobe/internal/finding"
+	"github.com/Allan-Nava/pqprobe/internal/probe"
 	"github.com/Allan-Nava/pqprobe/internal/verdict"
 )
 
@@ -241,5 +246,155 @@ func TestMarkdownEscapesPipesInTableCellsOnly(t *testing.T) {
 	}
 	if !strings.Contains(b.String(), "a|b|c") {
 		t.Error("a pipe in prose is literal text: escaping it would only add backslashes")
+	}
+}
+
+// PQ-15. The node exporter's textfile collector reads whatever is in the file
+// when it scrapes, including half of it — so the write has to be atomic, and
+// that is the first thing asserted here rather than the metric names.
+var textAt = time.Unix(1788000000, 0)
+
+func TestTextfileIsWrittenAtomically(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "pqprobe.prom")
+
+	// An existing file has to be replaced, not appended to: a collector reading
+	// two runs of series would report a target as two classes at once.
+	if err := os.WriteFile(path, []byte("pqprobe_stale_series 1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	reps := []verdict.Report{{Target: "a:443", Class: verdict.PQReady}}
+	if err := Textfile(path, reps, textAt); err != nil {
+		t.Fatal(err)
+	}
+
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(body), "pqprobe_stale_series") {
+		t.Error("the previous run's series survived: the file has to be replaced whole")
+	}
+
+	// Nothing left behind for the collector to trip over.
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 1 {
+		names := []string{}
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		t.Errorf("directory holds %v, want only the metrics file — a temp file left behind is one the collector will read", names)
+	}
+}
+
+// What an alert is actually built from: a numeric severity, the class as a
+// label, and the timestamp of the run so a file that stopped being written can
+// be spotted at all.
+func TestTextfileCarriesWhatAnAlertNeeds(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "pqprobe.prom")
+
+	bad := verdict.Report{Target: "bad:443", Class: verdict.PQIntolerant, Finding: []finding.Finding{
+		{Check: "verdict", Target: "bad:443", Status: finding.BAD, Message: "pq-intolerant"},
+		{Check: "expiry", Target: "bad:443", Status: finding.OK, Message: "88 days",
+			Value: finding.Num(88), Unit: "days"},
+		{Check: "handshake", Target: "bad:443/classic", Status: finding.OK, Message: "TLS 1.3"},
+	}, Results: []probe.Result{
+		{Profile: "classic", OK: true, HelloBytes: 272},
+		{Profile: "pq-preferred", OK: false, HelloBytes: 1495},
+	}}
+	if err := Textfile(path, []verdict.Report{bad}, textAt); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := os.ReadFile(path)
+	out := string(body)
+
+	for _, want := range []string{
+		`pqprobe_class{target="bad:443",class="pq-intolerant"} 1`,
+		`pqprobe_status{target="bad:443"} 2`,
+		`pqprobe_findings{target="bad:443",status="BAD"} 1`,
+		`pqprobe_cert_expiry_days{target="bad:443"} 88`,
+		`pqprobe_hello_bytes{target="bad:443",profile="pq-preferred"} 1495`,
+		`pqprobe_handshake_ok{target="bad:443",profile="classic"} 1`,
+		`pqprobe_handshake_ok{target="bad:443",profile="pq-preferred"} 0`,
+		"pqprobe_last_run_timestamp_seconds 1788000000",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing series:\n  %s\ngot:\n%s", want, out)
+		}
+	}
+
+	// One HELP and one TYPE per family, or promtool rejects the file.
+	if n := strings.Count(out, "# TYPE pqprobe_class "); n != 1 {
+		t.Errorf("# TYPE pqprobe_class appears %d times, want 1", n)
+	}
+	if !strings.Contains(out, "# HELP pqprobe_status ") {
+		t.Error("no HELP for pqprobe_status")
+	}
+}
+
+// A label value with a quote or a backslash in it breaks the format, and a
+// target is a string somebody else chose — an inventory alias, an SNI.
+func TestTextfileEscapesLabelValues(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "m.prom")
+	reps := []verdict.Report{{Target: `we"ird\host:443`, Class: verdict.PQBlind}}
+	if err := Textfile(path, reps, textAt); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := os.ReadFile(path)
+	if !strings.Contains(string(body), `target="we\"ird\\host:443"`) {
+		t.Errorf("label not escaped:\n%s", body)
+	}
+}
+
+// A run that probed nothing still has to write the timestamp: an alert on
+// staleness is the only way to notice that the probe itself stopped running.
+func TestTextfileAlwaysWritesTheTimestamp(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "m.prom")
+	if err := Textfile(path, nil, textAt); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := os.ReadFile(path)
+	if !strings.Contains(string(body), "pqprobe_last_run_timestamp_seconds") {
+		t.Errorf("no timestamp in an empty run:\n%s", body)
+	}
+	if strings.Contains(string(body), "pqprobe_class{") {
+		t.Error("no endpoints, so no class series")
+	}
+}
+
+// Every metric name has to be a legal Prometheus name, or the whole file is
+// dropped and the metrics simply never appear.
+func TestTextfileMetricNamesAreLegal(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "m.prom")
+	reps := []verdict.Report{{Target: "a:443", Class: verdict.PQReady, Finding: []finding.Finding{
+		{Check: "verdict", Target: "a:443", Status: finding.OK, Message: "fine"},
+	}}}
+	if err := Textfile(path, reps, textAt); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := os.ReadFile(path)
+	legal := regexp.MustCompile(`^[a-zA-Z_:][a-zA-Z0-9_:]*$`)
+	seen := map[string]bool{}
+	for _, line := range strings.Split(string(body), "\n") {
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		series := strings.Fields(line)[0]
+		if seen[series] {
+			t.Errorf("duplicate series %q — a collector will reject the file", series)
+		}
+		seen[series] = true
+		name := series
+		if i := strings.Index(name, "{"); i > 0 {
+			name = name[:i]
+		}
+		if !legal.MatchString(name) {
+			t.Errorf("illegal metric name %q", name)
+		}
 	}
 }

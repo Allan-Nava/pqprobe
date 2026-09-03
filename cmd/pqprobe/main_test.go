@@ -188,7 +188,7 @@ func TestUsageDocumentsEveryFlagTheProbeAccepts(t *testing.T) {
 		"--sni", "--alpn", "--timeout", "--concurrency", "--json", "--findings",
 		"--min-severity", "--exit-on", "--expiry-warn", "--expiry-bad", "--confirm",
 		"--per-address", "--baseline", "--size-sweep", "--alpn-check", "--groups",
-		"--markdown", "--socks5",
+		"--markdown", "--socks5", "--textfile",
 	} {
 		if !strings.Contains(b.String(), flag) {
 			t.Errorf("%s is not in --help", flag)
@@ -254,6 +254,25 @@ func TestExplainToleratesADashedClass(t *testing.T) {
 // reader uses to line the change up against whatever they were doing to the
 // load balancer at the time.
 var watchAt = time.Date(2026, 9, 3, 12, 34, 56, 0, time.UTC)
+
+// PQ-15. --textfile is a side output, not a renderer: it writes a file for a
+// node exporter and leaves stdout to whichever renderer was asked for, so it
+// combines with all of them — including --watch, where a file rewritten on
+// every tick is exactly what a scrape wants.
+func TestTextfileTakesAPathAndIsNotARenderer(t *testing.T) {
+	if !takesValue("--textfile") {
+		t.Fatal("--textfile takes a path")
+	}
+	got := permute([]string{"origin.example", "--textfile", "/var/lib/node_exporter/pqprobe.prom"})
+	want := []string{"--textfile", "/var/lib/node_exporter/pqprobe.prom", "origin.example"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("permute = %v, want %v", got, want)
+	}
+	// It is not one of the document renderers, so --watch must not refuse it.
+	if err := validWatchOutput(time.Minute, ""); err != nil {
+		t.Errorf("--watch with a textfile and the text renderer has to be allowed: %v", err)
+	}
+}
 
 // PQ-13. Watch mode exists for the window in which a CDN or a load balancer is
 // being changed, and in that window the only interesting output is what moved.
