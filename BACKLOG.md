@@ -227,7 +227,7 @@ prints what to pick up.
 
 ## M4 — Later <!-- ms: target=ongoing phase=later -->
 
-- [ ] **PQ-37 — `--findings` non parla la forma che i tool fratelli consumano**: il
+- [x] **PQ-37 — `--findings` non parla la forma che i tool fratelli consumano**: il
   README promette *«the flat findings array the sibling tools speak»*, ma l'array
   emesso è `{check, target, status, message, value, unit}` con `status`
   maiuscolo (`OK`/`WARN`/`BAD`), mentre l'aggregatore che lo consuma davvero —
@@ -241,7 +241,14 @@ prints what to pick up.
   Le strade sono due e vanno entrambe bene, purché se ne scelga una: emettere la
   forma avvolta (magari dietro `--findings=wrapped`), oppure correggere la riga
   del README, che oggi promette un'interoperabilità che non c'è.
-  <!-- pq: prio=med size=M labels=output,integration -->
+  Shipped as `--findings=wrapped`, and the README line was corrected too: the
+  promise is now true *and* precise about which shape is which. The flat array
+  is untouched, so no existing caller changes. The `id` is a fingerprint of
+  check plus target and deliberately not of the message — days-to-expiry and
+  byte counts move on their own, and an id derived from the text would report a
+  new problem every morning, which is the opposite of deduplication. The flag
+  keeps working bare through `IsBoolFlag`, so the shape needs the `=`.
+  <!-- pq: prio=med size=M labels=output,integration ver=0.21.0 -->
 
 - [x] **PQ-38 — `version` non è incorporabile**: stampa `pqprobe dev`, cioè nome
   **più** versione, e `version --help` stampa la stessa cosa (il sottocomando

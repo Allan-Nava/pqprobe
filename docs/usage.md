@@ -53,6 +53,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--markdown` | — | a table and collapsible detail, for a pull request comment or a CI job summary |
 | `--json` | — | full report, every profile result included |
 | `--findings` | — | flat findings array |
+| `--findings=wrapped` | — | the wrapped object a fleet aggregator consumes, with a stable id per finding (note the `=`) |
 | `--min-severity S` | — | hide findings below `S` |
 | `--exit-on S` | never | exit 1 when a finding reaches `S` |
 | `--expiry-warn N` | `21` | certificate expiry WARN threshold, days |
@@ -176,6 +177,30 @@ pqprobe probe --inventory inventory/edge --json > today.json
 pqprobe probe --inventory inventory/edge --baseline yesterday.json --exit-on BAD
 ```
 
-`--findings` is the flat array the sibling tools speak: one object per finding,
+`--findings` is the flat array: one object per finding,
 `check`/`target`/`status`/`message`/`hint`, with `value` and `unit` where there
 is a number. An empty run emits `[]`, never `null`.
+
+`--findings=wrapped` is the shape a fleet aggregator consumes:
+
+```json
+{
+  "check": "pqprobe",
+  "status": "warn",
+  "summary": "1 endpoint(s): 1 pq-blind",
+  "findings": [
+    { "id": "ee4b9b852b89", "severity": "warn", "title": "pq-blind — …",
+      "detail": "the endpoint fell back to X25519, …",
+      "target": "github.com:443", "check": "verdict" }
+  ]
+}
+```
+
+The **id** is the reason it exists: it fingerprints the same problem on the same
+target across runs, so an aggregator can tell a finding it has already seen from
+a new one. It is built from the check and the target and deliberately **not**
+from the message, which carries days and byte counts that change on their own —
+an id derived from the text would report a new problem every morning.
+
+Note the `=`: `--findings` still works bare, so `--findings wrapped` would read
+`wrapped` as a target.

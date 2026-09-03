@@ -411,3 +411,56 @@ func TestVersionDoesNotIgnoreItsFlags(t *testing.T) {
 		t.Errorf("the error has to name the real flag: %q", b.String())
 	}
 }
+
+// PQ-37. --findings has to keep working exactly as it did — a bare flag
+// producing the flat array — while --findings=wrapped selects the wrapped
+// shape. So it is a value that also answers to being used as a boolean.
+func TestFindingsFlagKeepsWorkingAndTakesAShape(t *testing.T) {
+	var f findingsFormat
+
+	// Bare: what every existing caller writes.
+	if err := f.Set("true"); err != nil {
+		t.Fatalf("bare --findings: %v", err)
+	}
+	if !f.on || f.wrapped {
+		t.Errorf("bare --findings = %+v, want the flat array", f)
+	}
+	if !f.IsBoolFlag() {
+		t.Error("--findings has to be usable without a value, or every existing command line breaks")
+	}
+
+	f = findingsFormat{}
+	if err := f.Set("wrapped"); err != nil {
+		t.Fatalf("--findings=wrapped: %v", err)
+	}
+	if !f.on || !f.wrapped {
+		t.Errorf("--findings=wrapped = %+v", f)
+	}
+
+	f = findingsFormat{}
+	if err := f.Set("flat"); err != nil {
+		t.Fatalf("--findings=flat: %v", err)
+	}
+	if !f.on || f.wrapped {
+		t.Errorf("--findings=flat = %+v", f)
+	}
+
+	// A typo must name the choices rather than picking one.
+	f = findingsFormat{}
+	err := f.Set("wrappd")
+	if err == nil {
+		t.Fatal("a shape that does not exist has to be refused")
+	}
+	if !strings.Contains(err.Error(), "wrapped") || !strings.Contains(err.Error(), "flat") {
+		t.Errorf("the error has to list the shapes: %v", err)
+	}
+
+	// And it must not eat the target after it: `--findings example.com`.
+	if takesValue("--findings") {
+		t.Error("--findings takes its value with an =, so permute must not consume the next word")
+	}
+	got := permute([]string{"--findings", "example.com"})
+	if len(got) != 2 || got[1] != "example.com" {
+		t.Fatalf("permute = %v, want the target kept as an operand", got)
+	}
+}

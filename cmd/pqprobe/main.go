@@ -275,7 +275,12 @@ flags:
   --markdown               a table and collapsible detail, for a pull request
                            comment or a CI job summary
   --json                   full report, every profile result included
-  --findings               flat findings array (the toolchain contract)
+  --findings[=SHAPE]       findings as JSON: flat (the default) or wrapped.
+                           --findings=wrapped emits {check,status,summary,
+                           findings:[{id,severity,title,detail}]} with a stable
+                           id per finding, which is what the fleet aggregator
+                           deduplicates on. Note the =, not a space: the flag
+                           still works bare, so a space would be read as a target
   --min-severity S         hide findings below S (OK|WARN|BAD|ERROR)
   --exit-on S              exit 1 when any finding reaches S (default: never)
   --expiry-warn N          certificate expiry WARN threshold in days (default 21)
@@ -291,6 +296,46 @@ body, no credentials. It is safe to point at production, and it says nothing
 about a client's exact ClientHello fingerprint — only about capability classes.
 `)
 }
+
+// findingsFormat is --findings, which keeps working as a bare flag and also
+// takes a shape: --findings=wrapped (PQ-37).
+//
+// It implements IsBoolFlag so `--findings` alone still means the flat array —
+// every existing command line has to keep working — while `--findings=wrapped`
+// selects the wrapped object the fleet aggregator consumes. The value form
+// needs the `=`: with IsBoolFlag set, `--findings wrapped` would leave
+// "wrapped" as a target, which is why the help says so.
+type findingsFormat struct {
+	on      bool
+	wrapped bool
+}
+
+func (f *findingsFormat) String() string {
+	switch {
+	case f == nil || !f.on:
+		return ""
+	case f.wrapped:
+		return "wrapped"
+	}
+	return "flat"
+}
+
+func (f *findingsFormat) Set(v string) error {
+	switch v {
+	// "true" is what the flag package passes for a bare boolean flag.
+	case "true", "flat", "":
+		f.on, f.wrapped = true, false
+	case "wrapped":
+		f.on, f.wrapped = true, true
+	case "false":
+		f.on, f.wrapped = false, false
+	default:
+		return fmt.Errorf("unknown findings shape %q: flat (the default) or wrapped", v)
+	}
+	return nil
+}
+
+func (f *findingsFormat) IsBoolFlag() bool { return true }
 
 // versionTo prints the version (PQ-38).
 //
@@ -400,12 +445,14 @@ func cmdProbe(args []string) int {
 		baseline    = fs.String("baseline", "", "compare against a previous --json run")
 		asMarkdown  = fs.Bool("markdown", false, "markdown for a PR comment or job summary")
 		asJSON      = fs.Bool("json", false, "full JSON report")
-		asFindings  = fs.Bool("findings", false, "flat findings array")
+		asFindings  = &findingsFormat{}
 		minSev      = fs.String("min-severity", "", "hide findings below this status")
 		exitOn      = fs.String("exit-on", "", "exit 1 when a finding reaches this status")
 		expWarn     = fs.Int("expiry-warn", 21, "certificate expiry WARN days")
 		expBad      = fs.Int("expiry-bad", 7, "certificate expiry BAD days")
 	)
+	fs.Var(asFindings, "findings", "findings as JSON: flat or wrapped")
+
 	if err := fs.Parse(permute(args)); err != nil {
 		return 2
 	}
@@ -414,7 +461,7 @@ func cmdProbe(args []string) int {
 	switch {
 	case *asMarkdown:
 		renderer = "markdown"
-	case *asFindings:
+	case asFindings.on:
 		renderer = "findings"
 	case *asJSON:
 		renderer = "json"
@@ -524,7 +571,9 @@ func cmdProbe(args []string) int {
 	switch {
 	case *asMarkdown:
 		err = output.Markdown(os.Stdout, reps, finding.Status(*minSev))
-	case *asFindings:
+	case asFindings.on && asFindings.wrapped:
+		err = output.FindingsWrapped(os.Stdout, reps, finding.Status(*minSev))
+	case asFindings.on:
 		err = output.Findings(os.Stdout, reps, finding.Status(*minSev))
 	case *asJSON:
 		err = output.JSON(os.Stdout, reps)

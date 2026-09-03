@@ -181,7 +181,8 @@ docker build -t pqprobe . && docker run --rm pqprobe probe example.com
 |---|---|
 | *(none)* | text, worst endpoint first, hint on its own line |
 | `--json` | everything, including every per-profile handshake result |
-| `--findings` | the flat findings array the sibling tools speak — empty array, never `null` |
+| `--findings` | the flat findings array — one object per finding, empty array never `null` |
+| `--findings=wrapped` | the wrapped object a fleet aggregator consumes: `{check, status, summary, findings:[{id, severity, title, detail}]}`, with a **stable id** per finding so the same problem can be recognised across runs |
 | `--markdown` | a table and collapsible detail, for a PR comment or a CI job summary |
 | `--textfile F` | Prometheus textfile-collector metrics, written atomically (a side output, not a renderer) |
 | `--min-severity S` | hide findings below `S`; the endpoint header stays |

@@ -8,6 +8,8 @@
 package output
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -151,6 +153,110 @@ func Markdown(w io.Writer, reps []verdict.Report, min finding.Status) error {
 // generator has to handle.
 func mdCell(s string) string {
 	return strings.NewReplacer("|", "\\|", "\n", " ").Replace(s)
+}
+
+// FindingsWrapped is the shape the fleet aggregator consumes (PQ-37):
+//
+//	{"check": "pqprobe", "status": "bad", "summary": "…",
+//	 "findings": [{"id": "…", "severity": "bad", "title": "…", "detail": "…"}]}
+//
+// The flat array `Findings` writes is still what `--findings` produces; this is
+// `--findings=wrapped`. The README promised "the flat findings array the sibling
+// tools speak" while the aggregator that actually reads it wanted this, so every
+// consumer translated — which is what a shared shape exists to avoid.
+//
+// The **id** is the reason the wrapper exists: it fingerprints the same problem
+// on the same target across runs, so an aggregator can tell a finding it has
+// already seen from a new one. It is therefore built from the check and the
+// target and *not* from the message, which carries days and byte counts that
+// change on their own — an id derived from the text would report a new problem
+// every morning.
+func FindingsWrapped(w io.Writer, reps []verdict.Report, min finding.Status) error {
+	type item struct {
+		ID       string   `json:"id"`
+		Severity string   `json:"severity"`
+		Title    string   `json:"title"`
+		Detail   string   `json:"detail,omitempty"`
+		Target   string   `json:"target"`
+		Check    string   `json:"check"`
+		Value    *float64 `json:"value,omitempty"`
+		Unit     string   `json:"unit,omitempty"`
+	}
+
+	items := make([]item, 0, 8)
+	seen := map[string]int{}
+	worst := finding.OK
+	for _, r := range reps {
+		for _, f := range r.Finding {
+			if !finding.AtLeast(f.Status, min) {
+				continue
+			}
+			if finding.AtLeast(f.Status, worst) {
+				worst = f.Status
+			}
+			id := findingID(f)
+			// Two findings of one check on one target in a single run would
+			// otherwise share an id, and the aggregator would drop one.
+			seen[id]++
+			if n := seen[id]; n > 1 {
+				id = fmt.Sprintf("%s-%d", id, n)
+			}
+			items = append(items, item{
+				ID:       id,
+				Severity: strings.ToLower(string(f.Status)),
+				Title:    f.Message,
+				Detail:   f.Hint,
+				Target:   f.Target,
+				Check:    f.Check,
+				Value:    f.Value,
+				Unit:     f.Unit,
+			})
+		}
+	}
+
+	doc := struct {
+		Check    string `json:"check"`
+		Status   string `json:"status"`
+		Summary  string `json:"summary"`
+		Findings []item `json:"findings"`
+	}{
+		Check:    "pqprobe",
+		Status:   strings.ToLower(string(worst)),
+		Summary:  wrappedSummary(reps),
+		Findings: items,
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(doc)
+}
+
+// findingID is a stable fingerprint of check plus target — the identity of the
+// problem, not of the sentence describing it.
+func findingID(f finding.Finding) string {
+	sum := sha256.Sum256([]byte(f.Check + "|" + f.Target))
+	return hex.EncodeToString(sum[:6])
+}
+
+// wrappedSummary is the one line a digest quotes when it has room for one.
+func wrappedSummary(reps []verdict.Report) string {
+	if len(reps) == 0 {
+		return "no endpoint was probed"
+	}
+	classes := map[verdict.Class]int{}
+	for _, r := range reps {
+		classes[r.Class]++
+	}
+	names := make([]string, 0, len(classes))
+	for c := range classes {
+		names = append(names, string(c))
+	}
+	sort.Strings(names)
+	parts := make([]string, 0, len(names))
+	for _, n := range names {
+		parts = append(parts, fmt.Sprintf("%d %s", classes[verdict.Class(n)], n))
+	}
+	return fmt.Sprintf("%d endpoint(s): %s", len(reps), strings.Join(parts, ", "))
 }
 
 // Textfile writes the run for a node exporter's textfile collector (PQ-15).

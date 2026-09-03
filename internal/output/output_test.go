@@ -398,3 +398,160 @@ func TestTextfileMetricNamesAreLegal(t *testing.T) {
 		}
 	}
 }
+
+// PQ-37. The README promised "the flat findings array the sibling tools speak",
+// and the aggregator that actually consumes it wants a wrapped object with a
+// stable id per finding, because fingerprinting the same problem across runs is
+// its whole job. Shipping the shape is the fix; translating in every consumer
+// is what a shared shape is supposed to avoid.
+func TestWrappedFindingsHaveTheShapeTheAggregatorWants(t *testing.T) {
+	reps := []verdict.Report{{Target: "bad:443", Class: verdict.PQIntolerant, Finding: []finding.Finding{
+		{Check: "verdict", Target: "bad:443", Status: finding.BAD,
+			Message: "pq-intolerant — capable clients cannot connect", Hint: "look at the path"},
+		{Check: "expiry", Target: "bad:443", Status: finding.OK, Message: "88 days",
+			Value: finding.Num(88), Unit: "days"},
+	}}}
+
+	var b bytes.Buffer
+	if err := FindingsWrapped(&b, reps, finding.OK); err != nil {
+		t.Fatal(err)
+	}
+
+	var doc struct {
+		Check    string `json:"check"`
+		Status   string `json:"status"`
+		Summary  string `json:"summary"`
+		Findings []struct {
+			ID       string `json:"id"`
+			Severity string `json:"severity"`
+			Title    string `json:"title"`
+			Detail   string `json:"detail"`
+		} `json:"findings"`
+	}
+	if err := json.Unmarshal(b.Bytes(), &doc); err != nil {
+		t.Fatalf("not the wrapped object: %v\n%s", err, b.String())
+	}
+
+	if doc.Check != "pqprobe" {
+		t.Errorf("check = %q, want the producer name", doc.Check)
+	}
+	if doc.Status != "bad" {
+		t.Errorf("status = %q, want lowercase worst severity", doc.Status)
+	}
+	if doc.Summary == "" {
+		t.Error("no summary")
+	}
+	if len(doc.Findings) != 2 {
+		t.Fatalf("got %d findings, want 2", len(doc.Findings))
+	}
+	for _, f := range doc.Findings {
+		if f.ID == "" {
+			t.Error("a finding with no id cannot be deduplicated, which is the point")
+		}
+		if f.Severity != strings.ToLower(f.Severity) {
+			t.Errorf("severity = %q, want lowercase", f.Severity)
+		}
+		if f.Title == "" {
+			t.Error("a finding with no title")
+		}
+	}
+	if doc.Findings[0].Detail == "" {
+		t.Error("the hint belongs in detail — it is the half that says what to do")
+	}
+}
+
+// The id has to survive the message changing, or it fingerprints the text
+// rather than the problem: "88 days" becomes "87 days" tomorrow and the
+// aggregator reports a new finding every single day.
+func TestWrappedFindingIDsAreStableAcrossRuns(t *testing.T) {
+	id := func(msg string) string {
+		reps := []verdict.Report{{Target: "h:443", Class: verdict.PQBlind, Finding: []finding.Finding{
+			{Check: "expiry", Target: "h:443", Status: finding.OK, Message: msg},
+		}}}
+		var b bytes.Buffer
+		if err := FindingsWrapped(&b, reps, finding.OK); err != nil {
+			t.Fatal(err)
+		}
+		var doc struct {
+			Findings []struct{ ID string } `json:"findings"`
+		}
+		if err := json.Unmarshal(b.Bytes(), &doc); err != nil {
+			t.Fatal(err)
+		}
+		return doc.Findings[0].ID
+	}
+
+	if a, c := id("88 days"), id("87 days"); a != c {
+		t.Errorf("the id changed with the message (%q vs %q): it fingerprints the text, not the problem", a, c)
+	}
+	// ...but a different check on the same target is a different problem.
+	other := func() string {
+		reps := []verdict.Report{{Target: "h:443", Class: verdict.PQBlind, Finding: []finding.Finding{
+			{Check: "chain", Target: "h:443", Status: finding.WARN, Message: "leaf only"},
+		}}}
+		var b bytes.Buffer
+		FindingsWrapped(&b, reps, finding.OK)
+		var doc struct {
+			Findings []struct{ ID string } `json:"findings"`
+		}
+		json.Unmarshal(b.Bytes(), &doc)
+		return doc.Findings[0].ID
+	}()
+	if other == id("88 days") {
+		t.Error("two different checks on one target share an id")
+	}
+}
+
+// Two findings of the same check on the same target in one run must not collide,
+// or the aggregator drops one of them.
+func TestWrappedFindingIDsAreUniqueWithinARun(t *testing.T) {
+	reps := []verdict.Report{{Target: "h:443", Class: verdict.PQBlind, Finding: []finding.Finding{
+		{Check: "transition", Target: "h:443", Status: finding.WARN, Message: "one"},
+		{Check: "transition", Target: "h:443", Status: finding.WARN, Message: "two"},
+	}}}
+	var b bytes.Buffer
+	if err := FindingsWrapped(&b, reps, finding.OK); err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Findings []struct{ ID string } `json:"findings"`
+	}
+	json.Unmarshal(b.Bytes(), &doc)
+	if len(doc.Findings) != 2 || doc.Findings[0].ID == doc.Findings[1].ID {
+		t.Errorf("ids collide within a run: %+v", doc.Findings)
+	}
+}
+
+// An empty array, never null: the same rule the flat shape already follows,
+// because `for f in doc["findings"]` on a null is a crash in the consumer.
+func TestWrappedFindingsAreNeverNull(t *testing.T) {
+	var b bytes.Buffer
+	if err := FindingsWrapped(&b, nil, finding.OK); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), `"findings": []`) {
+		t.Errorf("want an empty array:\n%s", b.String())
+	}
+	var doc struct {
+		Status string `json:"status"`
+	}
+	json.Unmarshal(b.Bytes(), &doc)
+	if doc.Status != "ok" {
+		t.Errorf("status = %q for an empty run, want ok", doc.Status)
+	}
+}
+
+// --min-severity has to mean the same thing in every shape.
+func TestWrappedFindingsRespectMinSeverity(t *testing.T) {
+	reps := []verdict.Report{{Target: "h:443", Class: verdict.PQBlind, Finding: []finding.Finding{
+		{Check: "verdict", Target: "h:443", Status: finding.WARN, Message: "plan it"},
+		{Check: "handshake", Target: "h:443/classic", Status: finding.OK, Message: "TLS 1.3"},
+	}}}
+	var b bytes.Buffer
+	if err := FindingsWrapped(&b, reps, finding.WARN); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b.String(), "TLS 1.3") {
+		t.Errorf("an OK finding survived --min-severity WARN:\n%s", b.String())
+	}
+}

@@ -6,6 +6,32 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.21.0] - 2026-09-03
+
+### Added
+
+- **`--findings=wrapped`** (PQ-37) — the shape a fleet aggregator actually
+  consumes: `{check, status, summary, findings:[{id, severity, title, detail}]}`
+  with lowercase severities. The flat array is untouched, so `--findings` keeps
+  behaving exactly as it did and no existing caller changes; the flag answers to
+  both because it implements `IsBoolFlag`, which is also why the shape needs the
+  `=` rather than a space.
+
+  The **id** is the whole point, and it is a fingerprint of the check and the
+  target — never of the message. Days-to-expiry and byte counts move on their
+  own, so an id derived from the text would report a new problem every morning,
+  which is the opposite of what an aggregator wants; a test pins that by
+  changing the message and asserting the id does not move. Two findings of one
+  check on one target in a single run get a suffix instead of colliding.
+
+### Fixed
+
+- **The README promised interoperability that did not exist** (PQ-37) — it
+  called the flat array "the flat findings array the sibling tools speak" while
+  the aggregator that reads it wanted the wrapped object, so every consumer
+  translated. Both shapes now exist and the README says which is which, rather
+  than one line covering for the gap.
+
 ## [0.20.0] - 2026-09-03
 
 ### Added
@@ -596,6 +622,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.21.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.21.0
 [0.20.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.20.0
 [0.19.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.19.1
 [0.19.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.19.0

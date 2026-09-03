@@ -605,6 +605,7 @@ pqprobe version [--short] <span class="c-dim"># --short: the version alone, for 
           <tr><td><code>--baseline FILE</code></td><td>—</td><td>compare against a previous <code>--json</code> run and report the transitions</td></tr>
           <tr><td><code>--json</code></td><td>—</td><td>full report, every per-profile result included</td></tr>
           <tr><td><code>--findings</code></td><td>—</td><td>flat findings array</td></tr>
+          <tr><td><code>--findings=wrapped</code></td><td>—</td><td>the wrapped object a fleet aggregator consumes, with a stable id per finding (note the <code>=</code>)</td></tr>
           <tr><td><code>--min-severity S</code></td><td>—</td><td>hide findings below <code>S</code>; the endpoint header stays</td></tr>
           <tr><td><code>--exit-on S</code></td><td>never</td><td>exit 1 when a finding reaches <code>S</code></td></tr>
           <tr><td><code>--expiry-warn N</code></td><td><code>21</code></td><td>certificate expiry WARN threshold, days</td></tr>
@@ -649,6 +650,14 @@ pqprobe probe --inventory inventory/edge --baseline yesterday.json --exit-on BAD
       <code>value</code> and <code>unit</code> wherever there is a number — so a
       machine consumer never has to parse the prose. An empty run emits
       <code>[]</code>, never <code>null</code>.
+    </p>
+    <p>
+      <code>--findings=wrapped</code> is the shape a fleet aggregator consumes —
+      <code>{check, status, summary, findings:[{id, severity, title, detail}]}</code>
+      — and the <strong>id</strong> is why it exists: it fingerprints the same
+      problem on the same target across runs, built from the check and the
+      target and never from the message, which carries days and byte counts that
+      change on their own.
     </p>
   </div>
 </section>
