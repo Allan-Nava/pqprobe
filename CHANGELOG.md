@@ -6,6 +6,19 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.17.0] - 2026-09-03
+
+### Added
+
+- **The SEO gate refuses a sitemap URL with nothing behind it** (PQ-36) — found
+  while porting `scripts/seo.sh` to segcheck, where the first sitemap listed
+  `running-in-containers.html` and GitHub Pages serves `docs/` exactly as
+  committed: the `.md` answers 200 and the `.html` 404s. A declared URL that
+  does not exist wastes crawl budget on every crawl, which is the same reason
+  the host root only lists sitemaps that answer 200. pqprobe's sitemap holds one
+  URL today, so nothing was broken here — the gate is in so the second one
+  cannot arrive broken.
+
 ## [0.16.1] - 2026-09-03
 
 ### Fixed
@@ -461,6 +474,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.17.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.17.0
 [0.16.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.16.1
 [0.16.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.16.0
 [0.15.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.15.0

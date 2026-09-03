@@ -189,6 +189,29 @@ check() {
 	done
 	[ -f "$dir/sitemap.xml" ] && { grep -q "<loc>$canonical</loc>" "$dir/sitemap.xml" ||
 		err "sitemap.xml does not name $canonical — run scripts/seo.sh render"; }
+	# Every URL in the sitemap needs a file behind it. Found while porting this
+	# gate to segcheck, whose first sitemap listed a .html that 404s because
+	# Pages serves docs/ as committed. A declared URL with nothing behind it
+	# wastes crawl budget on every crawl — the same reason the host root only
+	# lists sitemaps that answer 200.
+	if [ -f "$dir/sitemap.xml" ]; then
+		awk -F'[<>]' '/<loc>/ { print $3 }' "$dir/sitemap.xml" | while IFS= read -r loc; do
+			rel=${loc#"$canonical"}
+			case "$rel" in
+			"" ) path="index.html" ;;
+			*/ ) path="$rel/index.html" ;;
+			* )  path="$rel" ;;
+			esac
+			[ -e "$dir/$path" ] || printf '%s -> %s\n' "$loc" "$path"
+		done > "$dir/.seo-missing.$$"
+		if [ -s "$dir/.seo-missing.$$" ]; then
+			while IFS= read -r line; do
+				err "the sitemap declares a URL with no file behind it: $line"
+			done < "$dir/.seo-missing.$$"
+		fi
+		rm -f "$dir/.seo-missing.$$"
+	fi
+
 	[ -f "$dir/robots.txt" ] && { grep -q "Sitemap: ${canonical}sitemap.xml" "$dir/robots.txt" ||
 		err "robots.txt does not point at ${canonical}sitemap.xml"; }
 	[ -f "$dir/llms.txt" ] && { grep -q "pqprobe $version" "$dir/llms.txt" ||

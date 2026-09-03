@@ -125,5 +125,32 @@ else
 	ok "JSON-LD whose braces do not balance fails"
 fi
 
+# Found while porting this gate to segcheck: its first sitemap listed
+# running-in-containers.html, and Pages serves docs/ as committed — the .md is
+# 200 and the .html 404s. A declared URL with nothing behind it wastes crawl
+# budget on every crawl, which is the same reason the host root only lists
+# sitemaps that answer 200. pqprobe's sitemap holds one URL today; the gate is
+# here so the second one cannot arrive broken.
+printf '\nseo.sh check — every URL in the sitemap has to exist:\n'
+
+fixture "$tmp/ghost" "https://example.test/pqprobe/"
+run "$tmp/ghost" render
+sed -i.bak 's|<loc>https://example.test/pqprobe/</loc>|<loc>https://example.test/pqprobe/</loc>\n  </url>\n  <url>\n    <loc>https://example.test/pqprobe/nowhere.html</loc>|' "$tmp/ghost/sitemap.xml"
+if run "$tmp/ghost" check; then
+	notok "a sitemap URL with no file behind it passed"
+else
+	ok "a sitemap URL with no file behind it fails"
+fi
+
+fixture "$tmp/real" "https://example.test/pqprobe/"
+printf 'x' > "$tmp/real/extra.html"
+run "$tmp/real" render
+sed -i.bak 's|<loc>https://example.test/pqprobe/</loc>|<loc>https://example.test/pqprobe/</loc>\n  </url>\n  <url>\n    <loc>https://example.test/pqprobe/extra.html</loc>|' "$tmp/real/sitemap.xml"
+if run "$tmp/real" check; then
+	ok "a sitemap URL whose file exists passes"
+else
+	notok "a real file was rejected"
+fi
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
