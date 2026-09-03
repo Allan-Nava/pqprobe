@@ -132,7 +132,7 @@ esac
 
 # ---------------------------------------------------------------------------
 say "the gates"
-unformatted=$(gofmt -l ./cmd ./internal)
+unformatted=$(gofmt -l ./cmd ./internal ./pq)
 [ -z "$unformatted" ] || { echo "not gofmt'd:" >&2; echo "$unformatted" >&2; exit 1; }
 go vet ./...
 go test ./...

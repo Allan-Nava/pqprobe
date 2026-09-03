@@ -20,7 +20,7 @@ jobs:
 
       - name: gofmt
         run: |
-          unformatted=$(gofmt -l ./cmd ./internal)
+          unformatted=$(gofmt -l ./cmd ./internal ./pq)
           if [ -n "$unformatted" ]; then
             echo "::error::these files are not gofmt'd:"
             echo "$unformatted"
@@ -62,7 +62,7 @@ jobs:
       # rather than review comments.
       - name: No requests, no subprocesses
         run: |
-          if grep -rnE '"(net/http|os/exec)"' cmd internal --include='*.go' | grep -v '_test.go'; then
+          if grep -rnE '"(net/http|os/exec)"' cmd internal pq --include='*.go' | grep -v '_test.go'; then
             echo "::error::pqprobe handshakes and closes; it must not speak HTTP or run programs"
             exit 1
           fi

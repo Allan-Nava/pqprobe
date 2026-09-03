@@ -6,6 +6,34 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.22.0] - 2026-09-03
+
+### Added
+
+- **A public surface for embedders** (PQ-39) — [pq/](pq/pq.go): `Probe`,
+  `Classes`, `Explain`, `Describe`. Strings in, reports out, and nothing
+  internal leaking through it, so the packages that do the work stay free to
+  move.
+
+  It exists because PQ-14 (the checkfleet module) turned out to be impossible as
+  written: every package here is under `internal/`, which no other module may
+  import, so the only alternatives were duplicating the alert-versus-reset
+  classification inside checkfleet — the one thing in this tool that must live
+  in exactly one place — or exposing a surface. This is the surface.
+
+  Two contract decisions, both asserted: an **unreachable target is a report**
+  with class `unreachable`, never an error, because a fleet check has to keep
+  going and name the node that is down — an error is only ever something the
+  caller got wrong (no targets, an unknown profile, nothing parseable); and
+  findings carry `Value`/`Unit`, so an embedder never parses `Message`.
+
+### Fixed
+
+- **The zero-dependency gates only looked at `cmd` and `internal`** (PQ-39) —
+  both the CI check and `scripts/release.sh` named those two directories, so the
+  new public package would have slipped past the `net/http`/`os/exec` grep and
+  the gofmt check. Widened in the same commit that created the hole.
+
 ## [0.21.0] - 2026-09-03
 
 ### Added
@@ -622,6 +650,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.22.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.22.0
 [0.21.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.21.0
 [0.20.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.20.0
 [0.19.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.19.1

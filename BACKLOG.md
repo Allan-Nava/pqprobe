@@ -132,7 +132,21 @@ prints what to pick up.
 - [ ] **PQ-14 — checkfleet module**: emit the same findings under a `pq` module
   in [checkfleet](https://github.com/Allan-Nava/checkfleet) so a fleet already
   described in `checkfleet.yml` gains the check without a second inventory.
-  <!-- pq: prio=high size=M labels=integration -->
+  Blocked on nothing here any more: every package was under `internal/`, which
+  no other module may import, so the choice was to duplicate the
+  alert-versus-reset classification in checkfleet — the one thing that must live
+  in exactly one place — or to expose a surface. PQ-39 is that surface; this item
+  is now the checkfleet half, and it needs `pq/` published at a tag before it can
+  build. <!-- pq: prio=high size=M labels=integration -->
+- [x] **PQ-39 — A public surface for embedders**: `pq/` — strings in, reports
+  out, no internal types leaking, so `internal/` stays free to move. `Probe`,
+  `Classes`, `Explain`, `Describe`, with findings that carry `Value`/`Unit` so a
+  consumer never parses prose. An unreachable target is a report with class
+  `unreachable`, never an error: a fleet check has to keep going and name the
+  node that is down; an error is only ever something the caller got wrong. The
+  zero-dependency gates named `cmd` and `internal` explicitly, so a new public
+  package would have slipped past both — widened in the same commit.
+  <!-- pq: prio=high size=M labels=integration ver=0.22.0 -->
 - [x] **PQ-36 — SEO for the published page**: the crawler-facing half of the
   site, generated from the page rather than maintained beside it —
   `sitemap.xml`, `robots.txt` and an `llms.txt` for the crawlers that read prose

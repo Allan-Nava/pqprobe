@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**38 items · 33 shipped · 5 open · 5 milestones.**
+**39 items · 34 shipped · 5 open · 5 milestones.**
 
 ## At a glance
 
@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
-| **M3** — Fit the toolchain | `v0.3.0` | next | `#########.` 91% | 1 | 10 |
+| **M3** — Fit the toolchain | `v0.3.0` | next | `#########.` 92% | 1 | 11 |
 | **M4** — Later | `ongoing` | later | `###.......` 33% | 4 | 2 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
@@ -55,7 +55,7 @@ Target `v0.18.0` · shipped · 0 open · 5 shipped · `##########` 100%
 
 ### M3 — Fit the toolchain
 
-Target `v0.3.0` · next · 1 open · 10 shipped · `#########.` 91%
+Target `v0.3.0` · next · 1 open · 11 shipped · `#########.` 92%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
@@ -64,6 +64,7 @@ Target `v0.3.0` · next · 1 open · 10 shipped · `#########.` 91%
 | **PQ-21** — Intent document | high | S | docs,project | shipped `0.2.0` |
 | **PQ-32** — Every commit is a version | high | S | release,project | shipped `0.2.0` |
 | **PQ-33** — Homebrew and the published image | high | S | delivery,docs | shipped `0.4.0` |
+| **PQ-39** — A public surface for embedders | high | M | integration | shipped `0.22.0` |
 | **PQ-15** — Prometheus textfile output | med | S | output | shipped `0.19.0` |
 | **PQ-17** — Docs site | med | M | docs | shipped `0.2.0` |
 | **PQ-29** — Brand assets | med | S | docs,project | shipped `0.2.0` |
@@ -105,7 +106,7 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 |---|---|---|
 | `probe` | 12 | 2 |
 | `profile` | 5 | 2 |
-| `integration` | 2 | 1 |
+| `integration` | 3 | 1 |
 | `cli` | 7 | 0 |
 | `delivery` | 4 | 0 |
 | `docs` | 6 | 0 |

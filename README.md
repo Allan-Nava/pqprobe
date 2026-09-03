@@ -175,6 +175,22 @@ go build -o pqprobe ./cmd/pqprobe
 docker build -t pqprobe . && docker run --rm pqprobe probe example.com
 ```
 
+## Embedding it
+
+Every package is under `internal/`, so the importable surface is
+[`pq/`](pq/pq.go) — deliberately small, and nothing internal leaks through it:
+
+```go
+reps, err := pq.Probe(ctx, []string{"origin.example.com", "10.0.0.5=origin.example.com"}, pq.Options{})
+for _, r := range reps {
+    fmt.Println(r.Target, r.Class, r.Worst) // origin.example.com:443 pq-intolerant BAD
+}
+```
+
+An unreachable target is a report with class `unreachable`, never an error: a
+fleet check keeps going and names the node that is down. `pq.Explain(class)`
+gives the meaning, the affected clients and the next action without a run.
+
 ## Output and exit status
 
 | Flag | Output |
