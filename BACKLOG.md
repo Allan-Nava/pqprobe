@@ -243,12 +243,18 @@ prints what to pick up.
   del README, che oggi promette un'interoperabilità che non c'è.
   <!-- pq: prio=med size=M labels=output,integration -->
 
-- [ ] **PQ-38 — `version` non è incorporabile**: stampa `pqprobe dev`, cioè nome
+- [x] **PQ-38 — `version` non è incorporabile**: stampa `pqprobe dev`, cioè nome
   **più** versione, e `version --help` stampa la stessa cosa (il sottocomando
   ignora i flag). Chi la mette in un'intestazione generata ottiene
   `pqprobe pqprobe dev`. Basterebbe che `version` emettesse la sola stringa di
   versione, o un `--short`. Piccolo, ma lo incontra chiunque lo incorpori al
-  primo tentativo. <!-- pq: prio=low size=S labels=cli,ux -->
+  primo tentativo.
+  Shipped as `--short` (and `-s`) rather than by changing what the bare command
+  prints: `pqprobe version` is what a person runs and it keeps saying `pqprobe
+  X.Y.Z`, while `--short` gives the string alone. The flags are no longer
+  ignored either — `version --help` says what it accepts, and a typo exits 2
+  instead of printing the version and looking like success.
+  <!-- pq: prio=low size=S labels=cli,ux ver=0.20.0 -->
 
 - [ ] **PQ-10 — Real ClientHello shapes**: profiles built with uTLS so a run
   can claim a browser *fingerprint*, not only a capability class. Moved here

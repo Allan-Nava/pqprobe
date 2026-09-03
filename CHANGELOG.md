@@ -6,6 +6,23 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.20.0] - 2026-09-03
+
+### Added
+
+- **`pqprobe version --short`** (PQ-38) — the version alone, `0.20.0`, for a
+  generated header or a Docker tag. The bare command still prints `pqprobe
+  0.20.0`, because that is what a person running it wants and changing it would
+  break anybody parsing it today; what was broken is that the *only* form
+  printed the name twice when embedded: `pqprobe pqprobe 0.19.1`.
+
+### Fixed
+
+- **`version` ignored its flags** (PQ-38) — `version --help` printed the version
+  and said nothing about what the subcommand accepts, and a typo did the same,
+  which is how a typo survives into a script. `--help` now describes it and an
+  unknown flag exits 2 naming the real one.
+
 ## [0.19.1] - 2026-09-03
 
 ### Changed
@@ -579,6 +596,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.20.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.20.0
 [0.19.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.19.1
 [0.19.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.19.0
 [0.18.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.18.1

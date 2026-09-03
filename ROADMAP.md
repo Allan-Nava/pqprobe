@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**38 items · 31 shipped · 7 open · 5 milestones.**
+**38 items · 32 shipped · 6 open · 5 milestones.**
 
 ## At a glance
 
@@ -15,7 +15,7 @@
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `#########.` 91% | 1 | 10 |
-| **M4** — Later | `ongoing` | later | `..........` 0% | 6 | 0 |
+| **M4** — Later | `ongoing` | later | `##........` 17% | 5 | 1 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
 ## Next up
@@ -73,7 +73,7 @@ Target `v0.3.0` · next · 1 open · 10 shipped · `#########.` 91%
 
 ### M4 — Later
 
-Target `ongoing` · later · 6 open · 0 shipped · `..........` 0%
+Target `ongoing` · later · 5 open · 1 shipped · `##........` 17%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
@@ -82,7 +82,7 @@ Target `ongoing` · later · 6 open · 0 shipped · `..........` 0%
 | **PQ-37** — `--findings` non parla la forma che i tool fratelli consumano | med | M | output,integration | open |
 | **PQ-18** — Beyond key exchange | low | L | profile | open |
 | **PQ-20** — Non-HTTPS ports | low | L | probe | open |
-| **PQ-38** — `version` non è incorporabile | low | S | cli,ux | open |
+| **PQ-38** — `version` non è incorporabile | low | S | cli,ux | shipped `0.20.0` |
 
 ### M5 — Make the verdict actionable
 
@@ -106,13 +106,13 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 | `integration` | 2 | 2 |
 | `probe` | 12 | 2 |
 | `profile` | 5 | 2 |
-| `cli` | 7 | 1 |
 | `output` | 5 | 1 |
-| `ux` | 1 | 1 |
+| `cli` | 7 | 0 |
 | `delivery` | 4 | 0 |
 | `docs` | 6 | 0 |
 | `inventory` | 2 | 0 |
 | `project` | 5 | 0 |
 | `release` | 2 | 0 |
 | `tests` | 1 | 0 |
+| `ux` | 1 | 0 |
 | `verdict` | 4 | 0 |

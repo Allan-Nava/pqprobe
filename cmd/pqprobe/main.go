@@ -47,8 +47,7 @@ func main() {
 	case "explain":
 		os.Exit(explainTo(os.Stdout, os.Args[2:]))
 	case "version", "--version", "-v":
-		fmt.Println("pqprobe", version)
-		return
+		os.Exit(versionTo(os.Stdout, os.Args[2:], version))
 	case "help", "-h", "--help":
 		usage(os.Stdout)
 		return
@@ -229,7 +228,7 @@ usage:
   pqprobe probe <target>... [flags]
   pqprobe profiles
   pqprobe explain [class]        what a class means, and what to do about it
-  pqprobe version
+  pqprobe version [--short]      --short prints the version alone, for embedding
 
 targets:
   host                     port 443 is assumed
@@ -291,6 +290,40 @@ pqprobe opens TLS connections and sends no application data: no request, no
 body, no credentials. It is safe to point at production, and it says nothing
 about a client's exact ClientHello fingerprint — only about capability classes.
 `)
+}
+
+// versionTo prints the version (PQ-38).
+//
+// Bare, it prints "pqprobe X.Y.Z", which is what a person running it wants and
+// what it always printed. `--short` prints the version alone, because the other
+// form embedded in a generated header reads "pqprobe pqprobe X.Y.Z".
+//
+// It also stops ignoring its flags: `version --help` used to print the version
+// and say nothing about what it accepts, and a typo used to look like success.
+func versionTo(w io.Writer, args []string, v string) int {
+	short := false
+	for _, a := range args {
+		switch a {
+		case "--short", "-s":
+			short = true
+		case "--help", "-h":
+			fmt.Fprint(w, `usage: pqprobe version [--short]
+
+  --short, -s   print the version alone (1.2.3), for embedding in a header or
+                a Docker tag. Without it, the human form: pqprobe 1.2.3
+`)
+			return 0
+		default:
+			fmt.Fprintf(w, "pqprobe: version takes --short (or -s), not %q\n", a)
+			return 2
+		}
+	}
+	if short {
+		fmt.Fprintln(w, v)
+		return 0
+	}
+	fmt.Fprintln(w, "pqprobe", v)
+	return 0
 }
 
 // explainTo prints what a class means, who it affects and what to do — with no

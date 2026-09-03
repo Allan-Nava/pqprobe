@@ -4,8 +4,12 @@
 pqprobe probe <target>... [flags]
 pqprobe profiles
 pqprobe explain [class]
-pqprobe version
+pqprobe version [--short]
 ```
+
+`pqprobe version` prints `pqprobe X.Y.Z`, and `pqprobe version --short` prints
+`X.Y.Z` alone — the form that embeds in a generated header or a Docker tag
+without reading `pqprobe pqprobe X.Y.Z`.
 
 `pqprobe explain pq-intolerant` prints what the class means, which real clients
 it affects and what to do next — with **no network call**, so it is runnable

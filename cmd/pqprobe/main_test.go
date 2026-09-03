@@ -362,3 +362,52 @@ func TestWatchRefusesTheDocumentRenderers(t *testing.T) {
 		t.Errorf("without --watch every renderer is fine: %v", err)
 	}
 }
+
+// PQ-38. `pqprobe version` prints name *and* version, so anybody embedding it
+// in a generated header gets "pqprobe pqprobe 0.19.1" — and the subcommand
+// ignored its flags, so there was no way to ask for less.
+func TestVersionCanBeEmbedded(t *testing.T) {
+	var b strings.Builder
+	if code := versionTo(&b, nil, "1.2.3"); code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	if got := strings.TrimSpace(b.String()); got != "pqprobe 1.2.3" {
+		t.Errorf("bare version = %q, want the human form unchanged", got)
+	}
+
+	b.Reset()
+	if code := versionTo(&b, []string{"--short"}, "1.2.3"); code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	if got := strings.TrimSpace(b.String()); got != "1.2.3" {
+		t.Errorf("--short = %q, want the version and nothing else", got)
+	}
+
+	// -s, because anybody typing this is embedding it in a script.
+	b.Reset()
+	versionTo(&b, []string{"-s"}, "1.2.3")
+	if got := strings.TrimSpace(b.String()); got != "1.2.3" {
+		t.Errorf("-s = %q", got)
+	}
+}
+
+// Ignoring a flag is the bug: `version --help` printed the version and said
+// nothing about what it accepts.
+func TestVersionDoesNotIgnoreItsFlags(t *testing.T) {
+	var b strings.Builder
+	if code := versionTo(&b, []string{"--help"}, "1.2.3"); code != 0 {
+		t.Fatalf("--help exit = %d, want 0", code)
+	}
+	if !strings.Contains(b.String(), "--short") {
+		t.Errorf("--help has to say what version accepts: %q", b.String())
+	}
+
+	b.Reset()
+	code := versionTo(&b, []string{"--sohrt"}, "1.2.3")
+	if code != 2 {
+		t.Errorf("exit = %d for an unknown flag, want 2 — silently printing the version is how the typo survives", code)
+	}
+	if !strings.Contains(b.String(), "--short") {
+		t.Errorf("the error has to name the real flag: %q", b.String())
+	}
+}
