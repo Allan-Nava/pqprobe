@@ -16,9 +16,11 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/signal"
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Allan-Nava/pqprobe/internal/clientprofile"
@@ -54,6 +56,92 @@ func main() {
 		fmt.Fprintf(os.Stderr, "pqprobe: unknown command %q\n\n", os.Args[1])
 		usage(os.Stderr)
 		os.Exit(2)
+	}
+}
+
+// watchFloor is the shortest interval --watch will accept. The interval is a
+// rate against somebody's production endpoint, and 100ms is a typo rather than
+// an intention (PQ-13).
+const watchFloor = 5 * time.Second
+
+// watchClock is the timestamp format on a transition line: the time of day,
+// because a watch is read while it runs and the date is on the shell prompt.
+const watchClock = "15:04:05"
+
+func validWatch(d time.Duration) error {
+	if d == 0 {
+		return nil
+	}
+	if d < watchFloor {
+		return fmt.Errorf("--watch %s is below the %s floor: that is a rate against somebody's endpoint, not a refresh", d, watchFloor)
+	}
+	return nil
+}
+
+// validWatchOutput refuses --watch with a renderer that emits one whole
+// document. A stream of documents is not a document, and finding that out
+// halfway through a pipe is worse than being told now.
+func validWatchOutput(d time.Duration, renderer string) error {
+	if d == 0 || renderer == "" {
+		return nil
+	}
+	return fmt.Errorf("--watch prints transitions as lines; --%s emits one whole document, and a stream of documents is not a document", renderer)
+}
+
+// watchTick prints what moved between two runs and returns how many lines it
+// printed. A tick that found nothing prints nothing: watch mode exists for the
+// window in which something is being changed, and in that window anything else
+// is noise to scroll past.
+func watchTick(w io.Writer, prev, cur []verdict.Report, now time.Time) int {
+	ts := now.Format(watchClock)
+	n := 0
+	for _, f := range verdict.Transitions(prev, cur) {
+		fmt.Fprintf(w, "%s  %-5s %s  %s\n", ts, f.Status, f.Target, f.Message)
+		n++
+	}
+	return n
+}
+
+// watchLoop re-probes on an interval and prints only what moved (PQ-13).
+//
+// The full report has already been printed once: you have to know the state you
+// are watching from. After that a quiet tick prints nothing at all, because the
+// window this exists for — a CDN or a load balancer being changed — is one
+// where a screen full of unchanged endpoints is what hides the line that
+// matters.
+//
+// It runs until interrupted. Ctrl-C is the exit, and it is a clean one: the
+// context is cancelled, the tick in flight finishes, nothing is left half
+// printed.
+func watchLoop(ctx context.Context, w io.Writer, d probe.Dialer, targets []probe.Target,
+	profiles []clientprofile.Profile, opt verdict.Options, concurrency int,
+	every time.Duration, prev []verdict.Report) int {
+
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	fmt.Fprintf(w, "\nwatching %d endpoint(s) every %s — only transitions from here, Ctrl-C to stop\n",
+		len(targets), every)
+
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Fprintln(w, "\nstopped.")
+			return 0
+		case <-ticker.C:
+			opt.Now = time.Now()
+			cur := run(ctx, d, targets, profiles, opt, concurrency)
+			// A cancelled tick produces failures that are ours, not the
+			// endpoints', and printing them as transitions would be a lie.
+			if ctx.Err() != nil {
+				fmt.Fprintln(w, "\nstopped.")
+				return 0
+			}
+			watchTick(w, prev, cur, time.Now())
+			prev = cur
+		}
 	}
 }
 
@@ -170,6 +258,9 @@ flags:
   --confirm                re-dial an abrupt failure once before believing it
                            (default true; --confirm=false to dial once)
   --concurrency N          endpoints in flight (default 8)
+  --watch D                re-probe every D and print only the transitions, for
+                           the window in which something is being changed
+                           (minimum 5s; text output only)
   --baseline FILE          compare against a previous --json run and report the
                            transitions: what changed, not what was already broken
   --markdown               a table and collapsible detail, for a pull request
@@ -261,6 +352,7 @@ func cmdProbe(args []string) int {
 		timeout     = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
 		confirm     = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
 		concurrency = fs.Int("concurrency", 8, "endpoints in flight")
+		watch       = fs.Duration("watch", 0, "re-probe every D and print only the transitions")
 		baseline    = fs.String("baseline", "", "compare against a previous --json run")
 		asMarkdown  = fs.Bool("markdown", false, "markdown for a PR comment or job summary")
 		asJSON      = fs.Bool("json", false, "full JSON report")
@@ -271,6 +363,24 @@ func cmdProbe(args []string) int {
 		expBad      = fs.Int("expiry-bad", 7, "certificate expiry BAD days")
 	)
 	if err := fs.Parse(permute(args)); err != nil {
+		return 2
+	}
+
+	renderer := ""
+	switch {
+	case *asMarkdown:
+		renderer = "markdown"
+	case *asFindings:
+		renderer = "findings"
+	case *asJSON:
+		renderer = "json"
+	}
+	if err := validWatch(*watch); err != nil {
+		fmt.Fprintln(os.Stderr, "pqprobe:", err)
+		return 2
+	}
+	if err := validWatchOutput(*watch, renderer); err != nil {
+		fmt.Fprintln(os.Stderr, "pqprobe:", err)
 		return 2
 	}
 
@@ -382,6 +492,13 @@ func cmdProbe(args []string) int {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "pqprobe:", err)
 		return 2
+	}
+
+	// The first report is out; from here only what moves (PQ-13). It runs until
+	// interrupted, so nothing below this line happens during a watch.
+	if *watch > 0 {
+		return watchLoop(context.Background(), os.Stdout, dialer, targets, sel, opt,
+			*concurrency, *watch, reps)
 	}
 
 	// Exit 0 whenever the probe ran. A monitoring wrapper that treats a WARN as
@@ -528,7 +645,7 @@ func takesValue(flagArg string) bool {
 	switch name {
 	case "profile", "inventory", "group", "list", "port", "sni", "alpn",
 		"timeout", "concurrency", "min-severity", "exit-on", "expiry-warn", "expiry-bad",
-		"baseline", "groups", "socks5":
+		"baseline", "groups", "socks5", "watch":
 		return true
 	}
 	return false

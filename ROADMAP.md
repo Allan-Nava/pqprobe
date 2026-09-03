@@ -6,14 +6,14 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**36 items · 29 shipped · 7 open · 5 milestones.**
+**36 items · 30 shipped · 6 open · 5 milestones.**
 
 ## At a glance
 
 | Milestone | Target | Phase | Progress | Open | Shipped |
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
-| **M2** — Say it more precisely | `v0.2.0` | **now** | `#######...` 67% | 2 | 4 |
+| **M2** — Say it more precisely | `v0.2.0` | **now** | `########..` 83% | 1 | 5 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `########..` 82% | 2 | 9 |
 | **M4** — Later | `ongoing` | later | `..........` 0% | 3 | 0 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
@@ -25,7 +25,6 @@ The open items with the highest priority in the milestones that are in flight.
 - **PQ-14** — checkfleet module · `high` · size `M` · integration (M3, target `v0.3.0`)
 - **PQ-10** — Real ClientHello shapes · `med` · size `XL` · profile (M2, target `v0.2.0`)
 - **PQ-15** — Prometheus textfile output · `med` · size `S` · output (M3, target `v0.3.0`)
-- **PQ-13** — Watch mode · `low` · size `M` · cli (M2, target `v0.2.0`)
 
 ## Milestones
 
@@ -46,16 +45,16 @@ Target `v0.1.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 ### M2 — Say it more precisely
 
-Target `v0.2.0` · **now** · 2 open · 4 shipped · `#######...` 67%
+Target `v0.2.0` · **now** · 1 open · 5 shipped · `########..` 83%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-10** — Real ClientHello shapes | med | XL | profile | open |
-| **PQ-13** — Watch mode | low | M | cli | open |
 | **PQ-9** — HelloRetryRequest visibility | high | L | probe | shipped `0.9.0` |
 | **PQ-11** — ClientHello size sweep | high | M | probe | shipped `0.10.0` |
 | **PQ-12** — Multi-address endpoints | high | M | probe,inventory | shipped `0.7.0` |
 | **PQ-34** — An ad-hoc capability class | med | S | cli,profile | shipped `0.12.0` |
+| **PQ-13** — Watch mode | low | M | cli | shipped `0.18.0` |
 
 ### M3 — Fit the toolchain
 
@@ -106,9 +105,9 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 |---|---|---|
 | `probe` | 12 | 2 |
 | `profile` | 5 | 2 |
-| `cli` | 6 | 1 |
 | `integration` | 1 | 1 |
 | `output` | 4 | 1 |
+| `cli` | 6 | 0 |
 | `delivery` | 4 | 0 |
 | `docs` | 6 | 0 |
 | `inventory` | 2 | 0 |

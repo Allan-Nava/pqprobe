@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Allan-Nava/pqprobe/internal/verdict"
 )
@@ -246,5 +247,99 @@ func TestExplainToleratesADashedClass(t *testing.T) {
 	}
 	if !strings.Contains(b.String(), "pq-blind") {
 		t.Errorf("output = %q", b.String())
+	}
+}
+
+// A fixed clock, so a transition line is assertable: the timestamp is what a
+// reader uses to line the change up against whatever they were doing to the
+// load balancer at the time.
+var watchAt = time.Date(2026, 9, 3, 12, 34, 56, 0, time.UTC)
+
+// PQ-13. Watch mode exists for the window in which a CDN or a load balancer is
+// being changed, and in that window the only interesting output is what moved.
+// So a tick that found nothing prints nothing.
+func TestAWatchTickPrintsOnlyWhatMoved(t *testing.T) {
+	same := []verdict.Report{
+		{Target: "a:443", Class: verdict.PQReady},
+		{Target: "b:443", Class: verdict.PQBlind},
+	}
+
+	var b strings.Builder
+	if n := watchTick(&b, same, same, watchAt); n != 0 {
+		t.Errorf("printed %d transitions for an unchanged fleet", n)
+	}
+	if b.String() != "" {
+		t.Errorf("a quiet tick has to be silent, got %q", b.String())
+	}
+}
+
+func TestAWatchTickNamesTheChangeAndTheTime(t *testing.T) {
+	before := []verdict.Report{{Target: "a:443", Class: verdict.PQReady}}
+	after := []verdict.Report{{Target: "a:443", Class: verdict.PQIntolerant}}
+
+	var b strings.Builder
+	n := watchTick(&b, before, after, watchAt)
+	if n != 1 {
+		t.Fatalf("printed %d transitions, want 1", n)
+	}
+	out := b.String()
+	for _, want := range []string{"a:443", "pq-ready", "pq-intolerant", "12:34:56"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("%q missing from %q", want, out)
+		}
+	}
+}
+
+// An endpoint that appears or vanishes mid-watch is exactly the kind of thing
+// somebody is watching for while a pool is being drained.
+func TestAWatchTickReportsAppearanceAndDisappearance(t *testing.T) {
+	var b strings.Builder
+	n := watchTick(&b,
+		[]verdict.Report{{Target: "gone:443", Class: verdict.PQReady}},
+		[]verdict.Report{{Target: "new:443", Class: verdict.PQReady}},
+		watchAt)
+	if n != 2 {
+		t.Fatalf("printed %d, want both the appearance and the disappearance", n)
+	}
+	if !strings.Contains(b.String(), "gone:443") || !strings.Contains(b.String(), "new:443") {
+		t.Errorf("output = %q", b.String())
+	}
+}
+
+// The interval is a rate against somebody's production endpoint. A floor is not
+// paternalism: --watch 100ms is a mistake, and the tool should say so rather
+// than obey.
+func TestAWatchIntervalBelowTheFloorIsRefused(t *testing.T) {
+	if err := validWatch(0); err != nil {
+		t.Errorf("zero means no watch at all, not an error: %v", err)
+	}
+	if err := validWatch(100 * time.Millisecond); err == nil {
+		t.Error("100ms against a production endpoint has to be refused")
+	}
+	if err := validWatch(watchFloor); err != nil {
+		t.Errorf("the floor itself has to be allowed: %v", err)
+	}
+	if err := validWatch(5 * time.Minute); err != nil {
+		t.Errorf("a sane interval was refused: %v", err)
+	}
+}
+
+// A stream of documents is not a document: --watch prints transitions as lines,
+// so combining it with a renderer that emits one whole document is a usage
+// error rather than a surprise halfway through a pipe.
+func TestWatchRefusesTheDocumentRenderers(t *testing.T) {
+	if takesValue("--watch") != true {
+		t.Fatal("--watch takes a duration")
+	}
+	for _, r := range []string{"json", "findings", "markdown"} {
+		if err := validWatchOutput(time.Minute, r); err == nil {
+			t.Errorf("--watch with --%s should be refused", r)
+		}
+	}
+	if err := validWatchOutput(time.Minute, ""); err != nil {
+		t.Errorf("--watch with the text renderer is the point: %v", err)
+	}
+	if err := validWatchOutput(0, "json"); err != nil {
+		t.Errorf("without --watch every renderer is fine: %v", err)
 	}
 }

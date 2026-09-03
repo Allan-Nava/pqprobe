@@ -120,9 +120,16 @@ prints what to pick up.
   is now `unroutable` → `unreachable`, and both hints offer the local route
   first, because an AAAA record probed without IPv6 egress fails in exactly this
   way. <!-- pq: prio=high size=M labels=probe,inventory ver=0.7.0 -->
-- [ ] **PQ-13 — Watch mode**: re-probe on an interval and print only the
-  transitions, for the window in which a CDN or a load balancer is being
-  changed. <!-- pq: prio=low size=M labels=cli -->
+- [x] **PQ-13 — Watch mode**: `--watch D` prints the first report in full — you
+  have to know the state you are watching from — and from then on only the
+  transitions, timestamped, reusing the diff PQ-24 already built. A tick that
+  found nothing prints nothing, because in that window a screen of unchanged
+  endpoints is what hides the line that matters. Two refusals rather than
+  surprises: a **5s floor**, since the interval is a rate against somebody's
+  endpoint and `--watch 100ms` is a typo; and `--json`/`--findings`/`--markdown`
+  are rejected up front, because a stream of documents is not a document.
+  Ctrl-C stops it and exits 0 — the probe ran.
+  <!-- pq: prio=low size=M labels=cli ver=0.18.0 -->
 
 ## M3 — Fit the toolchain <!-- ms: target=v0.3.0 phase=next -->
 

@@ -43,6 +43,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--timeout D` | `10s` | per-handshake timeout |
 | `--confirm` | on | re-dial an abrupt failure once before believing it (`--confirm=false` to dial once) |
 | `--concurrency N` | `8` | endpoints in flight (profiles of one endpoint are sequential) |
+| `--watch D` | — | re-probe every `D` and print only the transitions (minimum 5s, text output only) |
 | `--baseline FILE` | — | compare against a previous `--json` run and report the transitions |
 | `--markdown` | — | a table and collapsible detail, for a pull request comment or a CI job summary |
 | `--json` | — | full report, every profile result included |
@@ -62,6 +63,31 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 
 Exit 0 on a WARN is deliberate. A check that fails the pipeline on every
 deviation is a check people learn to ignore.
+
+## While something is being changed
+
+```sh
+pqprobe probe --watch 30s --inventory inventory/edge --group edge
+```
+
+The first report is printed in full — you have to know the state you are
+watching from — and from then on **only the transitions**, timestamped:
+
+```console
+watching 6 endpoint(s) every 30s — only transitions from here, Ctrl-C to stop
+
+12:34:56  BAD   10.11.10.5:443  pq-ready → pq-intolerant
+12:35:26  OK    10.11.10.5:443  pq-intolerant → pq-ready
+```
+
+A tick that found nothing prints nothing: the window this exists for is one
+where a screen of unchanged endpoints is what hides the line that matters.
+
+The interval has a **5s floor** — that is a rate against somebody's endpoint,
+and `--watch 100ms` is a typo rather than an intention. `--watch` with `--json`,
+`--findings` or `--markdown` is refused: a stream of documents is not a
+document, and being told now beats finding out halfway through a pipe. Ctrl-C
+stops it and exits **0**, because the probe ran.
 
 ## Through a proxy
 

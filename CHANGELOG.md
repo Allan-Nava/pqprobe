@@ -6,6 +6,25 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.18.0] - 2026-09-03
+
+### Added
+
+- **Watch mode** (PQ-13) — `--watch 30s` re-probes on an interval and prints
+  only what moved, reusing the transition diff `--baseline` already built. The
+  first report goes out in full, because you have to know the state you are
+  watching from; after that a quiet tick prints **nothing at all**, since the
+  window this exists for — a CDN or a load balancer being changed — is one where
+  a screen of unchanged endpoints hides the line that matters.
+
+  Two refusals instead of surprises: the interval has a **5s floor**, because it
+  is a rate against somebody's production endpoint and `--watch 100ms` is a typo
+  rather than an intention; and `--watch` with `--json`, `--findings` or
+  `--markdown` is a usage error, because a stream of documents is not a document
+  and being told now beats finding out halfway through a pipe. Ctrl-C stops it
+  cleanly and exits **0** — the probe ran, which is the contract everywhere else
+  in this tool.
+
 ## [0.17.0] - 2026-09-03
 
 ### Added
@@ -474,6 +493,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.18.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.18.0
 [0.17.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.17.0
 [0.16.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.16.1
 [0.16.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.16.0
