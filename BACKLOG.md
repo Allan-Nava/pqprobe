@@ -227,6 +227,29 @@ prints what to pick up.
 
 ## M4 — Later <!-- ms: target=ongoing phase=later -->
 
+- [ ] **PQ-37 — `--findings` non parla la forma che i tool fratelli consumano**: il
+  README promette *«the flat findings array the sibling tools speak»*, ma l'array
+  emesso è `{check, target, status, message, value, unit}` con `status`
+  maiuscolo (`OK`/`WARN`/`BAD`), mentre l'aggregatore che lo consuma davvero —
+  `infra-digest.py` di HiWay, che raccoglie i findings di ~20 health-check —
+  vuole un oggetto **avvolto** con un id **stabile** per la deduplica:
+  `{check, status, summary, findings: [{id, severity, title, detail}]}`, con
+  `severity` minuscolo. Senza l'`id` l'aggregatore non può fare fingerprint fra
+  run successive, che è tutto il suo lavoro. Trovato integrando pqprobe come
+  producer: è stato necessario tradurre nel wrapper, e una traduzione in ogni
+  consumatore è esattamente ciò che una forma condivisa dovrebbe evitare.
+  Le strade sono due e vanno entrambe bene, purché se ne scelga una: emettere la
+  forma avvolta (magari dietro `--findings=wrapped`), oppure correggere la riga
+  del README, che oggi promette un'interoperabilità che non c'è.
+  <!-- pq: prio=medium size=M labels=output,integration -->
+
+- [ ] **PQ-38 — `version` non è incorporabile**: stampa `pqprobe dev`, cioè nome
+  **più** versione, e `version --help` stampa la stessa cosa (il sottocomando
+  ignora i flag). Chi la mette in un'intestazione generata ottiene
+  `pqprobe pqprobe dev`. Basterebbe che `version` emettesse la sola stringa di
+  versione, o un `--short`. Piccolo, ma lo incontra chiunque lo incorpori al
+  primo tentativo. <!-- pq: prio=low size=S labels=cli,ux -->
+
 - [ ] **PQ-10 — Real ClientHello shapes**: profiles built with uTLS so a run
   can claim a browser *fingerprint*, not only a capability class. Moved here
   from M2 because "behind a build tag" is not enough: uTLS is a dependency, so

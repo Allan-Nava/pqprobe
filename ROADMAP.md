@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**36 items · 31 shipped · 5 open · 5 milestones.**
+**38 items · 31 shipped · 7 open · 5 milestones.**
 
 ## At a glance
 
@@ -15,7 +15,7 @@
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
 | **M3** — Fit the toolchain | `v0.3.0` | next | `#########.` 91% | 1 | 10 |
-| **M4** — Later | `ongoing` | later | `..........` 0% | 4 | 0 |
+| **M4** — Later | `ongoing` | later | `..........` 0% | 6 | 0 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
 ## Next up
@@ -73,7 +73,7 @@ Target `v0.3.0` · next · 1 open · 10 shipped · `#########.` 91%
 
 ### M4 — Later
 
-Target `ongoing` · later · 4 open · 0 shipped · `..........` 0%
+Target `ongoing` · later · 6 open · 0 shipped · `..........` 0%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
@@ -81,6 +81,8 @@ Target `ongoing` · later · 4 open · 0 shipped · `..........` 0%
 | **PQ-19** — QUIC | med | XL | probe | open |
 | **PQ-18** — Beyond key exchange | low | L | profile | open |
 | **PQ-20** — Non-HTTPS ports | low | L | probe | open |
+| **PQ-37** — `--findings` non parla la forma che i tool fratelli consumano | medium | M | output,integration | open |
+| **PQ-38** — `version` non è incorporabile | low | S | cli,ux | open |
 
 ### M5 — Make the verdict actionable
 
@@ -101,14 +103,15 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 | Label | Items | Open |
 |---|---|---|
+| `integration` | 2 | 2 |
 | `probe` | 12 | 2 |
 | `profile` | 5 | 2 |
-| `integration` | 1 | 1 |
-| `cli` | 6 | 0 |
+| `cli` | 7 | 1 |
+| `output` | 5 | 1 |
+| `ux` | 1 | 1 |
 | `delivery` | 4 | 0 |
 | `docs` | 6 | 0 |
 | `inventory` | 2 | 0 |
-| `output` | 4 | 0 |
 | `project` | 5 | 0 |
 | `release` | 2 | 0 |
 | `tests` | 1 | 0 |
