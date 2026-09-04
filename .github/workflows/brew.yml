@@ -30,8 +30,12 @@ on:
   # not exist yet — style and audit are the parts that can run.
   pull_request:
     paths:
-      - "Formula/**"
-      - "scripts/brew.sh"
+      # The cask is generated from these, so a change to either is what this
+      # workflow exists to catch. (They replaced Formula/** and scripts/brew.sh
+      # in 0.27.0; leaving the old paths here would have meant the workflow
+      # never ran again.)
+      - ".goreleaser.yaml"
+      - "scripts/goreleaser.sh"
       - ".github/workflows/brew.yml"
   workflow_dispatch:
     inputs:

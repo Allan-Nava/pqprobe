@@ -179,6 +179,16 @@ prints what to pick up.
   A side output rather than a renderer, so it combines with all of them and is
   rewritten on every `--watch` tick.
   <!-- pq: prio=med size=S labels=output ver=0.19.0 -->
+- [x] **PQ-43 — A gate for a script that was deleted**: `gates_test.sh`
+  asserted that every script *that exists* is wired to CI and to `release.sh`,
+  and said nothing about the inverse — a workflow naming a script that is gone.
+  Removing `scripts/brew.sh` and `brew_test.sh` for the cask left two lines in
+  the tag gates, so the next release would have died with `cannot open
+  scripts/brew_test.sh`, after the tag was already pushed. It also left the
+  `Brew` workflow triggering on `Formula/**`, a path that no longer exists —
+  which fails the other way, silently: the workflow would simply never run
+  again. Both directions are asserted now, over the effective YAML.
+  <!-- pq: prio=high size=S labels=tests,release ver=0.27.1 -->
 - [x] **PQ-42 — Homebrew via a goreleaser cask, like checkfleet**: the in-repo
   formula built from source, so `brew install` asked every user for Go and a
   compile. A **cask** hands over the prebuilt binary from the release instead,

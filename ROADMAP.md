@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**42 items · 40 shipped · 2 open · 5 milestones.**
+**43 items · 41 shipped · 2 open · 5 milestones.**
 
 ## At a glance
 
@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
-| **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 15 |
+| **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 16 |
 | **M4** — Later | `ongoing` | later | `#######...` 67% | 2 | 4 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
@@ -55,7 +55,7 @@ Target `v0.18.0` · shipped · 0 open · 5 shipped · `##########` 100%
 
 ### M3 — Fit the toolchain
 
-Target `v0.23.0` · shipped · 0 open · 15 shipped · `##########` 100%
+Target `v0.23.0` · shipped · 0 open · 16 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
@@ -68,6 +68,7 @@ Target `v0.23.0` · shipped · 0 open · 15 shipped · `##########` 100%
 | **PQ-40** — Gates that catch a missed edit | high | S | tests,project | shipped `0.25.1` |
 | **PQ-41** — Homebrew, verified by Homebrew | high | M | delivery,tests | shipped `0.26.0` |
 | **PQ-42** — Homebrew via a goreleaser cask, like checkfleet | high | M | delivery,release | shipped `0.27.0` |
+| **PQ-43** — A gate for a script that was deleted | high | S | tests,release | shipped `0.27.1` |
 | **PQ-15** — Prometheus textfile output | med | S | output | shipped `0.19.0` |
 | **PQ-17** — Docs site | med | M | docs | shipped `0.2.0` |
 | **PQ-29** — Brand assets | med | S | docs,project | shipped `0.2.0` |
@@ -116,7 +117,7 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 | `inventory` | 2 | 0 |
 | `output` | 5 | 0 |
 | `project` | 6 | 0 |
-| `release` | 3 | 0 |
-| `tests` | 3 | 0 |
+| `release` | 4 | 0 |
+| `tests` | 4 | 0 |
 | `ux` | 1 | 0 |
 | `verdict` | 4 | 0 |

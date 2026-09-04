@@ -79,8 +79,8 @@ jobs:
           sh scripts/repo-meta_test.sh
           sh scripts/assets_test.sh
           sh scripts/version_test.sh
-          sh scripts/brew_test.sh
-          ./scripts/brew.sh check
+          sh scripts/goreleaser_test.sh
+          ./scripts/goreleaser.sh check
           ./scripts/version.sh check
           sh scripts/seo.sh check
           sh scripts/seo_test.sh

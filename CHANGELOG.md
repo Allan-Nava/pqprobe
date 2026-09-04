@@ -6,6 +6,28 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.27.1] - 2026-09-04
+
+### Fixed
+
+- **The release gates still ran two scripts the cask had deleted** (PQ-43) —
+  `sh scripts/brew_test.sh` and `./scripts/brew.sh check` stayed in the tag
+  gates of the Release workflow after 0.27.0 removed both files, so the next
+  release would have failed with `cannot open scripts/brew_test.sh` — *after*
+  the tag was pushed, which is the worst moment to find out. Repointed at
+  `goreleaser_test.sh` and `goreleaser.sh check`.
+- **The Brew workflow was triggering on paths that no longer exist** (PQ-43) —
+  `Formula/**` and `scripts/brew.sh`. That fails the other way round and in
+  silence: nothing errors, the workflow simply never runs again. It now triggers
+  on `.goreleaser.yaml` and `scripts/goreleaser.sh`, which are what the cask is
+  generated from.
+- **`gates_test.sh` only checked one direction** (PQ-43) — it asserted that
+  every script that exists is wired, and nothing about a workflow naming a
+  script that is gone. That is precisely the hole both bugs above went through.
+  It now also walks every `scripts/*.sh` named by a workflow or by
+  `release.sh` and fails if the file is missing, comments stripped so a note
+  about a removed script is not mistaken for a reference to one.
+
 ## [0.27.0] - 2026-09-04
 
 ### Changed
@@ -847,6 +869,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.27.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.27.1
 [0.27.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.27.0
 [0.26.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.26.0
 [0.25.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.25.1
