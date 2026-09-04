@@ -140,6 +140,7 @@ go test -race ./... >/dev/null
 ./scripts/backlog.sh lint
 ./scripts/backlog.sh check
 sh scripts/backlog_test.sh >/dev/null && echo "backlog tests OK"
+sh scripts/backlog_issues_test.sh >/dev/null && echo "issue planner tests OK"
 ./scripts/docs.sh check
 sh scripts/docs_test.sh >/dev/null && echo "docs tests OK"
 sh scripts/release_test.sh >/dev/null && echo "release tests OK"
@@ -149,6 +150,7 @@ sh scripts/render-assets.sh --check
 sh scripts/assets_test.sh >/dev/null && echo "asset tests OK"
 sh scripts/version_test.sh >/dev/null && echo "version tests OK"
 sh scripts/contrib_test.sh >/dev/null && echo "contrib isolation OK"
+sh scripts/gates_test.sh >/dev/null && echo "gates all wired OK"
 sh scripts/brew_test.sh >/dev/null && echo "formula tests OK"
 sh scripts/seo_test.sh >/dev/null && echo "SEO tests OK"
 sh scripts/action.sh check >/dev/null && echo "action.yml OK"

@@ -97,6 +97,16 @@ there is a decision, not a gap.
 
 ## Known traps / technical rules
 
+- **A scripted edit that does not match is silent.** Three times in this
+  repository an anchor stopped matching — once because `gofmt` had realigned
+  struct tags, once because a paragraph had been reworded — and the file was
+  written back unchanged while everything downstream believed the edit had
+  landed. `--watch` shipped with its loop never called, and only running the
+  binary found it. So: assert the anchor before replacing, re-read a file a
+  formatter may have touched, and **run the feature** rather than trusting the
+  diff. `scripts/gates_test.sh` and the two-way flags/`--help` test exist
+  because a missed edit is invisible to every other gate.
+
 - **A large ClientHello is split across TCP segments**, and a middlebox that
   drops the second one produces a hang, not an error. That is why `KindTimeout`
   counts as abrupt: on a post-quantum profile a timeout is a size symptom, not a

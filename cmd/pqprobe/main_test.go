@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"reflect"
 	"strings"
 	"testing"
@@ -499,6 +500,53 @@ func TestStartTLSFlagTakesAProtocolAndValidatesIt(t *testing.T) {
 	for _, p := range probe.StartTLSProtocols() {
 		if !strings.Contains(b.String(), p) {
 			t.Errorf("--help does not list %s", p)
+		}
+	}
+}
+
+// The gate for the mistake that actually happened twice in this repository: an
+// edit that silently did not land. A flag declared and never mentioned in
+// --help, or documented and never declared, is invisible until somebody tries
+// to use it — so the correspondence is asserted in both directions, from the
+// flag set itself rather than from a list a human keeps in step.
+func TestEveryProbeFlagIsDocumentedAndEveryDocumentedFlagExists(t *testing.T) {
+	fs, _ := newProbeFlags()
+
+	var help strings.Builder
+	usageTo(&help)
+	text := help.String()
+
+	declared := map[string]bool{}
+	fs.VisitAll(func(f *flag.Flag) {
+		declared[f.Name] = true
+		if !strings.Contains(text, "--"+f.Name) {
+			t.Errorf("--%s is declared but absent from --help: nobody will find it", f.Name)
+		}
+	})
+	if len(declared) < 20 {
+		t.Fatalf("only %d flags enumerated; the flag set is not being read", len(declared))
+	}
+
+	// The other direction: every --flag the help promises has to exist, or the
+	// help is a list of things that do nothing.
+	for _, word := range strings.Fields(strings.ReplaceAll(text, "=", " ")) {
+		name := strings.TrimPrefix(word, "--")
+		if name == word || name == "" {
+			continue
+		}
+		// The help writes optional values as --findings[=SHAPE]; the flag is
+		// still called findings.
+		name = strings.TrimRight(name, ".,:;")
+		if i := strings.IndexAny(name, "[]="); i >= 0 {
+			name = name[:i]
+		}
+		// The help also names flags of the subcommands, which have their own
+		// sets; those are asserted where they live.
+		if name == "short" || name == "help" || name == "version" {
+			continue
+		}
+		if !declared[name] {
+			t.Errorf("--help documents --%s, which the probe does not accept", name)
 		}
 	}
 }

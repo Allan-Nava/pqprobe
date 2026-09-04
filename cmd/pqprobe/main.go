@@ -424,40 +424,65 @@ func cmdProfiles() int {
 	return 0
 }
 
-func cmdProbe(args []string) int {
+// probeFlags holds every flag the probe accepts. It exists so *one* place
+// declares them and a test can walk the set: a flag declared and never
+// documented, or documented and never declared, is invisible until somebody
+// tries to use it — which is the mistake that has actually happened here.
+type probeFlags struct {
+	profiles, groupSet, invFile, groups, listFile *string
+	port, sni, alpn, starttls, socks5             *string
+	textfile, baseline, minSev, exitOn            *string
+	perGroup, sizeSweep, alpnCheck, perAddress    *bool
+	confirm, asMarkdown, asJSON                   *bool
+	timeout, watch                                *time.Duration
+	concurrency, expWarn, expBad                  *int
+	findings                                      *findingsFormat
+}
+
+func newProbeFlags() (*flag.FlagSet, *probeFlags) {
 	fs := flag.NewFlagSet("probe", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	var (
-		profiles    = fs.String("profile", strings.Join(clientprofile.Default, ","), "client profiles to dial")
-		perGroup    = fs.Bool("per-group", false, "also dial each key exchange group on its own")
-		sizeSweep   = fs.Bool("size-sweep", false, "also grow the ClientHello in steps and report the limit")
-		alpnCheck   = fs.Bool("alpn-check", false, "also dial the same client with h2,http/1.1")
-		groupSet    = fs.String("groups", "", "also dial exactly this key exchange group set")
-		perAddress  = fs.Bool("per-address", false, "probe every A/AAAA record of each name")
-		invFile     = fs.String("inventory", "", "Ansible INI inventory")
-		groups      = fs.String("group", "", "inventory groups")
-		listFile    = fs.String("list", "", "flat target list")
-		port        = fs.String("port", inventory.DefaultPort, "default port")
-		sni         = fs.String("sni", "", "server name for every target")
-		alpn        = fs.String("alpn", "", "ALPN protocols")
-		starttls    = fs.String("starttls", "", "upgrade to TLS through this protocol first: smtp, imap, postgres")
-		socks5      = fs.String("socks5", "", "reach endpoints through a no-auth SOCKS5 proxy")
-		timeout     = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
-		confirm     = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
-		concurrency = fs.Int("concurrency", 8, "endpoints in flight")
-		textfile    = fs.String("textfile", "", "also write Prometheus textfile metrics to this path")
-		watch       = fs.Duration("watch", 0, "re-probe every D and print only the transitions")
-		baseline    = fs.String("baseline", "", "compare against a previous --json run")
-		asMarkdown  = fs.Bool("markdown", false, "markdown for a PR comment or job summary")
-		asJSON      = fs.Bool("json", false, "full JSON report")
-		asFindings  = &findingsFormat{}
-		minSev      = fs.String("min-severity", "", "hide findings below this status")
-		exitOn      = fs.String("exit-on", "", "exit 1 when a finding reaches this status")
-		expWarn     = fs.Int("expiry-warn", 21, "certificate expiry WARN days")
-		expBad      = fs.Int("expiry-bad", 7, "certificate expiry BAD days")
-	)
-	fs.Var(asFindings, "findings", "findings as JSON: flat or wrapped")
+	o := &probeFlags{findings: &findingsFormat{}}
 
+	o.profiles = fs.String("profile", strings.Join(clientprofile.Default, ","), "client profiles to dial")
+	o.perGroup = fs.Bool("per-group", false, "also dial each key exchange group on its own")
+	o.sizeSweep = fs.Bool("size-sweep", false, "also grow the ClientHello in steps and report the limit")
+	o.alpnCheck = fs.Bool("alpn-check", false, "also dial the same client with h2,http/1.1")
+	o.groupSet = fs.String("groups", "", "also dial exactly this key exchange group set")
+	o.perAddress = fs.Bool("per-address", false, "probe every A/AAAA record of each name")
+	o.invFile = fs.String("inventory", "", "Ansible INI inventory")
+	o.groups = fs.String("group", "", "inventory groups")
+	o.listFile = fs.String("list", "", "flat target list")
+	o.port = fs.String("port", inventory.DefaultPort, "default port")
+	o.sni = fs.String("sni", "", "server name for every target")
+	o.alpn = fs.String("alpn", "", "ALPN protocols")
+	o.starttls = fs.String("starttls", "", "upgrade to TLS through this protocol first: smtp, imap, postgres")
+	o.socks5 = fs.String("socks5", "", "reach endpoints through a no-auth SOCKS5 proxy")
+	o.timeout = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
+	o.confirm = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
+	o.concurrency = fs.Int("concurrency", 8, "endpoints in flight")
+	o.textfile = fs.String("textfile", "", "also write Prometheus textfile metrics to this path")
+	o.watch = fs.Duration("watch", 0, "re-probe every D and print only the transitions")
+	o.baseline = fs.String("baseline", "", "compare against a previous --json run")
+	o.asMarkdown = fs.Bool("markdown", false, "markdown for a PR comment or job summary")
+	o.asJSON = fs.Bool("json", false, "full JSON report")
+	fs.Var(o.findings, "findings", "findings as JSON: flat or wrapped")
+	o.minSev = fs.String("min-severity", "", "hide findings below this status")
+	o.exitOn = fs.String("exit-on", "", "exit 1 when a finding reaches this status")
+	o.expWarn = fs.Int("expiry-warn", 21, "certificate expiry WARN days")
+	o.expBad = fs.Int("expiry-bad", 7, "certificate expiry BAD days")
+	return fs, o
+}
+
+func cmdProbe(args []string) int {
+	fs, o := newProbeFlags()
+	profiles, perGroup, sizeSweep, alpnCheck := o.profiles, o.perGroup, o.sizeSweep, o.alpnCheck
+	groupSet, perAddress, invFile, groups := o.groupSet, o.perAddress, o.invFile, o.groups
+	listFile, port, sni, alpn := o.listFile, o.port, o.sni, o.alpn
+	starttls, socks5, timeout, confirm := o.starttls, o.socks5, o.timeout, o.confirm
+	concurrency, textfile, watch, baseline := o.concurrency, o.textfile, o.watch, o.baseline
+	asMarkdown, asJSON, asFindings := o.asMarkdown, o.asJSON, o.findings
+	minSev, exitOn, expWarn, expBad := o.minSev, o.exitOn, o.expWarn, o.expBad
 	if err := fs.Parse(permute(args)); err != nil {
 		return 2
 	}

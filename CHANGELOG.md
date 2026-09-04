@@ -6,6 +6,38 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.25.1] - 2026-09-04
+
+### Fixed
+
+- **`backlog_issues_test.sh` never ran in a release** (PQ-40) — CI ran it and
+  `scripts/release.sh` did not, so every local release skipped the issue
+  planner's tests. Nothing announces a gate that runs in one place and not the
+  other: it simply passes wherever it is missing.
+
+### Added
+
+- **Two gates for the mistake that keeps happening** (PQ-40) — a scripted edit
+  whose anchor no longer matches is written back unchanged, *silently*, and
+  everything downstream believes it landed. It has happened three times here;
+  once `--watch` shipped with its loop never called, and only running the binary
+  found it.
+
+  `scripts/gates_test.sh` asserts every gate script and every `*_test.sh` is
+  wired to **both** CI and `scripts/release.sh`. It found the bug above, and
+  then found itself unwired, which is the best first day a gate can have.
+
+  A two-way test in `cmd/pqprobe/main_test.go` walks the probe's `FlagSet`
+  against `--help`: a flag declared and not documented, or documented and not
+  declared, now fails. Proved by planting `--undocumented-on-purpose` and
+  watching it go red. The flags moved into one `newProbeFlags`, which is what
+  makes them enumerable — the same lesson as every other testability seam in
+  this repo.
+
+  The trap is written into `AGENTS.md`, because the durable fix is not a gate:
+  assert the anchor, re-read a file a formatter may have touched, and run the
+  feature rather than trusting the diff.
+
 ## [0.25.0] - 2026-09-04
 
 ### Added
@@ -744,6 +776,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.25.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.25.1
 [0.25.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.25.0
 [0.24.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.24.0
 [0.23.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.23.0

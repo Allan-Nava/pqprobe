@@ -125,6 +125,10 @@ jobs:
       # the extractor is tested rather than eyeballed at tag time.
       - name: The release notes extractor and the release script's refusals
         run: sh scripts/release_test.sh
+      # A gate that runs in one place and not the other passes silently in the
+      # place that skips it. This asserts every gate is wired to both.
+      - name: Every gate is wired to CI and to release.sh
+        run: sh scripts/gates_test.sh
       - name: The newest CHANGELOG section is extractable
         run: ./scripts/release-notes.sh >/dev/null
       - name: The version gate itself

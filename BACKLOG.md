@@ -209,6 +209,19 @@ prints what to pick up.
   first: the test suite is what found the word-splitting bug that would have
   sent `post quantum` to GitHub as two topics.
   <!-- pq: prio=med size=S labels=project,delivery ver=0.2.0 -->
+- [x] **PQ-40 — Gates that catch a missed edit**: three times a scripted edit
+  stopped matching its anchor and was written back unchanged, silently — once
+  because `gofmt` had realigned struct tags — and `--watch` shipped with its
+  loop never called, found only by running the binary. Two gates now make that
+  class of mistake visible: `scripts/gates_test.sh` asserts every gate script
+  and every `*_test.sh` is wired to **both** CI and `scripts/release.sh` (it
+  caught `backlog_issues_test.sh`, which CI ran and a local release skipped, and
+  then caught itself), and a two-way test walks the probe's `FlagSet` against
+  `--help`, so a flag declared and not documented — or documented and not
+  declared — fails. Proved by planting an undocumented flag and watching it go
+  red. The flags now live in one `newProbeFlags`, which is what made them
+  enumerable at all.
+  <!-- pq: prio=high size=S labels=tests,project ver=0.25.1 -->
 - [x] **PQ-32 — Every commit is a version**: a commit lands with its own dated
   CHANGELOG section and a `vX.Y.Z` tag on it, so the changelog is the dated
   history of the tool rather than of the code. `scripts/release.sh` is how you
