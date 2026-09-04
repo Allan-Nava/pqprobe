@@ -3,7 +3,7 @@
 # when they are there, so the image carries CA certificates and nothing else.
 # There is no shell in it — a container that can only run one program is one
 # less thing to reason about when it is pointed at production endpoints.
-FROM golang:1.25-alpine AS build
+FROM golang:1.27-alpine AS build
 ARG VERSION=dev
 WORKDIR /src
 COPY . .
