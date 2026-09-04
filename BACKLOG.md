@@ -127,17 +127,22 @@ prints what to pick up.
   Ctrl-C stops it and exits 0 — the probe ran.
   <!-- pq: prio=low size=M labels=cli ver=0.18.0 -->
 
-## M3 — Fit the toolchain <!-- ms: target=v0.3.0 phase=next -->
+## M3 — Fit the toolchain <!-- ms: target=v0.23.0 phase=shipped -->
 
-- [ ] **PQ-14 — checkfleet module**: emit the same findings under a `pq` module
-  in [checkfleet](https://github.com/Allan-Nava/checkfleet) so a fleet already
-  described in `checkfleet.yml` gains the check without a second inventory.
-  Blocked on nothing here any more: every package was under `internal/`, which
-  no other module may import, so the choice was to duplicate the
-  alert-versus-reset classification in checkfleet — the one thing that must live
-  in exactly one place — or to expose a surface. PQ-39 is that surface; this item
-  is now the checkfleet half, and it needs `pq/` published at a tag before it can
-  build. <!-- pq: prio=high size=M labels=integration -->
+- [x] **PQ-14 — checkfleet module**: shipped as `checks.pq` in
+  [checkfleet](https://github.com/Allan-Nava/checkfleet) (CF-187, its v1.30.0),
+  importing `pq/` rather than reimplementing anything — the alert-versus-reset
+  classification stays in one place, and a second copy there would have been the
+  copy that goes quietly wrong. A fleet already described in `checkfleet.yml`
+  gains the check without a second inventory. A healthy endpoint is one row; a
+  failing one keeps the verdict *and* the handshake that produced it, because
+  that pair is the argument somebody takes to a vendor, and `unreachable` arrives
+  as ERROR rather than BAD because it is not a grade.
+  Its own gates found four things missing one at a time — the moduledoc entry,
+  the permissions entry, the `init` scaffold snippet, and the generated page,
+  which its generator refused to write until the prose existed in
+  `docs/modules.md`. That is what those gates are for.
+  <!-- pq: prio=high size=M labels=integration ver=0.23.0 -->
 - [x] **PQ-39 — A public surface for embedders**: `pq/` — strings in, reports
   out, no internal types leaking, so `internal/` stays free to move. `Probe`,
   `Classes`, `Explain`, `Describe`, with findings that carry `Value`/`Unit` so a

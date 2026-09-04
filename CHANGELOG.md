@@ -6,6 +6,28 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.23.0] - 2026-09-04
+
+### Changed
+
+- **M3 — Fit the toolchain is complete** (PQ-14 … PQ-17, PQ-21, PQ-29 … PQ-33,
+  PQ-36): the checkfleet module, the Prometheus textfile output, the release
+  pipeline, Homebrew and the published image, the docs site and its SEO, the
+  About box as data, the issue sync, the intent document, and "every commit is a
+  version".
+
+  The last item was PQ-14, and it shipped in **checkfleet v1.30.0** as
+  `checks.pq` (CF-187 there), importing this repository's `pq/` package. It
+  reimplements nothing: the alert-versus-reset classification stays in one
+  place, which is the only reason the module was worth having rather than a
+  second copy that goes quietly wrong. A fleet already described in
+  `checkfleet.yml` gains the check without a second inventory.
+
+  Three milestones of five are now closed (M1, M2, M3, M5 — four), and what is
+  left in M4 is `ongoing` by construction: uTLS and QUIC each need a separate
+  module to keep this binary dependency-free, ML-DSA needs something to probe,
+  and the non-HTTPS ports are a capability rather than a refinement.
+
 ## [0.22.0] - 2026-09-03
 
 ### Added
@@ -650,6 +672,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.23.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.23.0
 [0.22.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.22.0
 [0.21.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.21.0
 [0.20.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.20.0

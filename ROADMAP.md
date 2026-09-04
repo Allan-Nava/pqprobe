@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**39 items · 34 shipped · 5 open · 5 milestones.**
+**39 items · 35 shipped · 4 open · 5 milestones.**
 
 ## At a glance
 
@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
-| **M3** — Fit the toolchain | `v0.3.0` | next | `#########.` 92% | 1 | 11 |
+| **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 12 |
 | **M4** — Later | `ongoing` | later | `###.......` 33% | 4 | 2 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
@@ -22,7 +22,7 @@
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-14** — checkfleet module · `high` · size `M` · integration (M3, target `v0.3.0`)
+_Nothing in flight._
 
 ## Milestones
 
@@ -55,11 +55,11 @@ Target `v0.18.0` · shipped · 0 open · 5 shipped · `##########` 100%
 
 ### M3 — Fit the toolchain
 
-Target `v0.3.0` · next · 1 open · 11 shipped · `#########.` 92%
+Target `v0.23.0` · shipped · 0 open · 12 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-14** — checkfleet module | high | M | integration | open |
+| **PQ-14** — checkfleet module | high | M | integration | shipped `0.23.0` |
 | **PQ-16** — Release pipeline | high | M | release | shipped `0.2.0` |
 | **PQ-21** — Intent document | high | S | docs,project | shipped `0.2.0` |
 | **PQ-32** — Every commit is a version | high | S | release,project | shipped `0.2.0` |
@@ -106,10 +106,10 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 |---|---|---|
 | `probe` | 12 | 2 |
 | `profile` | 5 | 2 |
-| `integration` | 3 | 1 |
 | `cli` | 7 | 0 |
 | `delivery` | 4 | 0 |
 | `docs` | 6 | 0 |
+| `integration` | 3 | 0 |
 | `inventory` | 2 | 0 |
 | `output` | 5 | 0 |
 | `project` | 5 | 0 |
