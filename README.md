@@ -273,6 +273,7 @@ Everything else that can be a script is one, and CI runs all of them:
 | `scripts/release-notes.sh` | a release's notes come out of `CHANGELOG.md`, never retyped |
 | `scripts/release.sh` | a release runs every gate, tags — and never pushes |
 | `scripts/version.sh` | every commit is a tagged `vX.Y.Z` the CHANGELOG names |
+| `scripts/brew.sh` | the formula names the current version — and the `Brew` workflow makes Homebrew itself audit and install it |
 | `scripts/seo.sh` | the sitemap, robots.txt and llms.txt agree with the page |
 | `scripts/action.sh` | `action.yml` is valid, with no expression inside a run block |
 

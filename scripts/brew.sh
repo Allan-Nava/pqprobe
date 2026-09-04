@@ -17,6 +17,11 @@
 # also builds from source, so one formula covers macOS and Linux, Intel and ARM,
 # without six bottles to publish.
 #
+# The version is deliberately *not* stated: `brew audit` rejects it as
+# "redundant with version scanned from URL", since Homebrew reads it off the
+# tag. That was found by running `brew audit` rather than by reasoning about it,
+# which is also why the Brew workflow exists.
+#
 # `check` is a CI gate for the reason a stale formula is worse than a missing
 # one: `brew install` reads whatever it says, so a formula left at v0.2.0 after
 # v0.3.0 shipped installs the old binary and looks like it worked.
@@ -66,7 +71,6 @@ class Pqprobe < Formula
   desc "Which classes of TLS client can still handshake with this endpoint"
   homepage "https://allan-nava.github.io/pqprobe/"
   url "https://github.com/Allan-Nava/pqprobe.git", tag: "v$v"
-  version "$v"
   license "MIT"
   head "https://github.com/Allan-Nava/pqprobe.git", branch: "main"
 

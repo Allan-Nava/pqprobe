@@ -38,9 +38,13 @@ case "$formula" in
 *) notok "no tag: \"v0.3.0\" in the formula" ;;
 esac
 
+# `brew audit` rejects an explicit version when it can be scanned from the URL:
+# "Stable: `version 0.25.1` is redundant with version scanned from URL". The
+# first version of this renderer stated it anyway — my preference, and Homebrew's
+# audit is the authority. So the assertion is the opposite of what it was.
 case "$formula" in
-*'version "0.3.0"'*) ok "the version is stated rather than inferred" ;;
-*) notok "no explicit version in the formula" ;;
+*'version "0.3.0"'*|*'version "'*'"'*) notok "the formula states a version, which brew audit calls redundant with the tag" ;;
+*) ok "no redundant version line: Homebrew scans it from the tag" ;;
 esac
 
 # A formula that fetched a tarball would need its sha256, and that cannot be
@@ -93,6 +97,60 @@ got=0; run check >/dev/null 2>&1 || got=$?
 got=0; run wat >/dev/null 2>&1 || got=$?
 [ "$got" -eq 2 ] && ok "an unknown mode is a usage error" ||
 	notok "an unknown mode exited $got, wanted 2"
+
+printf '\nthe Brew workflow:\n'
+
+wf="$root/.github/workflows/brew.yml"
+if [ -f "$wf" ]; then
+	ok "there is a workflow that exercises the tap"
+else
+	notok ".github/workflows/brew.yml is missing: the formula would only ever be checked by our own renderer"
+fi
+
+if [ -f "$wf" ]; then
+	# Comments are stripped first: this file explains the traps it avoids, and a
+	# check that matched the prose describing a mistake would flag the
+	# documentation of the fix as the mistake itself. (It did, first time.)
+	effective=$(grep -vE '^[[:space:]]*#' "$wf")
+
+	# `brew install ./path/to.rb` is disabled in current Homebrew ("Calling brew
+	# install with a path is disabled"), and it is the obvious thing to write.
+	if printf '%s\n' "$effective" | grep -qE 'brew (install|audit|style)[^|]*\./|brew install .*\.rb'; then
+		notok "it installs or audits by path, which Homebrew disabled — tap the checkout and use the qualified name"
+	else
+		ok "it goes through a tap rather than a path"
+	fi
+
+	# Homebrew 6+ refuses third-party taps unless trusted, and a headless run
+	# then fails or hangs. Found by running it here.
+	if printf '%s\n' "$effective" | grep -q "HOMEBREW_NO_REQUIRE_TAP_TRUST"; then
+		ok "tap trust is disabled, so a headless install does not stall on it"
+	else
+		notok "no HOMEBREW_NO_REQUIRE_TAP_TRUST: Homebrew 6+ will ignore the tap"
+	fi
+
+	# The trap checkfleet paid for (CF-159): macos-13 was retired, and a job
+	# asking for a label with no runners behind it queues forever rather than
+	# failing — so the workflow never concludes and verifies nothing.
+	if printf '%s\n' "$effective" | grep -qE "macos-13([^0-9-]|$)"; then
+		notok "macos-13 is retired: that leg queues forever instead of failing"
+	else
+		ok "no retired runner label"
+	fi
+
+	if printf '%s\n' "$effective" | grep -q "timeout-minutes"; then
+		ok "there is a hang guard"
+	else
+		notok "no timeout-minutes: a stalled install looks like a busy one"
+	fi
+
+	# The point of the whole thing: an install that is never run proves nothing.
+	if printf '%s\n' "$effective" | grep -q "brew install"; then
+		ok "it actually installs"
+	else
+		notok "it never runs brew install"
+	fi
+fi
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

@@ -6,6 +6,40 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.26.0] - 2026-09-04
+
+### Fixed
+
+- **The formula had an audit error nobody could see** (PQ-41) — `brew audit`
+  rejects `version "0.25.1"` as "redundant with version scanned from URL",
+  because Homebrew reads the version off the tag. Our own gate compares the
+  formula against the script that renders it, so it agreed with itself all the
+  way to anybody who tapped the repo. The line is gone, and the assertion in
+  `brew_test.sh` is now the opposite of what it was: stating the version was my
+  preference, and Homebrew's audit is the authority.
+
+### Added
+
+- **A Brew workflow** (PQ-41) — Homebrew's own opinion, on a schedule. It taps
+  the checkout, runs `brew style` and `brew audit`, installs
+  `--build-from-source` on **arm64 and Intel**, runs the formula's `brew test`,
+  asserts `pqprobe version --short` equals what the CHANGELOG says, and probes a
+  real endpoint with the installed binary. It runs after a release, weekly
+  (because a tap rots on its own — a deleted tag, a Go version that stops
+  building, a policy change), on demand, and on a pull request touching the
+  formula, where the install is skipped since the tag it clones does not exist
+  yet.
+
+  Three traps are encoded in it rather than left to be rediscovered:
+  `brew install ./Formula/pqprobe.rb` is **disabled** in current Homebrew;
+  Homebrew 6+ **ignores untrusted taps**, so a headless run installs nothing
+  unless `HOMEBREW_NO_REQUIRE_TAP_TRUST` is set — both found by running the
+  commands here; and `macos-13` is retired, where a job asking for a label with
+  no runners **queues forever** instead of failing, which is how the sibling
+  repository lost a day. `brew_test.sh` asserts all three, reading the effective
+  YAML with comments stripped — the first version of that check flagged the
+  comment explaining the fix as the mistake itself.
+
 ## [0.25.1] - 2026-09-04
 
 ### Fixed
@@ -776,6 +810,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.26.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.26.0
 [0.25.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.25.1
 [0.25.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.25.0
 [0.24.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.24.0

@@ -179,6 +179,25 @@ prints what to pick up.
   A side output rather than a renderer, so it combines with all of them and is
   rewritten on every `--watch` tick.
   <!-- pq: prio=med size=S labels=output ver=0.19.0 -->
+- [x] **PQ-41 — Homebrew, verified by Homebrew**: `scripts/brew.sh check`
+  compares the formula against the script that writes it, which cannot notice
+  that *Homebrew* disagrees — and it did: running `brew audit` by hand said
+  "Stable: `version 0.25.1` is redundant with version scanned from URL", an
+  error that would have reached anybody tapping this repo. The version line is
+  gone (Homebrew reads it off the tag) and there is now a `Brew` workflow that
+  taps the checkout, runs `brew style` and `brew audit`, installs
+  `--build-from-source` on both arm64 and Intel, runs the formula's own `brew
+  test`, asserts `version --short` matches the CHANGELOG, and probes a real
+  endpoint with the installed binary. After a release, weekly (a tap rots on its
+  own), on demand, and on a pull request that touches the formula — where the
+  install is skipped, because the tag it clones does not exist yet.
+  Three traps encoded rather than rediscovered: `brew install ./path.rb` is
+  disabled, Homebrew 6+ ignores untrusted taps in a headless run, and
+  `macos-13` is retired — a job asking for it **queues forever** instead of
+  failing, which is how checkfleet lost a day (CF-159). `brew_test.sh` asserts
+  all three against the effective YAML, comments stripped, because the first
+  version of that check flagged the comment explaining the fix as the mistake.
+  <!-- pq: prio=high size=M labels=delivery,tests ver=0.26.0 -->
 - [x] **PQ-33 — Homebrew and the published image**: `brew tap` on this
   repository and `brew install pqprobe`, from a `Formula/pqprobe.rb` that
   `scripts/brew.sh` renders inside the release commit — the tap is the repo, so

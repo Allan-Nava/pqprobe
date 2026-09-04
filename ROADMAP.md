@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**40 items · 38 shipped · 2 open · 5 milestones.**
+**41 items · 39 shipped · 2 open · 5 milestones.**
 
 ## At a glance
 
@@ -14,7 +14,7 @@
 |---|---|---|---|---|---|
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
-| **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 13 |
+| **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 14 |
 | **M4** — Later | `ongoing` | later | `#######...` 67% | 2 | 4 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
@@ -55,7 +55,7 @@ Target `v0.18.0` · shipped · 0 open · 5 shipped · `##########` 100%
 
 ### M3 — Fit the toolchain
 
-Target `v0.23.0` · shipped · 0 open · 13 shipped · `##########` 100%
+Target `v0.23.0` · shipped · 0 open · 14 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
@@ -66,6 +66,7 @@ Target `v0.23.0` · shipped · 0 open · 13 shipped · `##########` 100%
 | **PQ-33** — Homebrew and the published image | high | S | delivery,docs | shipped `0.4.0` |
 | **PQ-39** — A public surface for embedders | high | M | integration | shipped `0.22.0` |
 | **PQ-40** — Gates that catch a missed edit | high | S | tests,project | shipped `0.25.1` |
+| **PQ-41** — Homebrew, verified by Homebrew | high | M | delivery,tests | shipped `0.26.0` |
 | **PQ-15** — Prometheus textfile output | med | S | output | shipped `0.19.0` |
 | **PQ-17** — Docs site | med | M | docs | shipped `0.2.0` |
 | **PQ-29** — Brand assets | med | S | docs,project | shipped `0.2.0` |
@@ -108,13 +109,13 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 | `probe` | 12 | 1 |
 | `profile` | 5 | 1 |
 | `cli` | 7 | 0 |
-| `delivery` | 4 | 0 |
+| `delivery` | 5 | 0 |
 | `docs` | 6 | 0 |
 | `integration` | 3 | 0 |
 | `inventory` | 2 | 0 |
 | `output` | 5 | 0 |
 | `project` | 6 | 0 |
 | `release` | 2 | 0 |
-| `tests` | 2 | 0 |
+| `tests` | 3 | 0 |
 | `ux` | 1 | 0 |
 | `verdict` | 4 | 0 |
