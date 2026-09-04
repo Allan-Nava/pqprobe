@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**39 items · 35 shipped · 4 open · 5 milestones.**
+**39 items · 36 shipped · 3 open · 5 milestones.**
 
 ## At a glance
 
@@ -15,7 +15,7 @@
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
 | **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 12 |
-| **M4** — Later | `ongoing` | later | `###.......` 33% | 4 | 2 |
+| **M4** — Later | `ongoing` | later | `#####.....` 50% | 3 | 3 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
 ## Next up
@@ -74,15 +74,15 @@ Target `v0.23.0` · shipped · 0 open · 12 shipped · `##########` 100%
 
 ### M4 — Later
 
-Target `ongoing` · later · 4 open · 2 shipped · `###.......` 33%
+Target `ongoing` · later · 3 open · 3 shipped · `#####.....` 50%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-10** — Real ClientHello shapes | med | XL | profile | open |
 | **PQ-19** — QUIC | med | XL | probe | open |
 | **PQ-18** — Beyond key exchange | low | L | profile | open |
-| **PQ-20** — Non-HTTPS ports | low | L | probe | open |
 | **PQ-37** — `--findings` non parla la forma che i tool fratelli consumano | med | M | output,integration | shipped `0.21.0` |
+| **PQ-20** — Non-HTTPS ports | low | L | probe | shipped `0.24.0` |
 | **PQ-38** — `version` non è incorporabile | low | S | cli,ux | shipped `0.20.0` |
 
 ### M5 — Make the verdict actionable
@@ -104,8 +104,8 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 | Label | Items | Open |
 |---|---|---|
-| `probe` | 12 | 2 |
 | `profile` | 5 | 2 |
+| `probe` | 12 | 1 |
 | `cli` | 7 | 0 |
 | `delivery` | 4 | 0 |
 | `docs` | 6 | 0 |

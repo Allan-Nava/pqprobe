@@ -55,6 +55,7 @@ shapes, and reads the *shape of the refusal*:
 | sends a **TLS alert** to a hybrid hello | `pq-refusing` | it parsed and declined: a policy or pinned group list |
 | **resets, times out or vanishes** | `pq-intolerant` | it choked on the hello: an outage waiting for a CDN default |
 | serves TLS 1.2 and nothing newer | `no-tls13` | post-quantum key exchange is a 1.3 feature; a ceiling, not a setting |
+| will not **upgrade to TLS** | `no-tls` | not a grade — it refused TLS, not post-quantum clients (`--starttls`) |
 | wants a **client certificate** | `mtls-required` | not a grade — it refused the prober, not post-quantum clients |
 | answers nothing | `unreachable` | not a grade — fix reachability first |
 
@@ -229,7 +230,10 @@ deviation is a check people learn to ignore.
 ## Safety
 
 pqprobe completes a TLS handshake and closes the connection. **No request, no
-body, no credentials, no application data** — there is nothing in it that can
+body, no credentials, no application data** — with `--starttls` it also sends
+that protocol's negotiation (`EHLO`, `STARTTLS`, or Postgres's eight-byte
+`SSLRequest`) and nothing more, because without it those ports cannot be probed
+at all — there is nothing in it that can
 change state on the far side, which is what makes it safe to point at
 production. The certificate chain is verified locally, from the certificates the
 peer sent, and never with the trust store deciding whether the handshake

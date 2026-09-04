@@ -377,6 +377,7 @@ footer a:hover { color:var(--link-hover); }
           <tr><td><code>pq-refusing</code></td><td><span class="c-bad">BAD</span></td><td>sent a <strong>TLS alert</strong> to a hybrid hello that also offered X25519</td><td>a policy or a pinned group list — look at the configuration</td></tr>
           <tr><td><code>pq-intolerant</code></td><td><span class="c-bad">BAD</span></td><td><strong>reset, timed out or vanished</strong> mid-hello</td><td>an outage waiting for a CDN to flip a default — look at the path</td></tr>
           <tr><td><code>no-tls13</code></td><td><span class="c-warn">WARN</span></td><td>serves TLS 1.2 and nothing newer</td><td>post-quantum key exchange is a 1.3 feature: a ceiling, not a setting</td></tr>
+          <tr><td><code>no-tls</code></td><td><span class="c-err">ERROR</span></td><td>would not upgrade to TLS (<code>--starttls</code>)</td><td>not a grade — it refused TLS, not post-quantum clients</td></tr>
           <tr><td><code>mtls-required</code></td><td><span class="c-err">ERROR</span></td><td>requested a client certificate, and no handshake survived it</td><td>not a grade — it refused the prober, not post-quantum clients</td></tr>
           <tr><td><code>unreachable</code></td><td><span class="c-err">ERROR</span></td><td>answered nothing</td><td>not a grade — fix reachability first</td></tr>
           <tr><td><code>tls-broken</code></td><td><span class="c-err">ERROR</span></td><td>the port answered and no profile completed a handshake</td><td>not a post-quantum finding at all</td></tr>
@@ -595,6 +596,7 @@ pqprobe version [--short] <span class="c-dim"># --short: the version alone, for 
           <tr><td><code>--port N</code></td><td><code>443</code></td><td>default port for targets written without one</td></tr>
           <tr><td><code>--sni NAME</code></td><td>—</td><td>server name for every target</td></tr>
           <tr><td><code>--alpn a,b</code></td><td>none</td><td>ALPN protocols to offer</td></tr>
+          <tr><td><code>--starttls PROTO</code></td><td>—</td><td>upgrade to TLS through the protocol's own negotiation first: <code>smtp</code>, <code>imap</code>, <code>postgres</code></td></tr>
           <tr><td><code>--socks5 HOST:PORT</code></td><td>—</td><td>reach every endpoint through a no-auth SOCKS5 proxy (HTTP <code>CONNECT</code> is a request and is not supported)</td></tr>
           <tr><td><code>--timeout D</code></td><td><code>10s</code></td><td>per-handshake timeout</td></tr>
           <tr><td><code>--confirm</code></td><td>on</td><td>re-dial an abrupt failure once before believing it (<code>--confirm=false</code> to dial once)</td></tr>
@@ -776,6 +778,10 @@ pqprobe probe --inventory inventory/edge --baseline yesterday.json --exit-on BAD
     <h2>It handshakes, and it closes</h2>
     <p>
       <strong>No request, no body, no credentials, no application data.</strong>
+      With <code>--starttls</code> it also sends that protocol's negotiation —
+      <code>EHLO</code>, <code>STARTTLS</code>, or Postgres's eight-byte
+      <code>SSLRequest</code> — and nothing more, because without it those ports
+      cannot be probed at all.
       There is nothing in the binary that can change state on the far side, which
       is what makes it reasonable to point at production. This is enforced, not
       promised: <code>go.mod</code> has no <code>require</code> block, and CI

@@ -832,7 +832,7 @@ func TestACustomGroupSetIsVisibleButDoesNotGrade(t *testing.T) {
 func TestEveryClassCanBeExplained(t *testing.T) {
 	all := []Class{
 		PQReady, PQCapable, PQBlind, PQIntolerant, PQRefusing,
-		NoTLS13, MTLSRequired, Unreachable, TLSBroken,
+		NoTLS13, NoTLS, MTLSRequired, Unreachable, TLSBroken,
 	}
 	if len(Classes()) != len(all) {
 		t.Fatalf("Classes() has %d entries and this test knows %d — one of them is out of date",
@@ -866,7 +866,7 @@ func TestTheRefusalClassesNameTheAffectedClients(t *testing.T) {
 	}
 	// And the two that are not grades must say so rather than inventing a
 	// population of affected clients.
-	for _, c := range []Class{Unreachable, TLSBroken, MTLSRequired} {
+	for _, c := range []Class{Unreachable, TLSBroken, MTLSRequired, NoTLS} {
 		e, _ := Explain(c)
 		if !strings.Contains(strings.ToLower(e.Meaning), "no") && !strings.Contains(strings.ToLower(e.Action), "not a grade") {
 			t.Errorf("%s: %q / %q — this is not a capability verdict and has to read like it", c, e.Meaning, e.Action)
@@ -878,5 +878,44 @@ func TestTheRefusalClassesNameTheAffectedClients(t *testing.T) {
 func TestExplainingSomethingElseFails(t *testing.T) {
 	if _, ok := Explain(Class("pq-maybe")); ok {
 		t.Fatal("pq-maybe is not a class")
+	}
+}
+
+// PQ-20. A relay with TLS switched off has refused *TLS*, not a post-quantum
+// client. Grading it as pq-intolerant would be the same lie as grading an
+// unreachable host: the class has to say what actually happened.
+func TestARefusedUpgradeIsNotAPostQuantumVerdict(t *testing.T) {
+	rep := Evaluate("mx.example:587", []probe.Result{
+		fail("classic", probe.KindStartTLS),
+		fail("pq-preferred", probe.KindStartTLS),
+		fail("pq-only", probe.KindStartTLS),
+	}, opts())
+
+	if rep.Class == PQIntolerant || rep.Class == PQRefusing {
+		t.Fatalf("class = %s: nothing here says anything about post-quantum clients", rep.Class)
+	}
+	if rep.Class != NoTLS {
+		t.Fatalf("class = %s, want %s", rep.Class, NoTLS)
+	}
+	v := find(t, rep, "verdict")
+	if v.Status != finding.ERROR {
+		t.Errorf("status = %s, want ERROR — this is not a grade", v.Status)
+	}
+	if !strings.Contains(strings.ToLower(v.Hint), "starttls") {
+		t.Errorf("the hint has to name what was refused: %q", v.Hint)
+	}
+}
+
+// Every class needs an explanation, and the table-driven test in this file
+// already asserts that — this pins the new one's wording, since a class nobody
+// can act on is the thing that test exists to prevent.
+func TestNoTLSCanBeExplained(t *testing.T) {
+	e, ok := Explain(NoTLS)
+	if !ok {
+		t.Fatal("no-tls has no explanation")
+	}
+	if !strings.Contains(strings.ToLower(e.Action), "starttls") &&
+		!strings.Contains(strings.ToLower(e.Action), "tls") {
+		t.Errorf("action = %q", e.Action)
 	}
 }

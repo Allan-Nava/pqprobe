@@ -1,6 +1,7 @@
 package probe
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/ecdsa"
@@ -1003,5 +1004,153 @@ func TestProxyFailuresAreNeverTheEndpointsFault(t *testing.T) {
 		if !strings.Contains(strings.ToLower(res.Err), "socks5") {
 			t.Errorf("%s: error = %q, want the proxy named so nobody debugs the wrong host", tc.name, res.Err)
 		}
+	}
+}
+
+// starttlsServer speaks just enough of a protocol's plaintext negotiation to
+// reach TLS, then hands the connection to tls.Server. `refuse` makes it answer
+// the upgrade request with a refusal, which is what a relay with TLS switched
+// off does.
+func starttlsServer(t *testing.T, proto string, cfg *tls.Config, refuse bool) Target {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				defer c.Close()
+				br := bufio.NewReader(c)
+				switch proto {
+				case "smtp":
+					fmt.Fprint(c, "220 mx.example ESMTP ready\r\n")
+					line, _ := br.ReadString('\n')
+					if !strings.HasPrefix(strings.ToUpper(line), "EHLO") {
+						return
+					}
+					fmt.Fprint(c, "250-mx.example\r\n250-SIZE 10240000\r\n")
+					if refuse {
+						fmt.Fprint(c, "250 PIPELINING\r\n")
+					} else {
+						fmt.Fprint(c, "250 STARTTLS\r\n")
+					}
+					line, _ = br.ReadString('\n')
+					if !strings.HasPrefix(strings.ToUpper(line), "STARTTLS") {
+						return
+					}
+					if refuse {
+						fmt.Fprint(c, "454 TLS not available\r\n")
+						return
+					}
+					fmt.Fprint(c, "220 ready to start TLS\r\n")
+				case "imap":
+					fmt.Fprint(c, "* OK [CAPABILITY IMAP4rev1 STARTTLS] ready\r\n")
+					line, _ := br.ReadString('\n')
+					if !strings.Contains(strings.ToUpper(line), "STARTTLS") {
+						return
+					}
+					if refuse {
+						fmt.Fprint(c, "a1 NO starttls not supported\r\n")
+						return
+					}
+					fmt.Fprint(c, "a1 OK begin TLS negotiation now\r\n")
+				case "postgres":
+					// The SSLRequest packet: 8 bytes, length then the magic code.
+					hdr := make([]byte, 8)
+					if _, err := io.ReadFull(br, hdr); err != nil {
+						return
+					}
+					if refuse {
+						_, _ = c.Write([]byte("N"))
+						return
+					}
+					_, _ = c.Write([]byte("S"))
+				}
+				srv := tls.Server(&prefixConn{Conn: c, pre: bytes.NewReader(nil)}, cfg)
+				_ = srv.HandshakeContext(context.Background())
+				srv.Close()
+			}()
+		}
+	}()
+	return targetOf(t, ln.Addr().String())
+}
+
+// PQ-20. An SMTP relay, an IMAP server and a Postgres instance all speak TLS,
+// and none of them on 443: the handshake is reached through a plaintext
+// negotiation first. Implicit TLS on any port already worked — this is the
+// half that did not.
+func TestSTARTTLSReachesTheHandshakeOnEveryProtocol(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	cfg := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}
+
+	for _, proto := range []string{"smtp", "imap", "postgres"} {
+		tg := starttlsServer(t, proto, cfg, false)
+		p, _ := clientprofile.ByName("pq-only")
+		d := Dialer{Timeout: 5 * time.Second, StartTLS: proto}
+		res := d.Do(context.Background(), tg, p)
+
+		if !res.OK {
+			t.Errorf("%s: handshake failed after the upgrade: %s (%s)", proto, res.Err, res.Kind)
+			continue
+		}
+		if res.Group != "X25519MLKEM768" {
+			t.Errorf("%s: group = %q — the negotiation carries bytes, it does not change the key exchange", proto, res.Group)
+		}
+		// The ClientHello is still measured, and the plaintext chatter before it
+		// must not be counted as one.
+		if res.HelloBytes < 1000 {
+			t.Errorf("%s: hello = %d bytes, want the hybrid hello measured after the upgrade", proto, res.HelloBytes)
+		}
+		if res.HelloCount != 1 {
+			t.Errorf("%s: hello count = %d, want 1", proto, res.HelloCount)
+		}
+	}
+}
+
+// A relay with TLS switched off has not refused a post-quantum client: it has
+// refused *TLS*, and reading that as an abrupt end would file it as
+// pq-intolerant.
+func TestASTARTTLSRefusalIsNotAPostQuantumVerdict(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	cfg := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}
+
+	for _, proto := range []string{"smtp", "imap", "postgres"} {
+		tg := starttlsServer(t, proto, cfg, true)
+		p, _ := clientprofile.ByName("pq-preferred")
+		res := Dialer{Timeout: 5 * time.Second, StartTLS: proto}.Do(context.Background(), tg, p)
+
+		if res.OK {
+			t.Errorf("%s: the server refused the upgrade; the handshake must not complete", proto)
+		}
+		if res.Kind != KindStartTLS {
+			t.Errorf("%s: kind = %q, want %q", proto, res.Kind, KindStartTLS)
+		}
+		if res.Kind.Abrupt() {
+			t.Errorf("%s: a refused upgrade must never read as the peer cutting us off", proto)
+		}
+		if !strings.Contains(strings.ToLower(res.Err), "starttls") &&
+			!strings.Contains(strings.ToLower(res.Err), "tls") {
+			t.Errorf("%s: error = %q, want it to say what was refused", proto, res.Err)
+		}
+	}
+}
+
+// An unknown protocol is a usage error at the boundary, not a plain TLS dial
+// that happens to fail on port 587 for a reason nobody can see.
+func TestAnUnknownSTARTTLSProtocolIsRefused(t *testing.T) {
+	if StartTLSProtocols() == nil {
+		t.Fatal("the supported protocols have to be listable, for the error message and the docs")
+	}
+	if !ValidStartTLS("smtp") || !ValidStartTLS("") {
+		t.Error("smtp and the empty value (no negotiation) are both valid")
+	}
+	if ValidStartTLS("gopher") {
+		t.Error("gopher is not a STARTTLS protocol this tool speaks")
 	}
 }

@@ -11,6 +11,7 @@
 package probe
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -35,6 +36,11 @@ const (
 	KindDNS Kind = "dns"
 	// KindRefused: nothing is listening.
 	KindRefused Kind = "refused"
+	// KindStartTLS: the plaintext upgrade never reached TLS — the peer does not
+	// advertise STARTTLS, or refused it. Never abrupt: the peer refused *TLS*,
+	// not a post-quantum client, and reading it as abrupt would file a relay
+	// with TLS switched off as pq-intolerant.
+	KindStartTLS Kind = "starttls"
 	// KindProxy: the SOCKS5 proxy failed before the endpoint saw anything — it
 	// wanted credentials, refused, or was not there. Never abrupt: it is not the
 	// peer cutting us off, and treating it as one would put somebody else's
@@ -170,6 +176,138 @@ type Result struct {
 	// a fresh client will not, which is the most confusing class of bug there
 	// is.
 	PeerChainLen int `json:"peer_chain_len,omitempty"`
+}
+
+// StartTLSProtocols is what --starttls accepts, in the order the help lists
+// them.
+func StartTLSProtocols() []string { return []string{"smtp", "imap", "postgres"} }
+
+// ValidStartTLS reports whether the protocol is one of them. The empty string
+// is valid and means no negotiation: implicit TLS, which is every other port.
+func ValidStartTLS(proto string) bool {
+	if proto == "" {
+		return true
+	}
+	for _, p := range StartTLSProtocols() {
+		if p == proto {
+			return true
+		}
+	}
+	return false
+}
+
+// startTLS performs a protocol's plaintext upgrade so the TLS handshake can
+// happen at all (PQ-20).
+//
+// What goes on the wire is negotiation and nothing else — a greeting is read,
+// an EHLO or a STARTTLS or an eight-byte SSLRequest is written — and no
+// application data, no mail, no query, no credential. That distinction is the
+// whole reason this is acceptable in a tool whose contract is "handshake and
+// close": without it these ports cannot be probed at all, and with anything
+// more it would be a different tool.
+func startTLS(c net.Conn, proto, serverName string) error {
+	br := bufio.NewReader(c)
+	switch proto {
+	case "smtp":
+		// 220 greeting, EHLO, then STARTTLS. The capability list is read but
+		// not required: a relay that answers 220 to STARTTLS without having
+		// advertised it is still upgrading.
+		if err := expectSMTP(br, "220"); err != nil {
+			return fmt.Errorf("smtp: %w", err)
+		}
+		if _, err := fmt.Fprintf(c, "EHLO %s\r\n", ehloName(serverName)); err != nil {
+			return fmt.Errorf("smtp: %w", err)
+		}
+		if err := expectSMTP(br, "250"); err != nil {
+			return fmt.Errorf("smtp: EHLO: %w", err)
+		}
+		if _, err := fmt.Fprint(c, "STARTTLS\r\n"); err != nil {
+			return fmt.Errorf("smtp: %w", err)
+		}
+		if err := expectSMTP(br, "220"); err != nil {
+			return fmt.Errorf("smtp: STARTTLS refused: %w", err)
+		}
+		return nil
+
+	case "imap":
+		line, err := br.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("imap: reading the greeting: %w", err)
+		}
+		if !strings.HasPrefix(line, "* OK") {
+			return fmt.Errorf("imap: greeting was %q, not * OK", strings.TrimSpace(line))
+		}
+		if _, err := fmt.Fprint(c, "a1 STARTTLS\r\n"); err != nil {
+			return fmt.Errorf("imap: %w", err)
+		}
+		for {
+			line, err = br.ReadString('\n')
+			if err != nil {
+				return fmt.Errorf("imap: reading the STARTTLS reply: %w", err)
+			}
+			// Untagged lines may precede the tagged answer.
+			if strings.HasPrefix(line, "a1 ") {
+				if !strings.HasPrefix(line, "a1 OK") {
+					return fmt.Errorf("imap: STARTTLS refused: %s", strings.TrimSpace(line))
+				}
+				return nil
+			}
+		}
+
+	case "postgres":
+		// SSLRequest: length 8, then the magic 80877103. One byte comes back:
+		// 'S' to continue in TLS, 'N' to say the server has none.
+		req := []byte{0, 0, 0, 8, 4, 210, 22, 47}
+		if _, err := c.Write(req); err != nil {
+			return fmt.Errorf("postgres: %w", err)
+		}
+		b, err := br.ReadByte()
+		if err != nil {
+			return fmt.Errorf("postgres: reading the SSLRequest reply: %w", err)
+		}
+		switch b {
+		case 'S':
+			return nil
+		case 'N':
+			return errors.New("postgres: the server answered N to SSLRequest — TLS is not enabled on it")
+		default:
+			return fmt.Errorf("postgres: unexpected SSLRequest reply %q", b)
+		}
+	}
+	return fmt.Errorf("unknown starttls protocol %q (have: %s)", proto, strings.Join(StartTLSProtocols(), ", "))
+}
+
+// expectSMTP reads a possibly multi-line reply and checks its code. SMTP marks
+// continuation with a dash after the code, so the last line is the one whose
+// fourth byte is a space.
+func expectSMTP(br *bufio.Reader, code string) error {
+	for {
+		line, err := br.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("reading a %s reply: %w", code, err)
+		}
+		if len(line) < 4 {
+			return fmt.Errorf("short reply %q", strings.TrimSpace(line))
+		}
+		if line[:3] != code {
+			return fmt.Errorf("answered %s", strings.TrimSpace(line))
+		}
+		if line[3] == ' ' {
+			return nil
+		}
+	}
+}
+
+// ehloName is what to put after EHLO. The server name is a reasonable, honest
+// answer; an address literal has to be bracketed per the grammar.
+func ehloName(serverName string) string {
+	if serverName == "" {
+		return "[127.0.0.1]"
+	}
+	if net.ParseIP(serverName) != nil {
+		return "[" + serverName + "]"
+	}
+	return serverName
 }
 
 // socks5Connect opens a connection to host:port through a SOCKS5 proxy
@@ -374,6 +512,10 @@ func ExpandAddresses(ctx context.Context, r Resolver, targets []Target) ([]Targe
 type Dialer struct {
 	Timeout time.Duration
 	ALPN    []string
+	// StartTLS, when set, is the protocol whose plaintext negotiation gets to
+	// TLS before the handshake: smtp, imap or postgres. Implicit TLS on any
+	// port needs none of this — `host:465` is already just TLS.
+	StartTLS string
 	// Socks5, when set, is the `host:port` of a SOCKS5 proxy every connection
 	// goes through. SOCKS5 and nothing else: HTTP CONNECT is a *request*, and
 	// sending one would trade away the property that makes this binary safe to
@@ -470,6 +612,19 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 		}
 	}
 	defer raw.Close()
+
+	// The plaintext negotiation happens on the raw connection, before anything
+	// is measured: an SMTP relay answers TLS on 587 only after being asked in
+	// its own protocol (PQ-20).
+	if d.StartTLS != "" {
+		if err := startTLS(raw, d.StartTLS, t.ServerName()); err != nil {
+			// The peer refused *TLS*, which says nothing about post-quantum
+			// clients — hence its own kind, and not an abrupt one.
+			res.Kind, res.Err = KindStartTLS, err.Error()
+			res.Elapsed = time.Since(start)
+			return res
+		}
+	}
 
 	// Everything written to the peer passes through here, which is how the
 	// ClientHello gets measured and how a HelloRetryRequest becomes visible

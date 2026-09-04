@@ -48,6 +48,7 @@ affected clients, next action — without touching the network.
 | `pq-refusing` | BAD | capable clients are refused **with an alert** while classical ones connect |
 | `pq-intolerant` | BAD | capable clients are **cut off** while classical ones connect |
 | `no-tls13` | WARN | TLS 1.2 is the ceiling, so post-quantum is out of reach here |
+| `no-tls` | ERROR | the plaintext upgrade was refused, so there was no handshake to grade — not a grade |
 | `mtls-required` | ERROR | the peer wants a client certificate and no handshake survived it — not a grade |
 | `unreachable` | ERROR | nothing answered |
 | `tls-broken` | ERROR | the port answered and no profile completed a handshake |

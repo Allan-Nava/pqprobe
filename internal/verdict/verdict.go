@@ -48,6 +48,11 @@ const (
 	NoTLS13 Class = "no-tls13"
 	// Unreachable: nothing answered. No TLS conclusion is available.
 	Unreachable Class = "unreachable"
+	// NoTLS: the plaintext upgrade never reached TLS — the peer does not offer
+	// STARTTLS, or refused it. Not a grade: it refused TLS, not post-quantum
+	// clients, and a relay with TLS switched off filed as pq-intolerant would
+	// send somebody looking for a middlebox that does not exist.
+	NoTLS Class = "no-tls"
 	// MTLSRequired: the peer asked for a client certificate and no handshake
 	// survived it. pqprobe has no certificate to offer and never will, so
 	// nothing about post-quantum capability can be concluded — the endpoint
@@ -63,7 +68,7 @@ const (
 func Classes() []Class {
 	return []Class{
 		PQReady, PQCapable, PQBlind, PQIntolerant, PQRefusing,
-		NoTLS13, MTLSRequired, Unreachable, TLSBroken,
+		NoTLS13, NoTLS, MTLSRequired, Unreachable, TLSBroken,
 	}
 }
 
@@ -103,6 +108,9 @@ func Explain(c Class) (Explanation, bool) {
 	case NoTLS13:
 		e.Affected = "any client that requires TLS 1.3, and every post-quantum client — the key exchange lives in the 1.3 key_share extension"
 		e.Action = "enable TLS 1.3 before anything else here. This is a ceiling, not a setting: no group list can get post-quantum key exchange onto a 1.2 handshake"
+	case NoTLS:
+		e.Affected = "not a grade — nothing about post-quantum support can be said, because there was no TLS handshake at all"
+		e.Action = "not a grade: the peer would not upgrade to TLS. Either it does not advertise STARTTLS (a relay with TLS switched off, a Postgres without ssl=on), or --starttls named the wrong protocol for that port. Implicit TLS ports need no --starttls at all"
 	case MTLSRequired:
 		e.Affected = "not a grade — the endpoint refused the prober, not post-quantum clients"
 		e.Action = "not a grade: pqprobe holds no key material by design, so probe this leg from somewhere that has a client certificate, or probe the front door instead"
@@ -160,6 +168,8 @@ func Describe(c Class) string {
 		return "TLS 1.2 is the ceiling, so post-quantum key exchange is not reachable here"
 	case Unreachable:
 		return "nothing answered; no TLS conclusion available"
+	case NoTLS:
+		return "the plaintext upgrade to TLS was refused, so there was no handshake to grade"
 	case MTLSRequired:
 		return "the peer requires a client certificate, so no capability conclusion is available"
 	case TLSBroken:
@@ -235,6 +245,11 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	// starts lying.
 	if !anyOK(client) {
 		rep.Class = TLSBroken
+		if allKinds(client, probe.KindStartTLS) {
+			// The peer refused TLS itself. Saying anything about post-quantum
+			// clients from that would be a fabrication.
+			rep.Class = NoTLS
+		}
 		if anyClientCertRequested(client) {
 			// The peer asked for something pqprobe does not have. Grading
 			// post-quantum support on that would be a fabrication.
@@ -248,6 +263,9 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 			// The prober's own connectivity, not the endpoint's: usually an AAAA
 			// record reached from a host with no IPv6 egress.
 			hint = "this host has no route to that address, so nothing here is a statement about the endpoint — an IPv6 address probed from a machine without IPv6 egress is the usual cause. Fix the route, or probe the addresses you can actually reach"
+		}
+		if rep.Class == NoTLS {
+			hint = "the plaintext upgrade to TLS was refused, so there was no handshake to grade: either the peer does not advertise STARTTLS — a relay with TLS off, a Postgres without ssl=on — or --starttls named the wrong protocol for this port. Nothing here is a statement about post-quantum support"
 		}
 		if rep.Class == MTLSRequired {
 			// A different failure and a different next step: the endpoint is
@@ -767,7 +785,7 @@ func StatusOf(c Class) finding.Status {
 		return finding.WARN
 	case PQIntolerant, PQRefusing:
 		return finding.BAD
-	case Unreachable, TLSBroken, MTLSRequired:
+	case Unreachable, TLSBroken, MTLSRequired, NoTLS:
 		return finding.ERROR
 	}
 	return finding.OK
@@ -775,7 +793,7 @@ func StatusOf(c Class) finding.Status {
 
 func verdictFinding(target string, c Class, hint string) finding.Finding {
 	st := StatusOf(c)
-	if c == Unreachable || c == TLSBroken || c == MTLSRequired {
+	if c == Unreachable || c == TLSBroken || c == MTLSRequired || c == NoTLS {
 		// Those are raised by the branch that returns early, with their own
 		// wording; keep this function's behaviour unchanged for them.
 		st = finding.ERROR

@@ -6,6 +6,33 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.24.0] - 2026-09-04
+
+### Added
+
+- **Ports that are not 443** (PQ-20) — `--starttls smtp|imap|postgres` reaches
+  TLS through the protocol's own negotiation. Implicit TLS never needed anything
+  (465, 993 and 6514 already worked), so the missing half was this one:
+  `smtp.gmail.com:587` comes back **pq-ready**, verified live, and the mutual-TLS
+  note from PQ-26 correctly points out that Gmail asks for a client certificate.
+
+  What goes on the wire is stated exactly, in the help, the docs and
+  `INTENT.md`: a greeting is read, then `EHLO` and `STARTTLS`, or `a1 STARTTLS`,
+  or Postgres's eight-byte `SSLRequest`. No mail, no query, no credential. That
+  is the line — without the negotiation these ports cannot be probed at all, and
+  with anything more this would be a different tool, so the promise in INTENT.md
+  gained the clause rather than being left approximately true.
+
+  A peer that will not upgrade gets the new class **`no-tls`** with an `ERROR`,
+  never `pq-intolerant`: a relay with TLS switched off has refused *TLS*, and
+  grading that as a post-quantum failure would send somebody hunting a middlebox
+  that does not exist. The table-driven test from PQ-28 refused to let the class
+  exist without an explanation, which is exactly what it was written for.
+
+  MySQL is deliberately not included: its upgrade rides the connection-phase
+  packet format rather than a line protocol, so it earns its own item instead of
+  a footnote.
+
 ## [0.23.0] - 2026-09-04
 
 ### Changed
@@ -672,6 +699,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.24.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.24.0
 [0.23.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.23.0
 [0.22.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.22.0
 [0.21.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.21.0

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Allan-Nava/pqprobe/internal/probe"
 	"github.com/Allan-Nava/pqprobe/internal/verdict"
 )
 
@@ -462,5 +463,42 @@ func TestFindingsFlagKeepsWorkingAndTakesAShape(t *testing.T) {
 	got := permute([]string{"--findings", "example.com"})
 	if len(got) != 2 || got[1] != "example.com" {
 		t.Fatalf("permute = %v, want the target kept as an operand", got)
+	}
+}
+
+// PQ-20. --starttls names the protocol whose plaintext negotiation reaches TLS.
+// An unknown one is a usage error: a plain TLS dial that fails on port 587 for
+// a reason nobody can see is worse than being told now.
+func TestStartTLSFlagTakesAProtocolAndValidatesIt(t *testing.T) {
+	if !takesValue("--starttls") {
+		t.Fatal("--starttls takes a protocol")
+	}
+	got := permute([]string{"mx.example:587", "--starttls", "smtp"})
+	want := []string{"--starttls", "smtp", "mx.example:587"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("permute = %v, want %v", got, want)
+	}
+
+	if !probe.ValidStartTLS("") {
+		t.Error("no --starttls means implicit TLS, which is every other port")
+	}
+	for _, p := range probe.StartTLSProtocols() {
+		if !probe.ValidStartTLS(p) {
+			t.Errorf("%s is listed but not accepted", p)
+		}
+	}
+	if probe.ValidStartTLS("gopher") {
+		t.Error("gopher is not one of them")
+	}
+
+	var b strings.Builder
+	usageTo(&b)
+	if !strings.Contains(b.String(), "--starttls") {
+		t.Error("--starttls is not in --help")
+	}
+	for _, p := range probe.StartTLSProtocols() {
+		if !strings.Contains(b.String(), p) {
+			t.Errorf("--help does not list %s", p)
+		}
 	}
 }

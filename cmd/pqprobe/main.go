@@ -257,6 +257,10 @@ flags:
   --port N                 default port for targets written without one (default 443)
   --sni NAME               server name for every target (overrides per-target =sni)
   --alpn a,b               ALPN protocols to offer (default none)
+  --starttls PROTO         upgrade to TLS through a protocol's own negotiation
+                           first: smtp, imap or postgres. Only the negotiation
+                           is sent — no mail, no query, no credential. Implicit
+                           TLS ports (465, 993, 6514) need none of this
   --socks5 HOST:PORT       reach every endpoint through a no-auth SOCKS5 proxy
                            (the name is sent unresolved, so the proxy resolves
                            it; HTTP CONNECT is a request and is not supported)
@@ -436,6 +440,7 @@ func cmdProbe(args []string) int {
 		port        = fs.String("port", inventory.DefaultPort, "default port")
 		sni         = fs.String("sni", "", "server name for every target")
 		alpn        = fs.String("alpn", "", "ALPN protocols")
+		starttls    = fs.String("starttls", "", "upgrade to TLS through this protocol first: smtp, imap, postgres")
 		socks5      = fs.String("socks5", "", "reach endpoints through a no-auth SOCKS5 proxy")
 		timeout     = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
 		confirm     = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
@@ -465,6 +470,11 @@ func cmdProbe(args []string) int {
 		renderer = "findings"
 	case *asJSON:
 		renderer = "json"
+	}
+	if !probe.ValidStartTLS(*starttls) {
+		fmt.Fprintf(os.Stderr, "pqprobe: unknown --starttls protocol %q (have: %s)\n",
+			*starttls, strings.Join(probe.StartTLSProtocols(), ", "))
+		return 2
 	}
 	if err := validWatch(*watch); err != nil {
 		fmt.Fprintln(os.Stderr, "pqprobe:", err)
@@ -549,7 +559,7 @@ func cmdProbe(args []string) int {
 		}
 	}
 
-	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn), Confirm: *confirm, Socks5: *socks5}
+	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn), Confirm: *confirm, Socks5: *socks5, StartTLS: *starttls}
 	opt := verdict.DefaultOptions()
 	opt.ExpiryWarnDays, opt.ExpiryBadDays = *expWarn, *expBad
 	opt.Now = time.Now()
@@ -746,7 +756,7 @@ func takesValue(flagArg string) bool {
 	switch name {
 	case "profile", "inventory", "group", "list", "port", "sni", "alpn",
 		"timeout", "concurrency", "min-severity", "exit-on", "expiry-warn", "expiry-bad",
-		"baseline", "groups", "socks5", "watch", "textfile":
+		"baseline", "groups", "socks5", "watch", "textfile", "starttls":
 		return true
 	}
 	return false

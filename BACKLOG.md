@@ -300,9 +300,21 @@ prints what to pick up.
 - [ ] **PQ-19 — QUIC**: the same question over HTTP/3, where a large
   ClientHello has to fit an initial packet and the failure is even quieter.
   <!-- pq: prio=med size=XL labels=probe -->
-- [ ] **PQ-20 — Non-HTTPS ports**: SMTP STARTTLS, IMAP, syslog-TLS and MySQL
-  TLS all handshake, and none of them are covered by a web-shaped probe.
-  <!-- pq: prio=low size=L labels=probe -->
+- [x] **PQ-20 — Non-HTTPS ports**: `--starttls smtp|imap|postgres`. Implicit
+  TLS never needed anything — 465, 993 and 6514 already worked — so the item was
+  really the other half: reaching TLS through a protocol's own negotiation.
+  Verified against three in-process servers that speak the real exchanges, and
+  on `smtp.gmail.com:587`, which is `pq-ready`.
+  A refused upgrade is the new class **`no-tls`** with an ERROR, never
+  `pq-intolerant`: a relay with TLS switched off refused *TLS*, and grading that
+  as a post-quantum failure would send somebody hunting a middlebox that does
+  not exist. The table-driven test from PQ-28 refused the new class until it had
+  an explanation, which is what that test is for.
+  MySQL is left out on purpose: its upgrade needs the connection-phase packet
+  format rather than a line protocol, and it earns its own item rather than a
+  footnote here. What is sent is documented in INTENT.md, because "no
+  application data" needed the exact clause.
+  <!-- pq: prio=low size=L labels=probe ver=0.24.0 -->
 
 ## M5 — Make the verdict actionable <!-- ms: target=v0.15.0 phase=shipped -->
 

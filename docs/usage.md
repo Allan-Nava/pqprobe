@@ -43,6 +43,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--port N` | `443` | default port for targets written without one |
 | `--sni NAME` | — | server name for every target |
 | `--alpn a,b` | none | ALPN protocols to offer |
+| `--starttls PROTO` | — | upgrade to TLS through the protocol's own negotiation first: `smtp`, `imap`, `postgres` |
 | `--socks5 HOST:PORT` | — | reach every endpoint through a no-auth SOCKS5 proxy |
 | `--timeout D` | `10s` | per-handshake timeout |
 | `--confirm` | on | re-dial an abrupt failure once before believing it (`--confirm=false` to dial once) |
@@ -122,6 +123,31 @@ and `--watch 100ms` is a typo rather than an intention. `--watch` with `--json`,
 `--findings` or `--markdown` is refused: a stream of documents is not a
 document, and being told now beats finding out halfway through a pipe. Ctrl-C
 stops it and exits **0**, because the probe ran.
+
+## Ports that are not 443
+
+Implicit TLS needs nothing special — `pqprobe probe mail.example:465` already
+works, and so do 993 and 6514. What needed adding is the other half: ports where
+TLS is reached through the protocol's own negotiation.
+
+```sh
+pqprobe probe --starttls smtp  mx.example:587
+pqprobe probe --starttls imap  mail.example:143
+pqprobe probe --starttls postgres db.example:5432
+```
+
+Real output, September 2026: `smtp.gmail.com:587` is `pq-ready`.
+
+**What goes on the wire, exactly**: a greeting is read, then `EHLO` and
+`STARTTLS`, or `a1 STARTTLS`, or Postgres's eight-byte `SSLRequest`. Nothing
+else — no mail, no query, no credential, no application data. That is the line
+this flag walks: without the negotiation these ports cannot be probed at all,
+and with anything more it would be a different tool.
+
+A peer that will not upgrade gets the class **`no-tls`** with an `ERROR`, never
+`pq-intolerant`: a relay with TLS switched off has refused *TLS*, and grading
+that as a post-quantum failure would send somebody looking for a middlebox that
+does not exist.
 
 ## Through a proxy
 
