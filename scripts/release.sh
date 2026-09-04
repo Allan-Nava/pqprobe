@@ -148,6 +148,7 @@ sh scripts/repo-meta_test.sh >/dev/null && echo "metadata tests OK"
 sh scripts/render-assets.sh --check
 sh scripts/assets_test.sh >/dev/null && echo "asset tests OK"
 sh scripts/version_test.sh >/dev/null && echo "version tests OK"
+sh scripts/contrib_test.sh >/dev/null && echo "contrib isolation OK"
 sh scripts/brew_test.sh >/dev/null && echo "formula tests OK"
 sh scripts/seo_test.sh >/dev/null && echo "SEO tests OK"
 sh scripts/action.sh check >/dev/null && echo "action.yml OK"

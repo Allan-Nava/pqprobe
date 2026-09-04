@@ -102,7 +102,8 @@ there is a decision, not a gap.
   counts as abrupt: on a post-quantum profile a timeout is a size symptom, not a
   slow server.
 - **Go reports a locally generated alert as a plain error string**, not as
-  `tls.AlertError` — "no mutually supported group" never becomes a typed alert.
+  `tls.AlertError` — "no mutually supported protocol versions" and "tls: server
+  selected unsupported group" never become typed alerts.
   The classifier tests the string as well, and both paths mean *civil refusal*.
 - **`InsecureSkipVerify` is load-bearing here.** It is not a shortcut: it is
   what keeps an expiry problem from being reported as a capability problem.

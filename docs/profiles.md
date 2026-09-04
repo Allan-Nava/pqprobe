@@ -44,6 +44,27 @@ the 1.3 `key_share` extension. They are not client classes and no real client
 dials that way, so they are kept out of the verdict: they answer *which* groups
 the peer accepts, which is what a migration has to be planned against.
 
+## A real fingerprint, if you need one
+
+Everything above is a capability class, and the binary never claims to be a
+browser. The narrower question — *would Chrome 131 connect here?* — is answered
+by a separate tool in a separate module,
+[contrib/utls](https://github.com/Allan-Nava/pqprobe/tree/main/contrib/utls),
+because uTLS is a dependency and pqprobe has none:
+
+```console
+$ pqprobe-utls example.com
+OK    chrome    Chrome 131 (post-quantum by default)   TLS 1.3, X25519MLKEM768, hello 1721 B
+SKIP  safari    Safari 16.0                            other: tls: invalid signature by the server certificate
+      ↳ this failed inside the client, not at the peer …
+```
+
+`SKIP` is there because two of uTLS's older presets cannot complete a handshake
+with any modern server: that is the preset's doing, not the endpoint's, and a
+row reading "refuses Safari" would send somebody to look at a healthy endpoint.
+The judgement of *how* a handshake failed comes from pqprobe itself, so the two
+tools never disagree about what an alert means.
+
 ## Why `pq-preferred` is the one that matters
 
 It is the realistic client. It offers hybrid ML-KEM **and** classical groups, so

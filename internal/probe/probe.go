@@ -717,6 +717,12 @@ func verifyChain(certs []*x509.Certificate, serverName string, now time.Time) (b
 // report shows. The order matters: a timeout arrives wrapped in an OpError, and
 // a reset arrives wrapped twice, so the specific tests come before the general
 // ones.
+// Classify is classify, exported so the public facade can offer it to an
+// embedder that dials with its own TLS stack (PQ-10). The judgement of what an
+// error means has to stay in one place; a fingerprint probe holding its own
+// error must reach *this* answer, not a second opinion.
+func Classify(err error) (Kind, string) { return classify(err) }
+
 func classify(err error) (Kind, string) {
 	msg := err.Error()
 
@@ -757,6 +763,11 @@ func classify(err error) (Kind, string) {
 		strings.Contains(msg, "protocol version not supported"),
 		strings.Contains(msg, "no cipher suite supported"),
 		strings.Contains(msg, "no supported versions"),
+		// Go's own wording, verified in crypto/tls rather than remembered: the
+		// brief used to quote "no mutually supported group", which the
+		// toolchain has never produced. These two it does.
+		strings.Contains(msg, "mutually supported protocol versions"),
+		strings.Contains(msg, "server selected unsupported group"),
 		strings.Contains(msg, "illegal parameter"),
 		strings.Contains(msg, "insufficient security"),
 		strings.Contains(msg, "unexpected message"):

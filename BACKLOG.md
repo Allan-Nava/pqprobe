@@ -282,17 +282,24 @@ prints what to pick up.
   instead of printing the version and looking like success.
   <!-- pq: prio=low size=S labels=cli,ux ver=0.20.0 -->
 
-- [ ] **PQ-10 — Real ClientHello shapes**: profiles built with uTLS so a run
-  can claim a browser *fingerprint*, not only a capability class. Moved here
-  from M2 because "behind a build tag" is not enough: uTLS is a dependency, so
-  `go.mod` would carry a `require`, and CI fails the build on exactly that —
-  the zero-dependency binary is a product property in
-  [INTENT.md](INTENT.md), not an aesthetic. The only shape that does not trade
-  it away is a **separate module**: `contrib/utls/` with its own `go.mod`, built
-  by whoever wants it, invisible to the root module and its gates. That is also
-  why this is XL rather than L — the work is not the handshake, it is mapping
-  capability classes onto fingerprints without letting the default binary imply
-  it sends them. <!-- pq: prio=med size=XL labels=profile -->
+- [x] **PQ-10 — Real ClientHello shapes**: `contrib/utls/`, a module of its own
+  with its own `go.mod` and a **relative** replace on the root — so it always
+  builds from the checkout and never waits for a version to be published — plus
+  `pqprobe-utls`, a second binary. The root stays dependency-free, and
+  `scripts/contrib_test.sh` is the gate that keeps that true: no `require` in
+  the root `go.mod`, no root `go.sum`, no root package importing uTLS, and
+  `go list ./...` not reaching into contrib.
+  It does not judge: whether a failure was a civil refusal or the peer choking
+  on the hello comes from `pq.Classify`, which this item had to expose first —
+  two copies of that distinction is one too many. Real numbers: Chrome 131's
+  hello is **1721 bytes** and negotiates ML-KEM against `example.com`.
+  Running it found something the item had not foreseen: the `HelloSafari_16_0`
+  and `HelloIOS_14` presets fail against *any* modern server with "invalid
+  signature by the server certificate" — their own doing, not the endpoint's. So
+  a failure inside the client is flagged `Local` and rendered `SKIP` with a note
+  saying it says nothing about this endpoint. Reporting it as "example.com
+  refuses Safari" would have been the exact lie this tool exists to avoid.
+  <!-- pq: prio=med size=XL labels=profile ver=0.25.0 -->
 - [ ] **PQ-18 — Beyond key exchange**: post-quantum *authentication* (ML-DSA
   certificates) is the next migration, and the failure mode is again a size one
   — a chain several kilobytes long. Worth a profile once there is anything to

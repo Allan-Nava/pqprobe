@@ -8,9 +8,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
+	"io"
 	"math/big"
 	"net"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -193,5 +196,41 @@ func TestClassesAndExplainAreAvailableToEmbedders(t *testing.T) {
 	}
 	if _, ok := pq.Explain("pq-maybe"); ok {
 		t.Error("pq-maybe is not a class")
+	}
+}
+
+// PQ-10 needs this before it needs anything else. A fingerprint probe dials
+// with its own TLS stack, so it ends up holding an error — and the one thing
+// this tool must never have two copies of is the judgement of what that error
+// means. Exposing the classifier is what keeps "alert versus abrupt" in one
+// place when the dialling happens outside this module.
+func TestClassifyIsAvailableToAnEmbedderThatDialsItself(t *testing.T) {
+	cases := []struct {
+		name   string
+		err    error
+		kind   string
+		abrupt bool
+	}{
+		{"nothing went wrong", nil, "ok", false},
+		{"a TLS alert", errors.New("remote error: tls: handshake failure"), "alert", false},
+		// The real Go strings, checked against the toolchain source rather than
+		// quoted from memory: both are locally generated refusals, so both are
+		// civil — the peer and we understood each other and disagreed.
+		{"no version in common", errors.New("tls: no mutually supported protocol versions"), "alert", false},
+		{"the peer picked a group we did not offer", errors.New("tls: server selected unsupported group"), "alert", false},
+		{"a reset", &net.OpError{Op: "read", Err: syscall.ECONNRESET}, "reset", true},
+		{"an EOF", io.ErrUnexpectedEOF, "eof", true},
+		{"nothing listening", &net.OpError{Op: "dial", Err: syscall.ECONNREFUSED}, "refused", false},
+		{"no route from here", &net.OpError{Op: "dial", Err: syscall.EHOSTUNREACH}, "unroutable", false},
+	}
+	for _, tc := range cases {
+		kind, abrupt := pq.Classify(tc.err)
+		if kind != tc.kind {
+			t.Errorf("%s: kind = %q, want %q", tc.name, kind, tc.kind)
+		}
+		if abrupt != tc.abrupt {
+			t.Errorf("%s: abrupt = %v, want %v — this is the distinction the whole tool rests on",
+				tc.name, abrupt, tc.abrupt)
+		}
 	}
 }

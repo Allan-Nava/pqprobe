@@ -224,8 +224,20 @@ deviation is a check people learn to ignore.
 - **Not a load generator.** It opens a handful of connections per endpoint and
   sends no request. Traffic belongs in
   [crowdsim](https://github.com/HiWay-Media/crowdsim).
-- **Not a fingerprinting tool.** See the profiles section: capability classes,
-  not ClientHello signatures.
+- **Not a fingerprinting tool** — in the default binary. Capability classes, not
+  ClientHello signatures, and no output implies otherwise. If you do want the
+  narrower question ("would Chrome 131 connect?"), it lives in
+  [contrib/utls](contrib/utls) as a separate module and a separate binary,
+  because uTLS is a dependency and this one has none:
+
+  ```console
+  $ pqprobe-utls example.com
+  OK    chrome    Chrome 131 (post-quantum by default)   TLS 1.3, X25519MLKEM768, hello 1721 B
+  OK    firefox   Firefox 120+                           TLS 1.3, X25519, hello 659 B
+  ```
+
+  Read the two together: that tool cannot tell you which *class* of client is
+  affected, and this one cannot tell you that a specific browser build fails.
 
 ## Safety
 

@@ -67,6 +67,27 @@ jobs:
             exit 1
           fi
 
+  # PQ-10: the fingerprint module is a module of its own because uTLS is a
+  # dependency and the root has none. It is built and tested here — an
+  # unexercised contrib directory rots — but in a job of its own, so a failure
+  # in somebody else's dependency can never fail the build of the binary that
+  # has none.
+  contrib:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: The nested module cannot contaminate the root
+        run: sh scripts/contrib_test.sh
+      - name: Build and test contrib/utls
+        working-directory: contrib/utls
+        run: |
+          gofmt -l . | tee /dev/stderr | (! read -r)
+          go vet ./...
+          go test ./...
+
   docs:
     runs-on: ubuntu-latest
     steps:

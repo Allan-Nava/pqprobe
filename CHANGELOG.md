@@ -6,6 +6,51 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.25.0] - 2026-09-04
+
+### Added
+
+- **A real browser ClientHello** (PQ-10) — [contrib/utls](contrib/utls): a
+  module of its own, with its own `go.mod`, its own `go.sum` and its own binary
+  `pqprobe-utls`. Chrome 131's hello is **1721 bytes** and negotiates ML-KEM
+  against `example.com`; Firefox 120's is 659 and does not. That is the question
+  the capability classes deliberately refuse to answer, and it now has a home
+  that costs the default binary nothing.
+
+  A build tag would not have been enough, which is why this moved out of M2:
+  uTLS is a dependency, so `go.mod` would carry a `require` and CI fails the
+  build on exactly that. The nested module has a **relative** replace on the
+  root, so it always builds from the checkout instead of waiting for a version
+  to be published, and `scripts/contrib_test.sh` keeps the arrangement honest —
+  no `require` in the root `go.mod`, no root `go.sum`, no root package importing
+  uTLS, and `go list ./...` not reaching into contrib. CI builds and tests it in
+  a job of its own, so somebody else's dependency can never fail the build of
+  the binary that has none.
+
+  It does not judge: whether a failure was a civil refusal or the peer choking
+  on the hello comes from `pq.Classify`, exposed for exactly this. Two copies of
+  that distinction is one copy too many.
+
+- **`pq.Classify`** (PQ-10) — the alert-versus-abrupt judgement, available to an
+  embedder that dials with its own TLS stack.
+
+### Fixed
+
+- **The classifier missed two of Go's own refusal strings** (PQ-10) — the brief
+  quoted "no mutually supported group" as the canonical case caught by string.
+  That string does not exist in Go: the real ones are `no mutually supported
+  protocol versions` and `tls: server selected unsupported group`, read out of
+  the toolchain source rather than remembered, and neither was in the list. Both
+  are locally generated refusals, so both are civil — they classify as `alert`
+  now instead of `other`, and the brief quotes what Go actually says.
+- **A uTLS preset that fails against everything no longer blames the endpoint**
+  (PQ-10) — `HelloSafari_16_0` and `HelloIOS_14` cannot verify a modern server's
+  handshake signature, against *any* server including a local listener. Found by
+  running the tool. Those failures are flagged `Local` and rendered `SKIP` with a
+  note saying they say nothing about this endpoint; reporting "example.com
+  refuses Safari" would have been the exact mistake this toolchain exists to
+  avoid.
+
 ## [0.24.0] - 2026-09-04
 
 ### Added
@@ -699,6 +744,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.25.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.25.0
 [0.24.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.24.0
 [0.23.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.23.0
 [0.22.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.22.0

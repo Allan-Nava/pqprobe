@@ -195,6 +195,26 @@ func Explain(class string) (Explanation, bool) {
 	}, true
 }
 
+// Classify says how a failed handshake ended and whether that ending was
+// **abrupt** — the distinction the whole tool rests on (PQ-10).
+//
+// A TLS alert means the peer parsed the ClientHello and declined a group: a
+// policy, a pinned group list, a negotiation that worked. A reset, a timeout,
+// an EOF or a non-TLS record means it choked on the hello itself, and is broken
+// for every client that so much as offers ML-KEM. Only the second is an outage
+// waiting for a CDN to flip a default.
+//
+// It is exported for embedders that dial with their own TLS stack — a
+// fingerprint probe, for instance — because two copies of this judgement is
+// exactly one copy too many. A nil error is "ok", not abrupt.
+func Classify(err error) (kind string, abrupt bool) {
+	if err == nil {
+		return string(probe.KindOK), false
+	}
+	k, _ := probe.Classify(err)
+	return string(k), k.Abrupt()
+}
+
 // Describe is the one-line meaning of a class.
 func Describe(class string) string { return verdict.Describe(verdict.Class(class)) }
 
