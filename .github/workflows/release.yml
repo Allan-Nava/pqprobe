@@ -218,7 +218,7 @@ jobs:
       # latest. Two tags, no floating major: a probe people point at production
       # should be pinned deliberately.
       - id: push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
