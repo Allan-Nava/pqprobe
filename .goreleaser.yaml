@@ -1,0 +1,86 @@
+version: 2
+
+# The release, and the Homebrew cask it publishes (PQ-42).
+#
+# This replaces a decision recorded in PQ-16: that release built its archives
+# with a matrix of `go build` steps precisely to avoid goreleaser, on the
+# grounds that a pipeline with no dependencies suits a binary with none. That
+# argument was about the *binary*, and it does not extend to the release: a cask
+# means `brew install` hands over a prebuilt binary instead of asking every user
+# to install Go and compile, and goreleaser is what generates and publishes one.
+# The zero-dependency invariant is untouched — nothing here enters go.mod, and
+# the gate that checks that still runs.
+#
+# Everything user-facing about a cask happens after a tag is pushed, in a
+# different repository, in front of somebody running `brew install`. That is why
+# scripts/goreleaser_test.sh asserts the parts that cannot be seen from here.
+
+project_name: pqprobe
+
+before:
+  hooks:
+    # No dependencies to tidy; this is the gate that says so out loud, so a
+    # release stops if one ever appears.
+    - sh scripts/contrib_test.sh
+
+builds:
+  - id: pqprobe
+    main: ./cmd/pqprobe
+    binary: pqprobe
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE*
+      - CHANGELOG.md
+      - INTENT.md
+
+checksum:
+  name_template: "SHA256SUMS"
+
+homebrew_casks:
+  - name: pqprobe
+    repository:
+      owner: Allan-Nava
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://allan-nava.github.io/pqprobe/"
+    description: "Which classes of TLS client can still handshake with this endpoint"
+    # The binary is unsigned, so macOS quarantines anything downloaded and
+    # Gatekeeper refuses to run it: the install would succeed and the tool would
+    # not. Strip the attribute, the way checkfleet's cask does.
+    hooks:
+      post:
+        install: |
+          if system_command "/usr/bin/xattr", args: ["-h"], print_stderr: false
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/pqprobe"]
+          end
+    # "auto" publishes on a normal tag and skips on a **prerelease**. Without it
+    # a v1.0.0-rc.1 tag would push its cask to the tap and every `brew install`
+    # would hand out a release candidate — the opposite of what an rc is for.
+    # The sibling repository paid for that lesson (CF-160); this is it, borrowed.
+    skip_upload: "auto"
+
+# The notes are the CHANGELOG section, passed with --release-notes. A list of
+# commit subjects is not a description of a release, and this repository already
+# writes the other thing.
+changelog:
+  disable: true
+
+release:
+  draft: false
+  prerelease: auto

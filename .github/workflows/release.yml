@@ -5,11 +5,17 @@ name: Release
 # attestation, the ghcr.io image, and release notes lifted from the CHANGELOG
 # section rather than retyped.
 #
-# No goreleaser, no release-please, no action that needs a config file of its
-# own: this repository builds a static binary out of the standard library, and
-# its release pipeline has no dependencies either. `scripts/release.sh` prepares
-# the tag locally; pushing it is the maintainer's decision and this is what
-# happens next.
+# goreleaser builds the archives, the checksums, the GitHub release and the
+# **Homebrew cask** — the last one being why it is here at all: a cask hands a
+# user a prebuilt binary, where the previous in-repo formula asked everybody to
+# install Go and compile. PQ-16 originally avoided goreleaser on the grounds
+# that a pipeline with no dependencies suits a binary with none; that argument
+# was about the binary, and the binary is untouched — nothing goreleaser does
+# enters go.mod, and the gate that checks that still runs above.
+#
+# The release notes come from CHANGELOG.md rather than from commit subjects.
+# `scripts/release.sh` prepares the tag locally; pushing it is the maintainer's
+# decision and this is what happens next.
 #
 # Every job checks out the **tag**, not the branch, so a release is built from
 # exactly what was tagged. The consequence: this pipeline can only publish tags
@@ -98,101 +104,46 @@ jobs:
           name: notes
           path: notes.md
 
-  archives:
+  goreleaser:
     needs: gates
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - { goos: linux,   goarch: amd64 }
-          - { goos: linux,   goarch: arm64 }
-          - { goos: darwin,  goarch: amd64 }
-          - { goos: darwin,  goarch: arm64 }
-          - { goos: windows, goarch: amd64 }
-          - { goos: windows, goarch: arm64 }
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.TAG }}
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-
-      # CGO off and -trimpath: the binary has to be static and its paths have to
-      # be reproducible, or "one static binary, no dependencies" is only true on
-      # the machine that built it.
-      - name: Build and package
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: "0"
-        run: |
-          version="${TAG#v}"
-          name="pqprobe_${version}_${GOOS}_${GOARCH}"
-          mkdir -p "dist/$name"
-          bin=pqprobe
-          [ "$GOOS" = windows ] && bin=pqprobe.exe
-          go build -trimpath -ldflags "-s -w -X main.version=$version" \
-            -o "dist/$name/$bin" ./cmd/pqprobe
-          cp README.md LICENSE CHANGELOG.md "dist/$name/"
-          cd dist
-          if [ "$GOOS" = windows ]; then zip -qr "$name.zip" "$name"
-          else tar czf "$name.tar.gz" "$name"
-          fi
-          rm -rf "$name"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: archive-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/*
-          if-no-files-found: error
-
-  publish:
-    needs: [gates, archives]
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      # The attestation is what makes an archive traceable to this workflow and
-      # this tag without anybody holding a signing key.
+      # The attestation is what ties an archive to this workflow and this tag
+      # without anybody holding a signing key.
       id-token: write
       attestations: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.TAG }}
-
-      - uses: actions/download-artifact@v4
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
         with:
-          pattern: archive-*
-          path: dist
-          merge-multiple: true
-      - uses: actions/download-artifact@v4
-        with:
-          name: notes
-          path: .
+          go-version: "1.25"
 
-      # One file, sorted, with plain names — so `sha256sum -c SHA256SUMS` works
-      # in the directory somebody downloaded into.
-      - name: SHA256SUMS
-        run: |
-          cd dist
-          # Named by prefix rather than by *: the sums file must not list itself,
-          # and a glob would depend on when the redirect creates it.
-          sha256sum -- pqprobe_* | sort -k2 > SHA256SUMS
-          cat SHA256SUMS
+      # The notes are the CHANGELOG section, not a list of commit subjects:
+      # goreleaser's own changelog is disabled in the config for that reason.
+      - name: Release notes from CHANGELOG.md
+        run: ./scripts/release-notes.sh "${TAG#v}" > /tmp/notes.md
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --release-notes=/tmp/notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A fine-grained PAT that may write to Allan-Nava/homebrew-tap, which
+          # this workflow's GITHUB_TOKEN cannot. Without it the release still
+          # publishes its archives and the cask step fails — the artefacts are
+          # fine, the tap is stale, and `brew install` keeps handing out the
+          # previous version.
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
 
       - uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/pqprobe_*
-
-      - name: Create the release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create "$TAG" dist/* \
-            --title "pqprobe ${TAG#v}" \
-            --notes-file notes.md \
-            --verify-tag
 
   image:
     needs: gates

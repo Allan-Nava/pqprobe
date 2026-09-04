@@ -179,6 +179,25 @@ prints what to pick up.
   A side output rather than a renderer, so it combines with all of them and is
   rewritten on every `--watch` tick.
   <!-- pq: prio=med size=S labels=output ver=0.19.0 -->
+- [x] **PQ-42 — Homebrew via a goreleaser cask, like checkfleet**: the in-repo
+  formula built from source, so `brew install` asked every user for Go and a
+  compile. A **cask** hands over the prebuilt binary from the release instead,
+  and goreleaser is what generates and pushes one — to
+  `Allan-Nava/homebrew-tap`, the tap the sibling tools already use.
+  This reverses the "no goreleaser" decision recorded in PQ-16, and the reason
+  it was right to reverse: that argument was about the *binary* having no
+  dependencies, and the binary is untouched — nothing goreleaser does enters
+  `go.mod`, and `contrib_test.sh` still asserts it, now as a goreleaser
+  `before` hook so a release stops if a dependency ever appears.
+  Gone with the formula: `Formula/`, `scripts/brew.sh`, `brew_test.sh` and the
+  render step in `release.sh`. In their place `scripts/goreleaser.sh check` and
+  `goreleaser_test.sh` assert what cannot be seen from a checkout, because the
+  cask is generated at tag time in another repository: static build, tap token,
+  the quarantine strip an unsigned binary needs, and `skip_upload: "auto"` so a
+  release candidate never becomes the cask everybody installs (CF-160, borrowed).
+  Verified locally with `goreleaser check` and a snapshot build that printed the
+  cask it would publish.
+  <!-- pq: prio=high size=M labels=delivery,release ver=0.27.0 -->
 - [x] **PQ-41 — Homebrew, verified by Homebrew**: `scripts/brew.sh check`
   compares the formula against the script that writes it, which cannot notice
   that *Homebrew* disagrees — and it did: running `brew audit` by hand said

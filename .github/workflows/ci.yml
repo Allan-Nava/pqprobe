@@ -136,10 +136,12 @@ jobs:
       # A stale formula is worse than a missing one: `brew install` reads
       # whatever it says, so one left at the previous version installs the old
       # binary and looks like it worked.
-      - name: The Homebrew formula names the current version
-        run: ./scripts/brew.sh check
-      - name: The formula generator itself
-        run: sh scripts/brew_test.sh
+      # The cask is generated at tag time and lands in another repository, so
+      # the config that produces it is the only part visible from here.
+      - name: The release config and the cask it publishes
+        run: ./scripts/goreleaser.sh check
+      - name: The release config's own tests
+        run: sh scripts/goreleaser_test.sh
 
   # Every commit ships as a tagged vX.Y.Z with its own CHANGELOG section. On a
   # tag that is a hard requirement; on a branch push the tag is usually a second

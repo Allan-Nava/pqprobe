@@ -159,8 +159,8 @@ when reproducing the failure to find out what the word meant is not an option.
 ## Install
 
 ```sh
-# Homebrew — the tap is this repository
-brew tap allan-nava/pqprobe https://github.com/Allan-Nava/pqprobe && brew install pqprobe
+# Homebrew — a prebuilt binary, no Go needed
+brew install --cask Allan-Nava/tap/pqprobe
 
 # Go
 go install github.com/Allan-Nava/pqprobe/cmd/pqprobe@latest
@@ -273,13 +273,13 @@ Everything else that can be a script is one, and CI runs all of them:
 | `scripts/release-notes.sh` | a release's notes come out of `CHANGELOG.md`, never retyped |
 | `scripts/release.sh` | a release runs every gate, tags — and never pushes |
 | `scripts/version.sh` | every commit is a tagged `vX.Y.Z` the CHANGELOG names |
-| `scripts/brew.sh` | the formula names the current version — and the `Brew` workflow makes Homebrew itself audit and install it |
+| `scripts/goreleaser.sh` | the release config, and the cask it publishes: static build, tap token, quarantine stripped, prereleases skipped |
 | `scripts/seo.sh` | the sitemap, robots.txt and llms.txt agree with the page |
 | `scripts/action.sh` | `action.yml` is valid, with no expression inside a run block |
 
 Each of those has a fixture test that runs in CI — `backlog_test.sh`,
 `backlog_issues_test.sh`, `docs_test.sh`, `assets_test.sh`,
-`repo-meta_test.sh`, `release_test.sh`, `version_test.sh`, `brew_test.sh`,
+`repo-meta_test.sh`, `release_test.sh`, `version_test.sh`, `goreleaser_test.sh`,
 `seo_test.sh`, `action_test.sh` — because a gate nobody tests is a gate that
 passes for the wrong reason.
 

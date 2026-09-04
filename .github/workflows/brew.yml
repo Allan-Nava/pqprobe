@@ -1,22 +1,20 @@
 name: Brew
 
-# PQ-41. Until this existed, `Formula/pqprobe.rb` was only ever checked by the
-# script that writes it — `scripts/brew.sh check` compares the file against its
-# own renderer, which cannot notice that Homebrew disagrees. It did: running
-# `brew audit` by hand found "Stable: `version 0.25.1` is redundant with version
-# scanned from URL", an error that would have reached anybody tapping this repo.
+# PQ-41, then PQ-42. It began as a check on an in-repo formula that built from
+# source; the formula is gone and a **cask** takes its place — goreleaser
+# generates it on every tag and pushes it to Allan-Nava/homebrew-tap, so
+# `brew install --cask` hands over a prebuilt binary instead of asking for Go
+# and a compile.
 #
-# So this workflow is the half our gates cannot be: Homebrew's own opinion, and
-# an install that actually happens.
+# What this workflow is for stays the same: our own gates can only compare the
+# config against itself, and the only authority on whether `brew install` works
+# is `brew install`. It runs what a user types.
 #
 # Three lessons are encoded here rather than rediscovered:
 #
-#   * `brew install ./Formula/pqprobe.rb` is **disabled** in current Homebrew.
-#     The supported route is to tap and install by qualified name, which is also
-#     what a user does.
 #   * Homebrew 6+ ignores third-party taps unless they are trusted, and a
 #     headless run then quietly installs nothing. HOMEBREW_NO_REQUIRE_TAP_TRUST
-#     is what makes it work unattended.
+#     is what makes it work unattended — found by running it by hand.
 #   * `macos-13` was retired. A job asking for a label with no runners behind it
 #     does not fail — it **queues forever**, so the workflow never concludes and
 #     verifies nothing (checkfleet paid a day for that one). The Intel leg is
@@ -71,35 +69,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Our own gate first: it is instant, and if the formula does not name the
-      # version the CHANGELOG does, nothing below is worth running.
-      - name: The formula names the current version
-        run: ./scripts/brew.sh check
+      # The config that generates the cask is the only part of it visible from
+      # a checkout; the cask itself lives in the tap.
+      - name: The release config and the cask it publishes
+        run: ./scripts/goreleaser.sh check
 
-      - name: The formula generator's own tests
-        run: sh scripts/brew_test.sh
+      - name: The release config's own tests
+        run: sh scripts/goreleaser_test.sh
 
-      # Tapping the checkout is how the formula under test gets a qualified
-      # name. It is a git clone, so an uncommitted formula is invisible here —
-      # which is a feature: what is tested is what is committed.
-      - name: Tap this checkout
-        run: |
-          brew untap allan-nava/pqprobe 2>/dev/null || true
-          brew tap allan-nava/pqprobe "$GITHUB_WORKSPACE"
-          brew tap-info allan-nava/pqprobe
-
-      - name: brew style
-        run: brew style allan-nava/pqprobe/pqprobe
-
-      # Homebrew's own opinion, which is the thing our renderer cannot have.
-      - name: brew audit
-        run: brew audit --formula allan-nava/pqprobe/pqprobe
-
-      # The formula clones its tag from GitHub, so this only makes sense once
-      # that tag exists — after a release, on a schedule, or on demand.
-      - name: brew install --build-from-source
+      # What a user actually types. On a pull request the tap still holds the
+      # previous release, so this is skipped there: it would verify the old cask
+      # and say nothing about the change under review.
+      - name: brew install --cask
         if: ${{ github.event_name != 'pull_request' }}
-        run: brew install --build-from-source allan-nava/pqprobe/pqprobe
+        run: brew install --cask Allan-Nava/tap/pqprobe
 
       - name: It runs, and reports a real version
         if: ${{ github.event_name != 'pull_request' }}
@@ -109,24 +92,29 @@ jobs:
           pqprobe version
           short="$(pqprobe version --short)"
           echo "$short"
-          # Never the local 'dev' string: a formula build carries a real version.
+          # Never the local 'dev' string: a released cask carries a real version.
           echo "$short" | grep -Eqx '[0-9]+\.[0-9]+\.[0-9]+' \
             || { echo "::error::unexpected version output: $short"; exit 1; }
-          expected="$(./scripts/version.sh current)"
-          [ "$short" = "$expected" ] \
-            || { echo "::error::installed $short but the CHANGELOG says $expected"; exit 1; }
 
       - name: Assert an exact version (manual dispatch only)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.version != '' }}
         run: pqprobe version --short | grep -qx "${{ inputs.version }}"
 
-      # The formula's own test block, run the way Homebrew runs it.
-      - name: brew test
+      # The binary is unsigned, so the cask strips the quarantine attribute in a
+      # postflight hook. If that ever stops working the install succeeds and the
+      # binary does not run — which is worse than a failed install.
+      - name: Gatekeeper quarantine attribute is stripped
         if: ${{ github.event_name != 'pull_request' }}
-        run: brew test allan-nava/pqprobe/pqprobe
+        run: |
+          set -euo pipefail
+          bin="$(readlink -f "$(which pqprobe)")"
+          if xattr -l "$bin" 2>/dev/null | grep -qi com.apple.quarantine; then
+            echo "::error::$bin still has com.apple.quarantine — the postflight hook failed"
+            exit 1
+          fi
+          echo "no quarantine attribute"
 
-      # The binary is the thing, not the install: prove it does the job. No
-      # --exit-on, because a WARN out there is not this workflow's business.
+      # The install is not the point; the tool working is.
       - name: Smoke — it probes a real endpoint
         if: ${{ github.event_name != 'pull_request' }}
         run: pqprobe probe example.com --timeout 20s
