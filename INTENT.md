@@ -111,8 +111,9 @@ None of these is a gap waiting to be filled. Each one is a decision.
   output may imply that it can. Profiles pin **groups and versions**: the
   property that decides whether a post-quantum-capable client finishes a
   handshake. A real fingerprint now exists — `contrib/utls`, a module of its own
-  with its own `go.mod` and its own binary (PQ-10). A build tag would not have
-  been enough: uTLS is a dependency, and the root module having none is the
+  with its own `go.mod` and its own binary (PQ-10), and `contrib/quic` asks the
+  same question over HTTP/3 on the same terms (PQ-19). A build tag would not
+  have been enough: uTLS is a dependency, and the root module having none is the
   property the next non-goal is about. The default binary is unchanged and
   unaware of it.
 - **No dependencies, ever.** `go.mod` carries no `require` block and CI fails on

@@ -65,6 +65,19 @@ row reading "refuses Safari" would send somebody to look at a healthy endpoint.
 The judgement of *how* a handshake failed comes from pqprobe itself, so the two
 tools never disagree about what an alert means.
 
+## The same question over HTTP/3
+
+[contrib/quic](https://github.com/Allan-Nava/pqprobe/tree/main/contrib/quic)
+dials the same capability classes over QUIC, and it is a separate module for the
+same reason as the fingerprints: a QUIC stack is a dependency.
+
+It is worth asking separately because the *failure* is different. A peer that
+declines a group answers with a CRYPTO_ERROR carrying the TLS alert — civil,
+exactly as over TCP. But a path that cannot carry the ClientHello, which has to
+fit QUIC's Initial packet, gives nothing at all: UDP has no reset, so the
+handshake simply never completes and it reads like an endpoint that is not
+there. Over TCP the same fault at least produces a reset somebody can point at.
+
 ## Why `pq-preferred` is the one that matters
 
 It is the realistic client. It offers hybrid ML-KEM **and** classical groups, so

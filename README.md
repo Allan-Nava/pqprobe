@@ -239,6 +239,18 @@ deviation is a check people learn to ignore.
   Read the two together: that tool cannot tell you which *class* of client is
   affected, and this one cannot tell you that a specific browser build fails.
 
+- **Not HTTP/3 — in the default binary.** The same question over QUIC lives in
+  [contrib/quic](contrib/quic), for the same reason: a QUIC stack is a
+  dependency. It is worth asking separately, because the failure is quieter —
+  the ClientHello has to fit QUIC's Initial packet, and when something on the
+  path cannot carry it UDP has no reset to send, so the handshake just never
+  completes:
+
+  ```console
+  $ pqprobe-quic cloudflare.com
+  OK    pq-only       TLS 1.3, X25519MLKEM768, alpn h3
+  ```
+
 ## Safety
 
 pqprobe completes a TLS handshake and closes the connection. **No request, no

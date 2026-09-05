@@ -68,5 +68,34 @@ else
 	ok "the root go list does not reach into contrib"
 fi
 
+# Generic over every nested module, not just the first one: contrib/quic
+# arrived after contrib/utls and the CI job still named only utls, so the new
+# module would have been built by nobody. A gate that knows one name is a gate
+# that goes stale on the second module.
+printf '\nevery module under contrib/:\n'
+ci="$root/.github/workflows/ci.yml"
+for mod in "$root"/contrib/*/; do
+	[ -f "$mod/go.mod" ] || continue
+	name=$(basename "$mod")
+
+	grep -q "replace github.com/Allan-Nava/pqprobe => ../.." "$mod/go.mod" &&
+		ok "contrib/$name resolves pqprobe from the checkout" ||
+		notok "contrib/$name does not replace pqprobe with ../.. — it would need a published tag to build"
+
+	[ -f "$mod/go.sum" ] &&
+		ok "contrib/$name has its own go.sum" ||
+		notok "contrib/$name has no go.sum"
+
+	# The whole arrangement is pointless if nothing builds it. CI runs one matrix
+	# leg per module, so the name appears in the matrix list rather than in a
+	# path — checking for the path was right until the job became a matrix, and
+	# then wrong in the direction that reports a working thing as broken.
+	matrix=$(grep -vE '^[[:space:]]*#' "$ci" | grep -E '^ *module: *\[' || :)
+	case "$matrix" in
+	*"$name"*) ok "contrib/$name is built by CI" ;;
+	*) notok "contrib/$name is not in the CI matrix: a module nobody compiles is a module that rots" ;;
+	esac
+done
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

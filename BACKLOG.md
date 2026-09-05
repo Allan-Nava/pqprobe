@@ -365,9 +365,22 @@ prints what to pick up.
   certificates) is the next migration, and the failure mode is again a size one
   — a chain several kilobytes long. Worth a profile once there is anything to
   probe. <!-- pq: prio=low size=L labels=profile -->
-- [ ] **PQ-19 — QUIC**: the same question over HTTP/3, where a large
-  ClientHello has to fit an initial packet and the failure is even quieter.
-  <!-- pq: prio=med size=XL labels=probe -->
+- [x] **PQ-19 — QUIC**: `contrib/quic` and `pqprobe-quic`, a second nested
+  module on the pattern PQ-10 established — a QUIC stack is a dependency and the
+  root has none. Same capability classes, so the two answers are comparable, and
+  every profile offers `h3`, which over QUIC is not optional the way ALPN is
+  over TCP.
+  The point of a separate probe is the failure, not the transport: a peer that
+  declines a group answers with a CRYPTO_ERROR carrying the alert — civil, the
+  same judgement as over TCP, and deferred to `pq.Classify` wherever the error
+  is TLS-shaped. A path that cannot carry the Initial packet gives **nothing**:
+  UDP has no reset, so where TCP produces a connection reset there is only
+  silence until the deadline, which reads exactly like an endpoint that is not
+  there. Asserted against a real quic-go listener, including that a dead UDP
+  port times out on the caller's deadline rather than on the stack's own.
+  Real answers: `cloudflare.com` and `www.google.com` negotiate
+  X25519MLKEM768 over h3.
+  <!-- pq: prio=med size=XL labels=probe ver=0.28.0 -->
 - [x] **PQ-20 — Non-HTTPS ports**: `--starttls smtp|imap|postgres`. Implicit
   TLS never needed anything — 465, 993 and 6514 already worked — so the item was
   really the other half: reaching TLS through a protocol's own negotiation.

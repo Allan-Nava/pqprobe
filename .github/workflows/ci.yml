@@ -74,15 +74,23 @@ jobs:
   # has none.
   contrib:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # One leg per nested module. A matrix rather than a list of steps so that
+      # a failure names the module, and so scripts/contrib_test.sh can assert
+      # that every module under contrib/ appears here — the second one nearly
+      # did not.
+      matrix:
+        module: [utls, quic]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - name: The nested module cannot contaminate the root
+      - name: The nested modules cannot contaminate the root
         run: sh scripts/contrib_test.sh
-      - name: Build and test contrib/utls
-        working-directory: contrib/utls
+      - name: Build and test contrib/${{ matrix.module }}
+        working-directory: contrib/${{ matrix.module }}
         run: |
           gofmt -l . | tee /dev/stderr | (! read -r)
           go vet ./...

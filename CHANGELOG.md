@@ -6,6 +6,35 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.28.0] - 2026-09-05
+
+### Added
+
+- **The same question over HTTP/3** (PQ-19) — [contrib/quic](contrib/quic) and
+  `pqprobe-quic`: a second nested module on the pattern PQ-10 established,
+  because a QUIC stack is a dependency and the root module has none. The same
+  capability classes, so the two answers are comparable, and every profile
+  offers `h3` — over QUIC that is not optional the way ALPN is over TCP.
+  `cloudflare.com` and `www.google.com` both negotiate X25519MLKEM768 over h3.
+
+  The transport is not the point; the failure is. A peer that declines a group
+  answers with a **CRYPTO_ERROR** carrying the TLS alert, which is civil and is
+  classified as such — deferred to `pq.Classify` wherever the error is
+  TLS-shaped, because the meaning of an alert lives in one place. A path that
+  cannot carry the ClientHello — which has to fit QUIC's Initial packet, with a
+  hybrid key share of about 1.2 KB in it — gives **nothing at all**: UDP has no
+  reset, so the handshake never completes and the result is indistinguishable
+  from an endpoint that is not there. That is the quieter half of the failure
+  this whole tool is about, asserted against a real quic-go listener, including
+  that a dead UDP port gives up on the caller's deadline rather than on the
+  stack's own retransmission schedule.
+
+- **The contrib gate is generic** (PQ-19) — `scripts/contrib_test.sh` walked
+  `contrib/utls` by name, so the second module would have been isolated,
+  correct, and built by nobody. It now walks every module under `contrib/` and
+  asserts each one is in the CI matrix; CI runs one leg per module. Proved by
+  removing `quic` from the matrix and watching the gate go red.
+
 ## [0.27.1] - 2026-09-04
 
 ### Fixed
@@ -869,6 +898,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.28.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.28.0
 [0.27.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.27.1
 [0.27.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.27.0
 [0.26.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.26.0
