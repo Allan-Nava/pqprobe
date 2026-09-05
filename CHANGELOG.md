@@ -6,6 +6,24 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.29.1] - 2026-09-05
+
+### Changed
+
+- **PQ-18 (post-quantum authentication) is closed as superseded, not as built**
+  — and saying which is the point. Its actionable half shipped in 0.29.0 as
+  PQ-44: the certificate chain is measured on every run and the finding says
+  what the number is for. The other half — a profile that offers ML-DSA and
+  reports whether a peer can authenticate with it — is blocked on the ecosystem:
+  Go exposes no ML-DSA signature scheme, so a client cannot offer one, and no
+  public endpoint serves such a certificate, so there would be nothing to
+  answer. Writing it now would mean code no test could exercise against
+  anything.
+
+  When something does serve ML-DSA, that is a new item with a red test in front
+  of it rather than this one reopened. **The backlog is now empty**: 44 items,
+  44 shipped.
+
 ## [0.29.0] - 2026-09-05
 
 ### Added
@@ -934,6 +952,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.29.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.1
 [0.29.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.0
 [0.28.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.28.0
 [0.27.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.27.1

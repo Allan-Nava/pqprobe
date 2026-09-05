@@ -375,10 +375,21 @@ prints what to pick up.
   against an MTU of 1500 — and what ML-DSA will be. A tool whose whole subject
   is one number should explain where the number comes from.
   <!-- pq: prio=med size=M labels=verdict,docs ver=0.29.0 -->
-- [ ] **PQ-18 — Beyond key exchange**: post-quantum *authentication* (ML-DSA
-  certificates) is the next migration, and the failure mode is again a size one
-  — a chain several kilobytes long. Worth a profile once there is anything to
-  probe. <!-- pq: prio=low size=L labels=profile -->
+- [x] **PQ-18 — Beyond key exchange**: **closed as superseded, not as built**,
+  and the distinction is the whole content of this entry. Its actionable half
+  shipped as PQ-44: the chain is measured on every run and the finding says what
+  the number is for, which is the only thing that can be true today.
+  The other half — a profile that offers ML-DSA and reports whether the peer can
+  authenticate with it — is blocked on the ecosystem rather than on us. Go
+  exposes no ML-DSA signature scheme, so a client cannot offer one; no public
+  endpoint serves such a certificate, so there would be nothing to answer. A
+  profile written now would be code no test could exercise against anything,
+  which is the one thing this repository refuses everywhere else.
+  When something does serve ML-DSA, that is a new item with a real red test in
+  front of it, not this one reopened. Leaving it open as a reminder was costing
+  more than it was worth: an item nobody can act on is indistinguishable, in a
+  backlog, from one nobody has got to.
+  <!-- pq: prio=low size=L labels=profile ver=0.29.1 -->
 - [x] **PQ-19 — QUIC**: `contrib/quic` and `pqprobe-quic`, a second nested
   module on the pattern PQ-10 established — a QUIC stack is a dependency and the
   root has none. Same capability classes, so the two answers are comparable, and

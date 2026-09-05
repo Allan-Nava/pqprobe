@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**44 items · 43 shipped · 1 open · 5 milestones.**
+**44 items · 44 shipped · 0 open · 5 milestones.**
 
 ## At a glance
 
@@ -15,7 +15,7 @@
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
 | **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 16 |
-| **M4** — Later | `ongoing` | later | `#########.` 86% | 1 | 6 |
+| **M4** — Later | `ongoing` | later | `##########` 100% | 0 | 7 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 
 ## Next up
@@ -78,15 +78,15 @@ Target `v0.23.0` · shipped · 0 open · 16 shipped · `##########` 100%
 
 ### M4 — Later
 
-Target `ongoing` · later · 1 open · 6 shipped · `#########.` 86%
+Target `ongoing` · later · 0 open · 7 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-18** — Beyond key exchange | low | L | profile | open |
 | **PQ-10** — Real ClientHello shapes | med | XL | profile | shipped `0.25.0` |
 | **PQ-19** — QUIC | med | XL | probe | shipped `0.28.0` |
 | **PQ-37** — `--findings` non parla la forma che i tool fratelli consumano | med | M | output,integration | shipped `0.21.0` |
 | **PQ-44** — What the chain costs today | med | M | verdict,docs | shipped `0.29.0` |
+| **PQ-18** — Beyond key exchange | low | L | profile | shipped `0.29.1` |
 | **PQ-20** — Non-HTTPS ports | low | L | probe | shipped `0.24.0` |
 | **PQ-38** — `version` non è incorporabile | low | S | cli,ux | shipped `0.20.0` |
 
@@ -109,7 +109,6 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 | Label | Items | Open |
 |---|---|---|
-| `profile` | 5 | 1 |
 | `cli` | 7 | 0 |
 | `delivery` | 6 | 0 |
 | `docs` | 7 | 0 |
@@ -117,6 +116,7 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 | `inventory` | 2 | 0 |
 | `output` | 5 | 0 |
 | `probe` | 12 | 0 |
+| `profile` | 5 | 0 |
 | `project` | 6 | 0 |
 | `release` | 4 | 0 |
 | `tests` | 4 | 0 |
