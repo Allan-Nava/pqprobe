@@ -17,8 +17,8 @@
 | **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 16 |
 | **M4** — Later | `ongoing` | later | `##########` 100% | 0 | 7 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
-| **M6** — Reach the rest of the fleet | `v0.30.0` | **now** | `##########` 100% | 0 | 5 |
-| **M7** — Encrypted Client Hello | `v0.33.0` | next | `..........` 0% | 3 | 0 |
+| **M6** — Reach the rest of the fleet | `v0.32.0` | shipped | `##########` 100% | 0 | 5 |
+| **M7** — Encrypted Client Hello | `v0.33.0` | **now** | `..........` 0% | 3 | 0 |
 
 ## Next up
 
@@ -111,7 +111,7 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 ### M6 — Reach the rest of the fleet
 
-Target `v0.30.0` · **now** · 0 open · 5 shipped · `##########` 100%
+Target `v0.32.0` · shipped · 0 open · 5 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
@@ -123,7 +123,7 @@ Target `v0.30.0` · **now** · 0 open · 5 shipped · `##########` 100%
 
 ### M7 — Encrypted Client Hello
 
-Target `v0.33.0` · next · 3 open · 0 shipped · `..........` 0%
+Target `v0.33.0` · **now** · 3 open · 0 shipped · `..........` 0%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|

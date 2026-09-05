@@ -6,6 +6,17 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.32.1] - 2026-09-05
+
+### Changed
+
+- **M6 is shipped and M7 is the current milestone.** All four of "Reach the rest
+  of the fleet" (PQ-45 through PQ-48, plus the release-tooling fix PQ-49) are
+  out, so the milestone carries the release it finished in rather than the one
+  it was aimed at, and Encrypted Client Hello moves from `next` to `now`. The
+  roadmap is generated from this, so a milestone left saying `now` after it is
+  done is a plan that quietly describes the past.
+
 ## [0.32.0] - 2026-09-05
 
 ### Added

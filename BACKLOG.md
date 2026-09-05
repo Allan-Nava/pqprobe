@@ -500,7 +500,7 @@ how the answer reaches a pull request without a second tool.
   later cannot arrive without one.
   <!-- pq: prio=low size=S labels=cli,docs ver=0.13.0 -->
 
-## M6 — Reach the rest of the fleet <!-- ms: target=v0.30.0 phase=now -->
+## M6 — Reach the rest of the fleet <!-- ms: target=v0.32.0 phase=shipped -->
 
 Everything shipped so far answers *this* endpoint, over a path that already
 works. These items are the cases where the answer is missing not because the
@@ -631,7 +631,7 @@ true statement.
   a fleet probed and a report that looks complete.
   <!-- pq: prio=low size=S labels=inventory,ux ver=unreleased -->
 
-## M7 — Encrypted Client Hello <!-- ms: target=v0.33.0 phase=next -->
+## M7 — Encrypted Client Hello <!-- ms: target=v0.33.0 phase=now -->
 
 ECH is the same question this tool already asks, one layer further out: it is a
 **client capability that makes the ClientHello bigger**, on top of a hybrid
