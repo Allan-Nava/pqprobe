@@ -6,6 +6,34 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.32.0] - 2026-09-05
+
+### Added
+
+- **One `egress` finding instead of forty identical ones (PQ-47).** PQ-12
+  already refused to call an address this host cannot route a property of the
+  peer; this is the volume half. A workstation without IPv6 egress produced one
+  `unroutable` per AAAA record across the whole fleet, and forty findings that
+  are all the same local fact bury the one finding that is about an endpoint.
+  The reason is now established once, as an ERROR `egress` finding carrying the
+  number of endpoints it accounts for, and those endpoints stop guessing at the
+  cause in their own hints.
+
+  The local question is asked with `probe.HasEgress`: a UDP "dial" against a
+  documentation prefix, which is a route lookup and a local bind with **no
+  packet sent**. It runs only when something has already failed that way, so a
+  healthy fleet pays nothing — and a family is only blamed when it is knowable,
+  meaning an address literal or a pinned `--net`. A name dialled unpinned had
+  every address it resolved to tried, so naming a family there would be a guess
+  in a report.
+
+- **Targets from a pipe (PQ-48).** `pqprobe probe -` reads the list from stdin,
+  and so do `--list -` and `--inventory -` for a flat list and an INI inventory.
+  The fleet worth probing is usually the output of something else, and requiring
+  a temporary file first is the step people skip — which is how a stale list
+  gets probed. Stdin is one stream: two claims on it is a usage error (exit 2)
+  rather than half a fleet probed and a report that looks complete.
+
 ## [0.31.1] - 2026-09-05
 
 ### Fixed

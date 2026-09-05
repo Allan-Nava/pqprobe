@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"reflect"
 	"strings"
@@ -608,5 +609,169 @@ func TestTheSelectedFamilyIsStatedInTheReport(t *testing.T) {
 	netFindings("", quiet)
 	if len(quiet[0].Finding) != 0 {
 		t.Fatalf("got %+v, want nothing said when no family was pinned", quiet[0].Finding)
+	}
+}
+
+// PQ-47. A workstation without IPv6 egress produces one `unroutable` per AAAA
+// record across the whole fleet: forty findings that are all the same local
+// fact, burying the one finding that is about an endpoint. PQ-12 already
+// refused to call those a property of the peer — this is the volume half.
+func TestNoEgressIsStatedOnceAndTheEndpointsAreAttributedToIt(t *testing.T) {
+	unroutable := []probe.Result{{Profile: "classic", Kind: probe.KindUnroutable, Err: "no route to host"}}
+	reps := []verdict.Report{
+		{Target: "[2001:db8::1]:443", Class: verdict.Unreachable, Results: unroutable,
+			Finding: []finding.Finding{{Check: "verdict", Target: "[2001:db8::1]:443", Status: finding.ERROR, Hint: "an IPv6 address probed from a machine without IPv6 egress is the usual cause"}}},
+		{Target: "[2001:db8::2]:443", Class: verdict.Unreachable, Results: unroutable,
+			Finding: []finding.Finding{{Check: "verdict", Target: "[2001:db8::2]:443", Status: finding.ERROR, Hint: "an IPv6 address probed from a machine without IPv6 egress is the usual cause"}}},
+		{Target: "192.0.2.9:443", Class: verdict.PQReady},
+	}
+
+	// No IPv6 egress from here, and the endpoints are somebody else's.
+	egressFindings(reps, "", func(network string) bool { return network == "tcp4" })
+
+	n := 0
+	var note finding.Finding
+	for _, r := range reps {
+		for _, f := range r.Finding {
+			if f.Check == "egress" {
+				n++
+				note = f
+			}
+		}
+	}
+	if n != 1 {
+		t.Fatalf("got %d `egress` findings, want exactly one: saying the same local fact per endpoint is the noise this removes", n)
+	}
+	if note.Value == nil || *note.Value != 2 {
+		t.Fatalf("value = %v, want 2 endpoints affected — a machine consumer must not parse the message", note.Value)
+	}
+	if note.Unit != "endpoints" {
+		t.Errorf("unit = %q, want endpoints", note.Unit)
+	}
+	if !strings.Contains(note.Message, "IPv6") {
+		t.Errorf("message = %q, want the family named", note.Message)
+	}
+	if note.Status != finding.ERROR {
+		t.Errorf("status = %s, want ERROR: nothing could be concluded about those endpoints", note.Status)
+	}
+
+	// And the endpoints point at it instead of each guessing the cause again.
+	for _, r := range reps[:2] {
+		for _, f := range r.Finding {
+			if f.Check == "verdict" && strings.Contains(f.Hint, "usual cause") {
+				t.Errorf("%s still guesses at the cause: it is established now, and said once", r.Target)
+			}
+		}
+	}
+
+	// A prober that does have the route says nothing: the addresses are then
+	// genuinely unreachable, which is a statement about them and already made.
+	quiet := []verdict.Report{{Target: "[2001:db8::1]:443", Class: verdict.Unreachable, Results: unroutable}}
+	egressFindings(quiet, "", func(string) bool { return true })
+	for _, f := range quiet[0].Finding {
+		if f.Check == "egress" {
+			t.Fatal("the route exists here; blaming this prober would send somebody to fix the wrong machine")
+		}
+	}
+
+	// A name dialled unpinned cannot be attributed to a family — Go tried every
+	// address it resolved to — but with --net the family is known, so the same
+	// fleet of names gets the note.
+	names := []verdict.Report{
+		{Target: "origin.example:443", Class: verdict.Unreachable, Results: unroutable},
+		{Target: "other.example:443", Class: verdict.Unreachable, Results: unroutable},
+	}
+	egressFindings(names, "", func(string) bool { return false })
+	for _, r := range names {
+		for _, f := range r.Finding {
+			if f.Check == "egress" {
+				t.Fatal("an unpinned name says nothing about which family is missing; blaming one would be a guess in a report")
+			}
+		}
+	}
+	egressFindings(names, "tcp6", func(string) bool { return false })
+	got := 0
+	for _, r := range names {
+		for _, f := range r.Finding {
+			if f.Check == "egress" {
+				got++
+			}
+		}
+	}
+	if got != 1 {
+		t.Fatalf("got %d `egress` findings for a pinned run, want exactly one", got)
+	}
+
+	// A healthy fleet pays nothing at all — not even the local check.
+	asked := false
+	healthy := []verdict.Report{{Target: "192.0.2.9:443", Class: verdict.PQReady}}
+	egressFindings(healthy, "", func(string) bool { asked = true; return true })
+	if asked {
+		t.Error("no target was unroutable; there is nothing to explain and nothing to check")
+	}
+	if len(healthy[0].Finding) != 0 {
+		t.Errorf("got %+v, want silence", healthy[0].Finding)
+	}
+}
+
+// PQ-48. The fleet that needs probing is usually the output of something else —
+// a dig, a Consul query, an awk over a config — and today that has to become a
+// temporary file first, which is the step people skip and how a stale list gets
+// probed.
+func TestTargetsComeFromStdin(t *testing.T) {
+	// `-` is an operand, not a flag: permute must not file it with the flags,
+	// and it must not be eaten as the value of the flag before it.
+	got := permute([]string{"--json", "-"})
+	if !reflect.DeepEqual(got, []string{"--json", "-"}) {
+		t.Fatalf("permute = %v, want the dash kept as an operand", got)
+	}
+	got = permute([]string{"--port", "8443", "-"})
+	if !reflect.DeepEqual(got, []string{"--port", "8443", "-"}) {
+		t.Fatalf("permute = %v, want the dash kept as an operand", got)
+	}
+
+	// ...but it *is* a legitimate value for a flag that takes a file, and the
+	// two spellings must not disagree about what they mean.
+	got = permute([]string{"example.com", "--list", "-"})
+	if !reflect.DeepEqual(got, []string{"--list", "-", "example.com"}) {
+		t.Fatalf("permute = %v, want --list to keep its dash", got)
+	}
+
+	in := strings.NewReader("# a fleet\norigin.example:8443\n\n192.0.2.7=origin.example\n")
+	targets, errs := collect([]string{"-"}, "", "", nil, "443", "", in)
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(targets) != 2 {
+		t.Fatalf("got %+v, want the two targets from the pipe", targets)
+	}
+	for _, tg := range targets {
+		if tg.ServerName() != "origin.example" {
+			t.Errorf("%s: server name = %q, want the same parsing as a file", tg, tg.ServerName())
+		}
+	}
+
+	// The same through --list, because a pipe is a file that happens to have no
+	// name and nobody should have to remember which spelling works.
+	targets, errs = collect(nil, "-", "", nil, "443", "", strings.NewReader("origin.example\n"))
+	if len(errs) != 0 || len(targets) != 1 {
+		t.Fatalf("got %+v / %v, want the list read from stdin", targets, errs)
+	}
+
+	// And an inventory, which is the form a fleet actually arrives in.
+	targets, errs = collect(nil, "", "-", []string{"web"}, "443", "",
+		strings.NewReader("[web]\nnode1 ansible_host=192.0.2.10\n"))
+	if len(errs) != 0 || len(targets) != 1 || targets[0].Host != "192.0.2.10" {
+		t.Fatalf("got %+v / %v, want ansible_host from the piped inventory", targets, errs)
+	}
+
+	// Stdin is one stream: two readers of it would each get half a list, and
+	// half a fleet probed is worse than an error.
+	_, errs = collect([]string{"-"}, "-", "", nil, "443", "", strings.NewReader("origin.example\n"))
+	if len(errs) == 0 {
+		t.Fatal("two consumers of stdin must be an error, not a silently truncated fleet")
+	}
+	if !errors.Is(errs[0], errStdinTwice) {
+		t.Fatalf("err = %v, want the usage sentinel: the command as written cannot do what it says, and a run that continued would look complete", errs[0])
 	}
 }

@@ -568,7 +568,7 @@ true statement.
   is an error rather than a quietly wider run.
   <!-- pq: prio=high size=S labels=probe,cli ver=unreleased -->
 
-- [ ] **PQ-47 — A prober with no route says it once**: PQ-12 already refuses to
+- [x] **PQ-47 — A prober with no route says it once**: PQ-12 already refuses to
   call an unroutable address `tls-broken`, which was the dangerous half. The
   half left over is volume — a workstation without IPv6 egress produces one
   `unroutable` per AAAA record across the whole fleet, and forty findings that
@@ -578,7 +578,20 @@ true statement.
   repeated. It is not a new judgement: it is the existing one, said once and in
   the right place. The test plants a family with no route and asserts both that
   the note appears and that no endpoint is graded on it.
-  <!-- pq: prio=med size=M labels=probe,verdict,output -->
+  Shipped as the `egress` finding, ERROR, carrying the number of endpoints it
+  accounts for in `Value`, plus `probe.HasEgress` — a UDP "dial" against a
+  documentation prefix, which is a route lookup and a local bind with no packet
+  sent, in a tool whose contract is that it never sends what it did not say it
+  would. Two things the item had not settled fell out of writing it: the check
+  runs **only** when something already failed that way, so a healthy fleet pays
+  nothing at all; and a family can only be blamed when it is knowable — an
+  address literal or a pinned `--net`. A name dialled unpinned had every one of
+  its addresses tried, so naming a family there would be a guess in a report.
+  The endpoints it explains stop guessing too: their verdict hint now points at
+  the finding instead of repeating "the usual cause". Verified on this machine,
+  which has no IPv6 route: one line for the run, and the endpoint that failed
+  for a missing AAAA record rather than a missing route kept its own hint.
+  <!-- pq: prio=med size=M labels=probe,verdict,output ver=unreleased -->
 
 - [x] **PQ-49 — The release renders its derived files in both states**: two
   releases in a row committed and tagged before `seo.sh check` noticed that
@@ -601,7 +614,7 @@ true statement.
   number against the branch they must sit outside of.
   <!-- pq: prio=high size=S labels=release,tests ver=unreleased -->
 
-- [ ] **PQ-48 — Targets on stdin**: `pqprobe -` reads the target list from the
+- [x] **PQ-48 — Targets on stdin**: `pqprobe -` reads the target list from the
   pipe, in the same forms `--inventory` already accepts. The fleet that needs
   probing is usually the output of something else — a `dig`, a Consul query, an
   `awk` over a config — and today that has to become a temporary file first,
@@ -609,4 +622,57 @@ true statement.
   but it is the difference between composing with the tools around it and being
   a destination. `-` is a target name nobody has, and everything downstream —
   parsing, `--per-address`, the renderers — is unchanged.
-  <!-- pq: prio=low size=S labels=inventory,ux -->
+  Shipped in all three spellings — a `-` target, `--list -`, `--inventory -` —
+  because a pipe is a file that happens to have no name and nobody should have
+  to remember which one works. Two edges the item had not foreseen: `permute`
+  filed the bare dash with the flags, and it also had to keep accepting one as a
+  *value*, or `--list -` and `-` would have meant different things; and stdin is
+  one stream, so two claims on it is a usage error with exit 2 rather than half
+  a fleet probed and a report that looks complete.
+  <!-- pq: prio=low size=S labels=inventory,ux ver=unreleased -->
+
+## M7 — Encrypted Client Hello <!-- ms: target=v0.33.0 phase=next -->
+
+ECH is the same question this tool already asks, one layer further out: it is a
+**client capability that makes the ClientHello bigger**, on top of a hybrid
+hello that is already ~1.5 KB against an MTU of 1500. Chrome and Firefox offer
+it today, so a path that tolerates ML-KEM and not ML-KEM-plus-ECH breaks for
+real browsers while every health check stays green — which is the failure this
+repository exists to name. Nothing here grades a *configuration*: an endpoint
+without ECH has not failed anything, and no item in this milestone may make it
+look like it has.
+
+- [ ] **PQ-50 — ECH as a capability class**: a profile that offers Encrypted
+  Client Hello with a config the caller supplies (`--ech-config BASE64`), and a
+  finding that says whether the peer **accepted** it — `ConnectionState.
+  ECHAccepted`, not an inference from the handshake having worked. Go supports
+  ECH on both sides, so the whole thing is assertable offline against a listener
+  holding the matching key, which is the bar every profile here has had to
+  clear. The number that matters is the hello: ECH is worth an item because of
+  what it adds to a hybrid ClientHello already sitting on the MTU, and the
+  finding carries the measured bytes for both, not prose about them.
+  A server that declines and answers with a retry config has *negotiated* —
+  `tls.ECHRejectionError`, a civil refusal in the sense `Kind.Abrupt()` already
+  means — and it must never be graded as the peer choking on the hello.
+  <!-- pq: prio=high size=M labels=profile,probe -->
+
+- [ ] **PQ-51 — The config comes from DNS, not from a paste**: pasting base64 is
+  not a fleet workflow, and the ECH config lives in the HTTPS resource record
+  (type 65) of the name being probed. Go's resolver exposes no arbitrary record
+  type, so this is a small DNS query written here — the same kind of lookup
+  `--per-address` already performs, still no dependency and still not a request
+  in the sense INTENT.md means. A name with no HTTPS record simply has no ECH to
+  offer and that is stated, never graded; a record that does not parse is said
+  in those words rather than silently becoming "ECH not accepted", which would
+  blame the endpoint for our parser.
+  <!-- pq: prio=med size=L labels=probe,inventory -->
+
+- [ ] **PQ-52 — ECH does not decide the class**: it is findings and a hint, on
+  the pattern `--per-group` established — no real client is ECH-only, so an
+  endpoint that does not offer it must not fall into a worse bucket for a
+  capability nobody requires yet. What the report gains is the sentence an
+  operator needs: whether the browsers that *do* offer ECH still complete a
+  handshake here, and how much of the MTU the combination is using. `explain`
+  gains the vocabulary in the same commit, because the table-driven test refuses
+  a finding nobody can look up.
+  <!-- pq: prio=med size=S labels=verdict,output,docs -->

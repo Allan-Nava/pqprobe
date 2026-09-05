@@ -11,6 +11,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -187,6 +188,85 @@ func addTransitions(path string, reps []verdict.Report) error {
 	return nil
 }
 
+// egressFindings says once what forty endpoints have in common (PQ-47).
+//
+// PQ-12 already refused to call an address this host cannot route a property of
+// the peer, which was the dangerous half. The half left over is volume: a
+// workstation without IPv6 egress produces one `unroutable` per AAAA record
+// across the whole fleet, and forty findings that are all the same local fact
+// bury the one finding that is about an endpoint.
+//
+// So the local question is asked once — and only when something has already
+// failed that way, so a healthy fleet pays nothing — and the endpoints that
+// failed for it stop guessing at the cause, because it is established now. The
+// route being present is silence: those addresses are then genuinely
+// unreachable, which is a statement about them and one the report already made.
+//
+// The family has to be *knowable* before it can be blamed: an address literal
+// carries it, and so does a run pinned with --net. A name dialled unpinned does
+// not — Go tries every address it resolved to, so an unroutable result there
+// means all of them failed and says nothing about which family is missing. Those
+// keep the per-endpoint hint they already had rather than acquiring a run-level
+// claim that might be about the wrong family.
+//
+// has is injected so the test can plant a prober without a route; production
+// passes probe.HasEgress.
+func egressFindings(reps []verdict.Report, pinned string, has func(network string) bool) {
+	// Which families have unroutable results, and on which reports.
+	affected := map[string][]int{}
+	for i, r := range reps {
+		for _, res := range r.Results {
+			if res.Kind != probe.KindUnroutable {
+				continue
+			}
+			host, _, err := net.SplitHostPort(strings.TrimSuffix(r.Target, " "))
+			if err != nil {
+				host = r.Target
+			}
+			network := pinned
+			if ip := net.ParseIP(strings.Trim(host, "[]")); ip != nil {
+				network = "tcp6"
+				if ip.To4() != nil {
+					network = "tcp4"
+				}
+			}
+			if network == "" {
+				break
+			}
+			affected[network] = append(affected[network], i)
+			break
+		}
+	}
+
+	for _, network := range []string{"tcp4", "tcp6"} {
+		at := affected[network]
+		if len(at) == 0 || has(network) {
+			continue
+		}
+		family := probe.NetName(network)
+		reps[at[0]].Finding = append(reps[at[0]].Finding, finding.Finding{
+			Check:   "egress",
+			Target:  reps[at[0]].Target,
+			Status:  finding.ERROR,
+			Message: fmt.Sprintf("this prober has no %s route: %d endpoint(s) were never dialled", family, len(at)),
+			Value:   finding.Num(float64(len(at))),
+			Unit:    "endpoints",
+			Hint:    "fix the route here, or probe from a host that has one — nothing in those results is a statement about the endpoints, and re-running from this machine will produce them again",
+		})
+		// Established, so the endpoints stop guessing. The hint they carry was
+		// written for the case where nobody knew which of the two it was.
+		for _, i := range at {
+			for j := range reps[i].Finding {
+				if reps[i].Finding[j].Check == "verdict" {
+					reps[i].Finding[j].Hint = fmt.Sprintf(
+						"see the `egress` finding: this prober has no %s route, so this endpoint was never reached", family)
+				}
+			}
+		}
+		finding.SortWorstFirst(reps[at[0]].Finding)
+	}
+}
+
 // netFindings states the address family the run was pinned to, once per report
 // (PQ-46).
 //
@@ -259,6 +339,9 @@ targets:
   host:port
   https://host/path        the path is ignored; pqprobe sends no request
   1.2.3.4=origin.example   dial the address, send that server name (what a CDN does)
+  -                        read the list from stdin, in these same forms
+                           (--list - and --inventory - do the same for a flat
+                           list and an INI inventory; stdin is read once)
 
 flags:
   --profile a,b            client profiles to dial (default classic,pq-preferred,pq-only)
@@ -569,9 +652,12 @@ func cmdProbe(args []string) int {
 		return 2
 	}
 
-	targets, errs := collect(fs.Args(), *listFile, *invFile, splitList(*groups), *port, *sni)
+	targets, errs := collect(fs.Args(), *listFile, *invFile, splitList(*groups), *port, *sni, os.Stdin)
 	for _, err := range errs {
 		fmt.Fprintln(os.Stderr, "pqprobe:", err)
+		if errors.Is(err, errStdinTwice) {
+			return 2
+		}
 	}
 	if len(targets) == 0 {
 		fmt.Fprintln(os.Stderr, "pqprobe: no target to probe")
@@ -641,6 +727,7 @@ func cmdProbe(args []string) int {
 		addressFindings(names, reps)
 	}
 	netFindings(*network, reps)
+	egressFindings(reps, *network, probe.HasEgress)
 
 	// The baseline is read *after* the probe: a run that produced findings must
 	// still print them if the comparison cannot be made.
@@ -738,17 +825,62 @@ func run(ctx context.Context, d probe.Dialer, targets []probe.Target, profiles [
 
 // collect assembles the target list from the three sources, applying the
 // default port and the global SNI override.
-func collect(args []string, listFile, invFile string, groups []string, port, sni string) ([]probe.Target, []error) {
+// errStdinTwice is a usage error rather than a target that failed to parse: the
+// command as written cannot do what it says, and exiting 0 with part of the
+// fleet probed would look like a complete run.
+var errStdinTwice = errors.New("stdin can only be read once")
+
+// A `-` anywhere a file is expected — as an operand, as --list or as
+// --inventory — means the pipe (PQ-48). The fleet is usually the output of
+// something else, and requiring a temporary file first is the step people skip,
+// which is how a stale list gets probed.
+//
+// Stdin is one stream and can be handed over exactly once: two readers would
+// each get part of the list, and half a fleet probed silently is worse than an
+// error.
+func collect(args []string, listFile, invFile string, groups []string, port, sni string, stdin io.Reader) ([]probe.Target, []error) {
 	var all []probe.Target
 	var errs []error
 
-	ts, e := inventory.ParseAll(args)
+	taken := ""
+	claim := func(who string) io.Reader {
+		if taken != "" {
+			errs = append(errs, fmt.Errorf("%w: %s and %s both want it", errStdinTwice, taken, who))
+			return nil
+		}
+		taken = who
+		return stdin
+	}
+
+	var words []string
+	for _, a := range args {
+		if a != "-" {
+			words = append(words, a)
+			continue
+		}
+		if r := claim("the `-` target"); r != nil {
+			ts, e := inventory.ReadList(r)
+			all, errs = append(all, ts...), append(errs, e...)
+		}
+	}
+
+	ts, e := inventory.ParseAll(words)
 	all, errs = append(all, ts...), append(errs, e...)
-	if listFile != "" {
+	if listFile == "-" {
+		if r := claim("--list -"); r != nil {
+			ts, e = inventory.ReadList(r)
+			all, errs = append(all, ts...), append(errs, e...)
+		}
+	} else if listFile != "" {
 		ts, e = inventory.ReadListFile(listFile)
 		all, errs = append(all, ts...), append(errs, e...)
 	}
-	if invFile != "" {
+	if invFile == "-" {
+		if r := claim("--inventory -"); r != nil {
+			ts, e = inventory.ReadAnsibleINI(r, groups)
+			all, errs = append(all, ts...), append(errs, e...)
+		}
+	} else if invFile != "" {
 		ts, e = inventory.ReadAnsibleINIFile(invFile, groups)
 		all, errs = append(all, ts...), append(errs, e...)
 	}
@@ -805,12 +937,18 @@ func permute(args []string) []string {
 		case a == "--":
 			operands = append(operands, args[i+1:]...)
 			i = len(args)
+		// A lone `-` is the pipe, which is a target and not a flag (PQ-48).
+		case a == "-":
+			operands = append(operands, a)
 		case strings.HasPrefix(a, "-"):
 			flags = append(flags, a)
 			// A flag that takes a value may be written as two words. Only
 			// consume the next word when this flag has no "=" in it and the
 			// next word is not itself a flag.
-			if !strings.Contains(a, "=") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") && takesValue(a) {
+			// `-` is a legitimate *value* for the flags that take a file, and
+			// a target on its own; both spellings mean the pipe.
+			if !strings.Contains(a, "=") && i+1 < len(args) && takesValue(a) &&
+				(args[i+1] == "-" || !strings.HasPrefix(args[i+1], "-")) {
 				flags = append(flags, args[i+1])
 				i++
 			}

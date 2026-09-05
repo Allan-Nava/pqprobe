@@ -675,6 +675,39 @@ func ExpandAddresses(ctx context.Context, r Resolver, targets []Target, network 
 	return out, errs
 }
 
+// egressProbe is the address the route lookup is made against, per family:
+// documentation ranges (RFC 5737, RFC 3849) that are routed nowhere and belong
+// to nobody, so nothing can be reached even by accident.
+var egressProbe = map[string]string{
+	"tcp4": "192.0.2.1:53",
+	"tcp6": "[2001:db8::1]:53",
+}
+
+// HasEgress reports whether this machine has a route for an address family
+// (PQ-47).
+//
+// A UDP "dial" is a route lookup and a local bind: no packet is sent, nothing
+// is contacted, and the address it is made against is a documentation prefix
+// that is routed nowhere. That matters twice over — this is a tool whose
+// contract is that it never sends anything it did not say it would, and the
+// answer has to be available on a fleet run where forty endpoints have just
+// failed for what is probably one local reason.
+//
+// It answers only for a pinned family. "tcp" is not a question that has an
+// answer here, and guessing one would be worse than the silence.
+func HasEgress(network string) bool {
+	addr, ok := egressProbe[network]
+	if !ok {
+		return false
+	}
+	c, err := net.Dial("udp"+strings.TrimPrefix(network, "tcp"), addr)
+	if err != nil {
+		return false
+	}
+	_ = c.Close()
+	return true
+}
+
 // inFamily reports whether ip belongs to the pinned family. An empty network
 // pins nothing, which is the default and takes both.
 func inFamily(ip net.IP, network string) bool {

@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**49 items · 47 shipped · 2 open · 6 milestones.**
+**52 items · 49 shipped · 3 open · 7 milestones.**
 
 ## At a glance
 
@@ -17,14 +17,16 @@
 | **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 16 |
 | **M4** — Later | `ongoing` | later | `##########` 100% | 0 | 7 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
-| **M6** — Reach the rest of the fleet | `v0.30.0` | **now** | `######....` 60% | 2 | 3 |
+| **M6** — Reach the rest of the fleet | `v0.30.0` | **now** | `##########` 100% | 0 | 5 |
+| **M7** — Encrypted Client Hello | `v0.33.0` | next | `..........` 0% | 3 | 0 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-47** — A prober with no route says it once · `med` · size `M` · probe,verdict,output (M6, target `v0.30.0`)
-- **PQ-48** — Targets on stdin · `low` · size `S` · inventory,ux (M6, target `v0.30.0`)
+- **PQ-50** — ECH as a capability class · `high` · size `M` · profile,probe (M7, target `v0.33.0`)
+- **PQ-51** — The config comes from DNS, not from a paste · `med` · size `L` · probe,inventory (M7, target `v0.33.0`)
+- **PQ-52** — ECH does not decide the class · `med` · size `S` · verdict,output,docs (M7, target `v0.33.0`)
 
 ## Milestones
 
@@ -109,30 +111,40 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 ### M6 — Reach the rest of the fleet
 
-Target `v0.30.0` · **now** · 2 open · 3 shipped · `######....` 60%
+Target `v0.30.0` · **now** · 0 open · 5 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-47** — A prober with no route says it once | med | M | probe,verdict,output | open |
-| **PQ-48** — Targets on stdin | low | S | inventory,ux | open |
 | **PQ-46** — Choose the address family | high | S | probe,cli | done, unreleased |
 | **PQ-49** — The release renders its derived files in both states | high | S | release,tests | done, unreleased |
 | **PQ-45** — MySQL STARTTLS | med | M | probe | done, unreleased |
+| **PQ-47** — A prober with no route says it once | med | M | probe,verdict,output | done, unreleased |
+| **PQ-48** — Targets on stdin | low | S | inventory,ux | done, unreleased |
+
+### M7 — Encrypted Client Hello
+
+Target `v0.33.0` · next · 3 open · 0 shipped · `..........` 0%
+
+| Item | Priority | Size | Labels | Status |
+|---|---|---|---|---|
+| **PQ-50** — ECH as a capability class | high | M | profile,probe | open |
+| **PQ-51** — The config comes from DNS, not from a paste | med | L | probe,inventory | open |
+| **PQ-52** — ECH does not decide the class | med | S | verdict,output,docs | open |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `inventory` | 3 | 1 |
-| `output` | 6 | 1 |
-| `probe` | 15 | 1 |
-| `ux` | 2 | 1 |
-| `verdict` | 6 | 1 |
+| `probe` | 17 | 2 |
+| `docs` | 8 | 1 |
+| `inventory` | 4 | 1 |
+| `output` | 7 | 1 |
+| `profile` | 6 | 1 |
+| `verdict` | 7 | 1 |
 | `cli` | 8 | 0 |
 | `delivery` | 6 | 0 |
-| `docs` | 7 | 0 |
 | `integration` | 3 | 0 |
-| `profile` | 5 | 0 |
 | `project` | 6 | 0 |
 | `release` | 5 | 0 |
 | `tests` | 5 | 0 |
+| `ux` | 2 | 0 |

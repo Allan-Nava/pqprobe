@@ -1427,3 +1427,25 @@ func TestStartTLSListIsExactlyWhatIsSpoken(t *testing.T) {
 		t.Error("the X Protocol is a different negotiation and must not be silently accepted as mysql")
 	}
 }
+
+// PQ-47. What this prober can reach at all, established locally: a UDP "dial"
+// performs the route lookup and sends nothing, which is the only way to ask the
+// question without traffic. The answer must be cheap and stable — it is
+// consulted once per run, after something has already failed.
+func TestHasEgressIsLocalCheapAndStable(t *testing.T) {
+	start := time.Now()
+	first4, first6 := HasEgress("tcp4"), HasEgress("tcp6")
+	if d := time.Since(start); d > 2*time.Second {
+		t.Fatalf("the egress check took %s: it is a route lookup, not a probe", d)
+	}
+	if HasEgress("tcp4") != first4 || HasEgress("tcp6") != first6 {
+		t.Fatal("two calls disagreed; a run would report a different local fact each time")
+	}
+	// Whatever this machine has, it has to have one of them: these tests dial.
+	if !first4 && !first6 {
+		t.Fatal("neither family has a route, yet this suite is dialling listeners")
+	}
+	if HasEgress("tcp") || HasEgress("") {
+		t.Error("only a pinned family can be answered; anything else has to be false rather than a guess")
+	}
+}

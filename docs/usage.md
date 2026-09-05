@@ -37,9 +37,9 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--size-sweep` | — | grow the ClientHello in steps and report the size at which the peer stops answering |
 | `--alpn-check` | — | dial the same client with `h2,http/1.1` too, and report when the ALPN bytes change the answer |
 | `--groups a,b` | — | also dial exactly this key exchange group set, in this order (names as reports print them) |
-| `--inventory FILE` | — | Ansible INI inventory to take hosts from |
+| `--inventory FILE` | — | Ansible INI inventory to take hosts from (`-` is stdin) |
 | `--group g,h` | all | restrict to these inventory groups |
-| `--list FILE` | — | flat list of targets, one per line |
+| `--list FILE` | — | flat list of targets, one per line (`-` is stdin) |
 | `--port N` | `443` | default port for targets written without one |
 | `--sni NAME` | — | server name for every target |
 | `--alpn a,b` | none | ALPN protocols to offer |
@@ -161,6 +161,22 @@ A peer that will not upgrade gets the class **`no-tls`** with an `ERROR`, never
 that as a post-quantum failure would send somebody looking for a middlebox that
 does not exist.
 
+## From a pipe
+
+```sh
+dig +short A origin.example | pqprobe probe -
+awk '/^web/ {print $1}' hosts.ini | pqprobe probe --list -
+```
+
+The fleet worth probing is usually the output of something else, and a `-`
+anywhere a file is expected reads it from stdin: as a target, as `--list -`, or
+as `--inventory -` for a whole INI. The forms are the ones a file already
+accepts, comments and `1.2.3.4=origin.example` included.
+
+Stdin is one stream and is handed over exactly once — asking twice is an error
+rather than two readers each getting part of the list, because half a fleet
+probed silently is worse than being told.
+
 ## One address family at a time
 
 ```sh
@@ -183,6 +199,13 @@ says so in those words.
 An address family excluded here is `unroutable`, never a grade: it is a fact
 about this prober, in exactly the way an AAAA record probed from a machine
 without IPv6 egress is.
+
+When a run does hit that — addresses this machine has no route to — the reason
+is established once, as an `egress` finding carrying the number of endpoints it
+accounts for, and those endpoints stop guessing at the cause in their own hints.
+It is only said when the family is knowable (an address, or a pinned `--net`)
+and when the route really is missing here: an address that is simply unreachable
+is a statement about the endpoint, and the report has already made it.
 
 With `--socks5` the flag can only govern the hop to the proxy — which family the
 proxy uses to reach the endpoint is its own choice, and pqprobe says so if you
