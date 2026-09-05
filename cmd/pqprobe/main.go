@@ -282,9 +282,11 @@ flags:
   --sni NAME               server name for every target (overrides per-target =sni)
   --alpn a,b               ALPN protocols to offer (default none)
   --starttls PROTO         upgrade to TLS through a protocol's own negotiation
-                           first: smtp, imap or postgres. Only the negotiation
-                           is sent — no mail, no query, no credential. Implicit
-                           TLS ports (465, 993, 6514) need none of this
+                           first: smtp, imap, postgres or mysql. Only the
+                           negotiation is sent — no mail, no query, no
+                           credential (a MySQL SSLRequest stops exactly where
+                           the login would start). Implicit TLS ports (465, 993,
+                           6514) need none of this
   --net tcp4|tcp6          pin the address family every connection uses; the
                            default lets the resolver choose, which is how a
                            dual-stack name gets graded on whichever address it
@@ -487,7 +489,7 @@ func newProbeFlags() (*flag.FlagSet, *probeFlags) {
 	o.port = fs.String("port", inventory.DefaultPort, "default port")
 	o.sni = fs.String("sni", "", "server name for every target")
 	o.alpn = fs.String("alpn", "", "ALPN protocols")
-	o.starttls = fs.String("starttls", "", "upgrade to TLS through this protocol first: smtp, imap, postgres")
+	o.starttls = fs.String("starttls", "", "upgrade to TLS through this protocol first: smtp, imap, postgres, mysql")
 	o.socks5 = fs.String("socks5", "", "reach endpoints through a no-auth SOCKS5 proxy")
 	o.network = fs.String("net", "", "pin the address family: tcp4 or tcp6")
 	o.timeout = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")

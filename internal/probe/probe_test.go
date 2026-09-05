@@ -1060,6 +1060,56 @@ func starttlsServer(t *testing.T, proto string, cfg *tls.Config, refuse bool) Ta
 						return
 					}
 					fmt.Fprint(c, "a1 OK begin TLS negotiation now\r\n")
+				case "mysql":
+					// The server speaks first: a handshake packet whose
+					// capability flags say whether CLIENT_SSL is on offer.
+					caps := 0x0200 // CLIENT_PROTOCOL_41
+					if !refuse {
+						caps |= 0x0800 // CLIENT_SSL
+					}
+					payload := []byte{10}
+					payload = append(payload, "8.0.36-pqprobe-test\x00"...)
+					payload = append(payload, 1, 0, 0, 0)             // connection id
+					payload = append(payload, 1, 2, 3, 4, 5, 6, 7, 8) // auth-plugin-data-part-1
+					payload = append(payload, 0)                      // filler
+					payload = append(payload, byte(caps), byte(caps>>8))
+					payload = append(payload, 45)   // charset
+					payload = append(payload, 2, 0) // status flags
+					payload = append(payload, 0, 0) // capability flags, upper
+					payload = append(payload, 21)   // auth-plugin-data length
+					payload = append(payload, make([]byte, 10)...)
+					payload = append(payload, "123456789012\x00"...)
+					payload = append(payload, "mysql_native_password\x00"...)
+					pkt := []byte{byte(len(payload)), byte(len(payload) >> 8), byte(len(payload) >> 16), 0}
+					if _, err := c.Write(append(pkt, payload...)); err != nil {
+						return
+					}
+					if refuse {
+						// A server without CLIENT_SSL waits for a login packet
+						// it will never get; the client has already given up.
+						return
+					}
+					// The SSLRequest packet: a 4-byte header and 32 bytes.
+					hdr := make([]byte, 4)
+					if _, err := io.ReadFull(br, hdr); err != nil {
+						return
+					}
+					if n := int(hdr[0]) | int(hdr[1])<<8 | int(hdr[2])<<16; n != 32 {
+						t.Errorf("mysql: SSLRequest payload is %d bytes, want 32", n)
+						return
+					}
+					if hdr[3] != 1 {
+						t.Errorf("mysql: SSLRequest sequence id = %d, want 1 (the greeting was 0)", hdr[3])
+						return
+					}
+					body := make([]byte, 32)
+					if _, err := io.ReadFull(br, body); err != nil {
+						return
+					}
+					if body[1]&0x08 == 0 {
+						t.Error("mysql: the client did not set CLIENT_SSL, so the server would expect a login packet")
+						return
+					}
 				case "postgres":
 					// The SSLRequest packet: 8 bytes, length then the magic code.
 					hdr := make([]byte, 8)
@@ -1072,7 +1122,16 @@ func starttlsServer(t *testing.T, proto string, cfg *tls.Config, refuse bool) Ta
 					}
 					_, _ = c.Write([]byte("S"))
 				}
-				srv := tls.Server(&prefixConn{Conn: c, pre: bytes.NewReader(nil)}, cfg)
+				// Whatever the reader pulled in past the negotiation is the
+				// start of the ClientHello: MySQL's client does not wait for a
+				// reply before sending it, so one Read can hold both. Dropping
+				// those bytes deadlocks the handshake — which is how this was
+				// found, under -race.
+				buffered := make([]byte, br.Buffered())
+				if len(buffered) > 0 {
+					_, _ = io.ReadFull(br, buffered)
+				}
+				srv := tls.Server(&prefixConn{Conn: c, pre: bytes.NewReader(buffered)}, cfg)
 				_ = srv.HandshakeContext(context.Background())
 				srv.Close()
 			}()
@@ -1089,7 +1148,7 @@ func TestSTARTTLSReachesTheHandshakeOnEveryProtocol(t *testing.T) {
 	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
 	cfg := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}
 
-	for _, proto := range []string{"smtp", "imap", "postgres"} {
+	for _, proto := range StartTLSProtocols() {
 		tg := starttlsServer(t, proto, cfg, false)
 		p, _ := clientprofile.ByName("pq-only")
 		d := Dialer{Timeout: 5 * time.Second, StartTLS: proto}
@@ -1120,7 +1179,7 @@ func TestASTARTTLSRefusalIsNotAPostQuantumVerdict(t *testing.T) {
 	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
 	cfg := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}
 
-	for _, proto := range []string{"smtp", "imap", "postgres"} {
+	for _, proto := range StartTLSProtocols() {
 		tg := starttlsServer(t, proto, cfg, true)
 		p, _ := clientprofile.ByName("pq-preferred")
 		res := Dialer{Timeout: 5 * time.Second, StartTLS: proto}.Do(context.Background(), tg, p)
@@ -1298,5 +1357,73 @@ func TestExpandAddressesHonoursTheAddressFamily(t *testing.T) {
 	}
 	if !strings.Contains(errs[0].Error(), "tcp6") {
 		t.Fatalf("errs = %v, want the family named: without it this reads as a DNS failure", errs)
+	}
+}
+
+// PQ-45. MySQL is the one protocol here where the *server* speaks first, and a
+// port that accepts the connection and then says nothing is its common failure
+// — a blocked host, an instance still starting, a firewall that completes the
+// handshake for you. Without a deadline on the plaintext negotiation the probe
+// waits for ever: --timeout covers the TLS handshake, and there was no TLS
+// handshake yet.
+func TestAPlaintextNegotiationThatHangsIsBoundedAndIsNotAVerdict(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			// Accepted, and then nothing at all.
+			t.Cleanup(func() { c.Close() })
+		}
+	}()
+
+	p, _ := clientprofile.ByName("pq-preferred")
+	done := make(chan Result, 1)
+	go func() {
+		done <- Dialer{Timeout: 300 * time.Millisecond, StartTLS: "mysql"}.
+			Do(context.Background(), targetOf(t, ln.Addr().String()), p)
+	}()
+
+	select {
+	case res := <-done:
+		if res.OK {
+			t.Fatal("nothing was ever sent; there is no handshake to have completed")
+		}
+		if res.Kind != KindStartTLS {
+			t.Fatalf("kind = %q, want %q: the upgrade never happened, and a timeout waiting for a greeting is not the peer cutting off a post-quantum hello", res.Kind, KindStartTLS)
+		}
+		if res.Kind.Abrupt() {
+			t.Fatal("a silent greeting must never read as abrupt: that is the pq-intolerant bucket")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the probe did not return: --timeout does not bound the plaintext negotiation")
+	}
+}
+
+// The MySQL X Protocol on 33060 is a different negotiation — protobuf-framed,
+// not this packet exchange — and it is left out on purpose, the same way MySQL
+// itself was left out of PQ-20. The list is the promise, so it is asserted.
+func TestStartTLSListIsExactlyWhatIsSpoken(t *testing.T) {
+	want := map[string]bool{"smtp": true, "imap": true, "postgres": true, "mysql": true}
+	got := StartTLSProtocols()
+	if len(got) != len(want) {
+		t.Fatalf("StartTLSProtocols() = %v, want exactly %d protocols", got, len(want))
+	}
+	for _, p := range got {
+		if !want[p] {
+			t.Errorf("%s is offered but not in the list this test knows about", p)
+		}
+		if !ValidStartTLS(p) {
+			t.Errorf("%s is listed but not accepted", p)
+		}
+	}
+	if ValidStartTLS("mysqlx") {
+		t.Error("the X Protocol is a different negotiation and must not be silently accepted as mysql")
 	}
 }

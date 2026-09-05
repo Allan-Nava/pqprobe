@@ -510,7 +510,7 @@ prober with no route, and a fleet that arrives on a pipe instead of in a file.
 Each one turns a page of failures that look like findings back into a single
 true statement.
 
-- [ ] **PQ-45 — MySQL STARTTLS**: the port PQ-20 deliberately left out. Its
+- [x] **PQ-45 — MySQL STARTTLS**: the port PQ-20 deliberately left out. Its
   upgrade is not a line protocol: the server opens with a handshake packet and
   the client answers with a connection-phase response carrying `CLIENT_SSL`,
   which is packet framing rather than a `STARTTLS` line, and folding it into the
@@ -521,7 +521,26 @@ true statement.
   inside the handshake and get the same clause in INTENT.md that PQ-20 needed;
   the red test is an in-process server that speaks the real packet exchange,
   and a server with TLS switched off must come out as `no-tls`, never
-  `pq-intolerant`. <!-- pq: prio=med size=M labels=probe -->
+  `pq-intolerant`.
+  Shipped as `--starttls mysql`. The client answers the server's greeting with a
+  32-byte SSLRequest — the first 32 bytes of a login packet and nothing after
+  them, which is precisely where the user, the password and the database would
+  have gone — and the capability flags in the greeting are what say whether
+  `CLIENT_SSL` is on offer at all: absent, it is `no-tls`. Verified against a
+  real MySQL 8.4 as well as the in-process server: `pq-blind`, P-256 after a
+  hello retry, which is exactly the stack this item was worth writing for — a
+  database that no post-quantum-only client will ever reach, and that no health
+  check would report.
+  Writing the server first paid again: MySQL is the only protocol here where the
+  *server* speaks first, and a port that accepts the connection and then says
+  nothing — a blocked host, an instance still starting — hung the probe for
+  ever, because `--timeout` covers the TLS handshake and there was no TLS
+  handshake yet. The plaintext negotiation is now bounded by the same deadline,
+  for every protocol.
+  The X Protocol on 33060 stays out, on the same grounds MySQL itself stayed out
+  of PQ-20: it is a protobuf-framed negotiation rather than this packet
+  exchange, and a test asserts the spoken list so it cannot arrive by accident.
+  <!-- pq: prio=med size=M labels=probe ver=unreleased -->
 
 - [x] **PQ-46 — Choose the address family**: `--net tcp4|tcp6`, because today
   the resolver chooses and the run does not say so. A dual-stack name that

@@ -267,7 +267,8 @@ deviation is a check people learn to ignore.
 
 pqprobe completes a TLS handshake and closes the connection. **No request, no
 body, no credentials, no application data** — with `--starttls` it also sends
-that protocol's negotiation (`EHLO`, `STARTTLS`, or Postgres's eight-byte
+that protocol's negotiation (`EHLO`, `STARTTLS`, MySQL's 32-byte `SSLRequest`
+stopping where the login would start, or Postgres's eight-byte
 `SSLRequest`) and nothing more, because without it those ports cannot be probed
 at all — there is nothing in it that can
 change state on the far side, which is what makes it safe to point at

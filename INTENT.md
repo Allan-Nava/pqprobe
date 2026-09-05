@@ -66,9 +66,10 @@ production, without sending a request.
    body, no credentials, no application data, no subprocess, no dependency —
    there is nothing in the binary that can change state on the far side. The one
    thing it ever writes in plaintext is a `--starttls` negotiation — `EHLO`,
-   `STARTTLS`, an eight-byte `SSLRequest` — because ports 587, 143 and 5432
-   cannot be reached any other way; still no mail, no query, no credential. That is
-   a product property, not an aesthetic, and CI enforces it.
+   `STARTTLS`, an eight-byte `SSLRequest`, MySQL's 32-byte one — because ports
+   587, 143, 5432 and 3306 cannot be reached any other way; still no mail, no
+   query, no credential. That is a product property, not an aesthetic, and CI
+   enforces it.
 3. **Never grade an endpoint nobody reached.** Every post-quantum conclusion is
    conditional on the classical profile having connected. An endpoint that
    answered nothing is `unreachable` with an ERROR. A tool that files every

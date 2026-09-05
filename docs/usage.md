@@ -43,7 +43,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--port N` | `443` | default port for targets written without one |
 | `--sni NAME` | — | server name for every target |
 | `--alpn a,b` | none | ALPN protocols to offer |
-| `--starttls PROTO` | — | upgrade to TLS through the protocol's own negotiation first: `smtp`, `imap`, `postgres` |
+| `--starttls PROTO` | — | upgrade to TLS through the protocol's own negotiation first: `smtp`, `imap`, `postgres`, `mysql` |
 | `--net tcp4\|tcp6` | both | pin the address family every connection uses; the family is stated in the report |
 | `--socks5 HOST:PORT` | — | reach every endpoint through a no-auth SOCKS5 proxy |
 | `--timeout D` | `10s` | per-handshake timeout |
@@ -135,15 +135,26 @@ TLS is reached through the protocol's own negotiation.
 pqprobe probe --starttls smtp  mx.example:587
 pqprobe probe --starttls imap  mail.example:143
 pqprobe probe --starttls postgres db.example:5432
+pqprobe probe --starttls mysql    db.example:3306
 ```
 
 Real output, September 2026: `smtp.gmail.com:587` is `pq-ready`.
 
 **What goes on the wire, exactly**: a greeting is read, then `EHLO` and
-`STARTTLS`, or `a1 STARTTLS`, or Postgres's eight-byte `SSLRequest`. Nothing
+`STARTTLS`, or `a1 STARTTLS`, or Postgres's eight-byte `SSLRequest`, or MySQL's
+32-byte `SSLRequest` — which is the first 32 bytes of a login packet and nothing
+after them, stopping exactly where the credentials would have gone. Nothing
 else — no mail, no query, no credential, no application data. That is the line
 this flag walks: without the negotiation these ports cannot be probed at all,
 and with anything more it would be a different tool.
+
+MySQL is the one protocol here where the **server speaks first**, and its
+capability flags say whether TLS is on offer at all: no `CLIENT_SSL`, no
+upgrade, and that is `no-tls` rather than a post-quantum verdict. It is also why
+the plaintext negotiation is bounded by `--timeout` — a port that accepts the
+connection and then says nothing is the ordinary failure there. The X Protocol
+on 33060 is a different, protobuf-framed negotiation and is deliberately not
+spoken.
 
 A peer that will not upgrade gets the class **`no-tls`** with an `ERROR`, never
 `pq-intolerant`: a relay with TLS switched off has refused *TLS*, and grading

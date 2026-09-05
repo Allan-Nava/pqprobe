@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**48 items · 45 shipped · 3 open · 6 milestones.**
+**48 items · 46 shipped · 2 open · 6 milestones.**
 
 ## At a glance
 
@@ -17,13 +17,12 @@
 | **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 16 |
 | **M4** — Later | `ongoing` | later | `##########` 100% | 0 | 7 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
-| **M6** — Reach the rest of the fleet | `v0.30.0` | **now** | `###.......` 25% | 3 | 1 |
+| **M6** — Reach the rest of the fleet | `v0.30.0` | **now** | `#####.....` 50% | 2 | 2 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-45** — MySQL STARTTLS · `med` · size `M` · probe (M6, target `v0.30.0`)
 - **PQ-47** — A prober with no route says it once · `med` · size `M` · probe,verdict,output (M6, target `v0.30.0`)
 - **PQ-48** — Targets on stdin · `low` · size `S` · inventory,ux (M6, target `v0.30.0`)
 
@@ -110,22 +109,22 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 ### M6 — Reach the rest of the fleet
 
-Target `v0.30.0` · **now** · 3 open · 1 shipped · `###.......` 25%
+Target `v0.30.0` · **now** · 2 open · 2 shipped · `#####.....` 50%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-45** — MySQL STARTTLS | med | M | probe | open |
 | **PQ-47** — A prober with no route says it once | med | M | probe,verdict,output | open |
 | **PQ-48** — Targets on stdin | low | S | inventory,ux | open |
 | **PQ-46** — Choose the address family | high | S | probe,cli | done, unreleased |
+| **PQ-45** — MySQL STARTTLS | med | M | probe | done, unreleased |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `probe` | 15 | 2 |
 | `inventory` | 3 | 1 |
 | `output` | 6 | 1 |
+| `probe` | 15 | 1 |
 | `ux` | 2 | 1 |
 | `verdict` | 6 | 1 |
 | `cli` | 8 | 0 |

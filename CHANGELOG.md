@@ -6,6 +6,34 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.31.0] - 2026-09-05
+
+### Added
+
+- **`--starttls mysql` (PQ-45)** — the port PQ-20 left out on purpose, because
+  its upgrade is not a line somebody types: the server speaks first, and the
+  client answers with a 32-byte `SSLRequest`, which is the first 32 bytes of a
+  login packet and nothing after them — stopping exactly where the user, the
+  password and the database would have gone. Still no application data.
+
+  A greeting whose capability flags do not carry `CLIENT_SSL` is `no-tls` with
+  an ERROR, never `pq-intolerant`: a database with TLS switched off has refused
+  *TLS*. Verified against a real MySQL 8.4 as well as the in-process server —
+  `pq-blind`, P-256 after a hello retry, a stack no post-quantum-only client
+  will ever reach and no health check would mention. The X Protocol on 33060 is
+  a different, protobuf-framed negotiation and is deliberately not spoken; a
+  test asserts the list so it cannot arrive by accident.
+
+### Fixed
+
+- **The plaintext negotiation is bounded by `--timeout`, for every protocol.** A
+  port that accepted the connection and then said nothing hung the probe for
+  ever: `--timeout` covers the TLS handshake, and until the upgrade lands there
+  is no TLS handshake to cover. Found by the failing test for MySQL, where the
+  server speaking first makes a silent greeting the ordinary failure. It is
+  reported as `starttls` and is never abrupt — waiting for a greeting that never
+  came says nothing about post-quantum clients.
+
 ## [0.30.0] - 2026-09-05
 
 ### Added

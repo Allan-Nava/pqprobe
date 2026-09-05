@@ -189,7 +189,7 @@ type Result struct {
 
 // StartTLSProtocols is what --starttls accepts, in the order the help lists
 // them.
-func StartTLSProtocols() []string { return []string{"smtp", "imap", "postgres"} }
+func StartTLSProtocols() []string { return []string{"smtp", "imap", "postgres", "mysql"} }
 
 // ValidStartTLS reports whether the protocol is one of them. The empty string
 // is valid and means no negotiation: implicit TLS, which is every other port.
@@ -295,6 +295,9 @@ func startTLS(c net.Conn, proto, serverName string) error {
 			}
 		}
 
+	case "mysql":
+		return startTLSMySQL(br, c)
+
 	case "postgres":
 		// SSLRequest: length 8, then the magic 80877103. One byte comes back:
 		// 'S' to continue in TLS, 'N' to say the server has none.
@@ -316,6 +319,111 @@ func startTLS(c net.Conn, proto, serverName string) error {
 		}
 	}
 	return fmt.Errorf("unknown starttls protocol %q (have: %s)", proto, strings.Join(StartTLSProtocols(), ", "))
+}
+
+// MySQL capability bits, from the connection phase. Only these three are ever
+// set: CLIENT_SSL is the request, and the other two say which dialect of the
+// packet the server should read it as.
+const (
+	mysqlClientSSL       = 0x00000800
+	mysqlClientProto41   = 0x00000200
+	mysqlClientSecureCon = 0x00008000
+)
+
+// startTLSMySQL performs MySQL's upgrade to TLS (PQ-45).
+//
+// MySQL is the protocol PQ-20 left out, and the reason is visible here: the
+// upgrade is not a line somebody types. The server speaks first with a handshake
+// packet, and the client answers with a **SSLRequest** — the first 32 bytes of a
+// login packet and nothing after them, which is precisely where the credentials
+// would have gone. Nothing else is sent: no user, no password, no database, no
+// query. That is what keeps this inside "pqprobe handshakes and closes".
+//
+// The X Protocol on 33060 is a different negotiation, protobuf-framed rather
+// than this exchange, and it is deliberately not spoken.
+func startTLSMySQL(br *bufio.Reader, c net.Conn) error {
+	payload, seq, err := mysqlPacket(br)
+	if err != nil {
+		return fmt.Errorf("mysql: reading the server greeting: %w", err)
+	}
+	if len(payload) == 0 {
+		return errors.New("mysql: the server greeting was empty")
+	}
+	// An ERR packet instead of a greeting is the server refusing the connection
+	// before TLS was ever on the table — a blocked host is the usual case, and
+	// reporting it as "TLS is off here" would send somebody to the wrong file.
+	if payload[0] == 0xff {
+		return fmt.Errorf("mysql: the server refused the connection: %s", mysqlErrText(payload))
+	}
+	if payload[0] != 10 {
+		return fmt.Errorf("mysql: protocol version %d, not 10 — this does not look like a MySQL server", payload[0])
+	}
+
+	// Skip to the capability flags: the null-terminated server version, the
+	// connection id, eight bytes of auth-plugin data and a filler byte.
+	i := 1
+	for i < len(payload) && payload[i] != 0 {
+		i++
+	}
+	i++ // the terminator
+	i += 4 + 8 + 1
+	if i+1 >= len(payload) {
+		return errors.New("mysql: the greeting ended before the capability flags")
+	}
+	caps := int(payload[i]) | int(payload[i+1])<<8
+	if caps&mysqlClientSSL == 0 {
+		// The server has TLS switched off. It has refused *TLS*, not a
+		// post-quantum client, which is the whole reason KindStartTLS exists.
+		return errors.New("mysql: the server does not advertise CLIENT_SSL — TLS is not enabled on it")
+	}
+
+	// The SSLRequest packet: 32 bytes, and the TLS handshake starts straight
+	// after it. The sequence id continues the greeting's, or the server drops
+	// the connection as out of order.
+	body := make([]byte, 32)
+	flags := mysqlClientSSL | mysqlClientProto41 | mysqlClientSecureCon
+	body[0], body[1] = byte(flags), byte(flags>>8)
+	body[2], body[3] = byte(flags>>16), byte(flags>>24)
+	body[7] = 1 // max_allowed_packet: 16 MiB, which nothing here will approach
+	body[8] = 45
+	out := []byte{byte(len(body)), byte(len(body) >> 8), byte(len(body) >> 16), seq + 1}
+	if _, err := c.Write(append(out, body...)); err != nil {
+		return fmt.Errorf("mysql: sending SSLRequest: %w", err)
+	}
+	return nil
+}
+
+// mysqlPacket reads one packet: a three-byte little-endian length, a sequence
+// id, then the payload.
+func mysqlPacket(br *bufio.Reader) ([]byte, byte, error) {
+	head := make([]byte, 4)
+	if _, err := io.ReadFull(br, head); err != nil {
+		return nil, 0, err
+	}
+	n := int(head[0]) | int(head[1])<<8 | int(head[2])<<16
+	// A greeting is a few hundred bytes; anything else is not one, and reading
+	// 16 MiB to find that out is a denial of service against ourselves.
+	if n > 4096 {
+		return nil, 0, fmt.Errorf("a %d-byte first packet is not a MySQL greeting", n)
+	}
+	payload := make([]byte, n)
+	if _, err := io.ReadFull(br, payload); err != nil {
+		return nil, 0, err
+	}
+	return payload, head[3], nil
+}
+
+// mysqlErrText is the human half of an ERR packet: a two-byte code, then an
+// optional `#` and five-byte SQL state, then the message.
+func mysqlErrText(payload []byte) string {
+	msg := payload[1:]
+	if len(msg) > 2 {
+		msg = msg[2:]
+	}
+	if len(msg) > 6 && msg[0] == '#' {
+		msg = msg[6:]
+	}
+	return strings.TrimSpace(string(msg))
 }
 
 // expectSMTP reads a possibly multi-line reply and checks its code. SMTP marks
@@ -705,6 +813,14 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 	// is measured: an SMTP relay answers TLS on 587 only after being asked in
 	// its own protocol (PQ-20).
 	if d.StartTLS != "" {
+		// Bounded by the same deadline as everything else: --timeout covers the
+		// TLS handshake, and until the upgrade lands there is no TLS handshake
+		// to cover. A port that accepts the connection and then says nothing —
+		// which for MySQL, where the server speaks first, is the ordinary
+		// failure — would otherwise wait for ever.
+		if deadline, has := ctx.Deadline(); has {
+			_ = raw.SetDeadline(deadline)
+		}
 		if err := startTLS(raw, d.StartTLS, t.ServerName()); err != nil {
 			// The peer refused *TLS*, which says nothing about post-quantum
 			// clients — hence its own kind, and not an abrupt one.
@@ -712,6 +828,9 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 			res.Elapsed = time.Since(start)
 			return res
 		}
+		// The TLS handshake sets its own; leaving this one on would stop the
+		// measurement at whatever was left of it.
+		_ = raw.SetDeadline(time.Time{})
 	}
 
 	// Everything written to the peer passes through here, which is how the
