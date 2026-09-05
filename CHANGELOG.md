@@ -6,6 +6,41 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.34.0] - 2026-09-05
+
+### Added
+
+- **`--ech` takes each ECH config from DNS (PQ-51).** Pasting base64 is not a
+  fleet workflow: the config lives in the endpoint's own HTTPS record (type 65,
+  the `ech=` parameter), and Go's resolver exposes no arbitrary record type — so
+  the query is written into pqprobe, with no dependency added to a module that
+  has none. `--dns HOST:PORT` picks the resolver; without it, the ones in
+  `/etc/resolv.conf`.
+
+  One lookup per **name** rather than per target, so a fleet behind one CDN asks
+  once. A truncated answer is retried over TCP — ordinary rather than exotic
+  here, since a record carrying an ECH config passes 512 bytes easily, and half
+  a record parsed as a whole one is a config that fails inside the handshake
+  where it reads as the endpoint's fault. Every answer record is scanned, not
+  only the one whose owner matches, because an answer routinely arrives as a
+  CNAME plus the record for the canonical name.
+
+  An endpoint that publishes nothing keeps the ordinary profiles and says so
+  once; it is not a failure of anything. `--ech-config` still takes a config you
+  choose, and asking for both at once is a usage error rather than a silent
+  precedence rule — they answer different questions.
+
+  Real run: `crypto.cloudflare.com` fetched and accepted, 1489 B → 1661 B, the
+  same +172 bytes the pasted config produced; `github.com` publishes none.
+
+### Changed
+
+- **A run no longer assumes one profile set for the whole fleet.** The ECH
+  config differs per endpoint, so `run` takes the profiles *for a target*. The
+  lookup happens once, before the run: a `--watch` that re-queried every tick
+  would report a config rotation as an endpoint change, which is a different
+  finding from the one it looks like.
+
 ## [0.33.0] - 2026-09-05
 
 ### Added

@@ -44,7 +44,9 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--sni NAME` | — | server name for every target |
 | `--alpn a,b` | none | ALPN protocols to offer |
 | `--starttls PROTO` | — | upgrade to TLS through the protocol's own negotiation first: `smtp`, `imap`, `postgres`, `mysql` |
-| `--ech-config BASE64` | — | also dial the same client offering Encrypted Client Hello with this `ECHConfigList` |
+| `--ech` | — | also dial with Encrypted Client Hello, taking each config from the endpoint's HTTPS DNS record |
+| `--dns HOST:PORT` | system | resolver to ask for that record |
+| `--ech-config BASE64` | — | the same, with a config you pass instead of one from DNS |
 | `--net tcp4\|tcp6` | both | pin the address family every connection uses; the family is stated in the report |
 | `--socks5 HOST:PORT` | — | reach every endpoint through a no-auth SOCKS5 proxy |
 | `--timeout D` | `10s` | per-handshake timeout |
@@ -165,7 +167,7 @@ does not exist.
 ## Encrypted Client Hello
 
 ```sh
-pqprobe probe crypto.cloudflare.com --ech-config "$(dig +short -t TYPE65 crypto.cloudflare.com | …)"
+pqprobe probe crypto.cloudflare.com --ech
 ```
 
 ECH is the question this tool always asks, one layer out: a **client capability
@@ -188,7 +190,20 @@ offer it has failed nothing. The one case that earns a `WARN` is the size story
 — the control connects and the ECH twin is cut off.
 
 The config has to be the one that endpoint publishes, or a rejection says
-nothing about it. Fetching it from DNS is `PQ-51`; today it is pasted.
+nothing about it — which is why `--ech` reads it from the endpoint's own HTTPS
+record (type 65, the `ech=` parameter), one lookup per **name** rather than per
+address, so a fleet behind one CDN asks once. Go's resolver exposes no arbitrary
+record type, so the query is written into pqprobe: no dependency, and still a
+DNS question rather than a request. `--dns HOST:PORT` picks the resolver;
+without it, the ones in `/etc/resolv.conf`. A truncated answer is retried over
+TCP, because a record carrying an ECH config passes 512 bytes easily and half a
+record parsed as a whole one is a config that fails inside the handshake.
+
+An endpoint that publishes nothing keeps the ordinary profiles and says so once
+— most of them are in that state, and it is not a failure of anything.
+`--ech-config BASE64` still takes a config you choose: it answers a different
+question ("what happens if this endpoint is offered *this*"), so asking for both
+at once is a usage error rather than a silent precedence rule.
 
 One surprise worth knowing: when a peer declines ECH, Go verifies its
 certificate against the config's **public name** before trusting the retry

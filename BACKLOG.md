@@ -674,7 +674,7 @@ look like it has.
   anywhere and being assertable offline is the bar every profile here clears.
   <!-- pq: prio=high size=M labels=profile,probe ver=unreleased -->
 
-- [ ] **PQ-51 — The config comes from DNS, not from a paste**: pasting base64 is
+- [x] **PQ-51 — The config comes from DNS, not from a paste**: pasting base64 is
   not a fleet workflow, and the ECH config lives in the HTTPS resource record
   (type 65) of the name being probed. Go's resolver exposes no arbitrary record
   type, so this is a small DNS query written here — the same kind of lookup
@@ -683,7 +683,28 @@ look like it has.
   offer and that is stated, never graded; a record that does not parse is said
   in those words rather than silently becoming "ECH not accepted", which would
   blame the endpoint for our parser.
-  <!-- pq: prio=med size=L labels=probe,inventory -->
+  Shipped as `--ech` and `--dns HOST:PORT`: a DNS client written here — query
+  builder, answer walker with compression pointers, SvcParam parser — because
+  Go's resolver exposes no arbitrary record type and this module has no
+  dependencies. One lookup per **name**, not per target: a fleet behind one CDN
+  resolves to the same record many times over, and asking per address would be a
+  small flood nobody asked for. A truncated answer is retried over TCP, which is
+  ordinary rather than exotic here: a record carrying an ECH config passes 512
+  bytes easily, and half a record parsed as a whole one is a config that fails
+  inside the handshake, where it reads as the endpoint's fault. Every answer
+  record is scanned rather than only the one whose owner matches, because an
+  answer routinely arrives as a CNAME plus the record for the canonical name —
+  refusing that would mean no ECH for every endpoint behind a CDN, which is
+  nearly every endpoint that has ECH at all.
+  It also needed the run to stop assuming one profile set for the whole fleet:
+  the config differs per endpoint, so `run` now takes the profiles *for a
+  target*. The lookup happens once, before the run — a `--watch` that re-queried
+  every tick would report a config rotation as an endpoint change, which is a
+  different finding from the one it looks like.
+  Verified against real DNS: `crypto.cloudflare.com` fetched and accepted,
+  1489 B → 1661 B, the same +172 bytes the pasted config produced;
+  `github.com` publishes none and says so once, keeping its ordinary profiles.
+  <!-- pq: prio=med size=L labels=probe,inventory ver=unreleased -->
 
 - [ ] **PQ-52 — ECH does not decide the class**: it is findings and a hint, on
   the pattern `--per-group` established — no real client is ECH-only, so an

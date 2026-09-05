@@ -115,7 +115,7 @@ func watchTick(w io.Writer, prev, cur []verdict.Report, now time.Time) int {
 // context is cancelled, the tick in flight finishes, nothing is left half
 // printed.
 func watchLoop(ctx context.Context, w io.Writer, d probe.Dialer, targets []probe.Target,
-	profiles []clientprofile.Profile, opt verdict.Options, concurrency int,
+	profilesFor func(probe.Target) []clientprofile.Profile, opt verdict.Options, concurrency int,
 	every time.Duration, prev []verdict.Report, textfile string) int {
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
@@ -133,7 +133,7 @@ func watchLoop(ctx context.Context, w io.Writer, d probe.Dialer, targets []probe
 			return 0
 		case <-ticker.C:
 			opt.Now = time.Now()
-			cur := run(ctx, d, targets, profiles, opt, concurrency)
+			cur := run(ctx, d, targets, profilesFor, opt, concurrency)
 			// A cancelled tick produces failures that are ours, not the
 			// endpoints', and printing them as transitions would be a lie.
 			if ctx.Err() != nil {
@@ -371,6 +371,13 @@ flags:
                            credential (a MySQL SSLRequest stops exactly where
                            the login would start). Implicit TLS ports (465, 993,
                            6514) need none of this
+  --ech                    also dial the same client offering Encrypted Client
+                           Hello, taking each endpoint's config from the ech=
+                           parameter of its HTTPS DNS record — one lookup per
+                           name. An endpoint that publishes none keeps the
+                           ordinary profiles and says so, which is not a failure
+  --dns HOST:PORT          resolver to ask for that record (default: the system
+                           resolvers from /etc/resolv.conf)
   --ech-config BASE64      also dial the same client offering Encrypted Client
                            Hello with this ECHConfigList — the ech= value of
                            the endpoint's HTTPS DNS record. Dialled as a pair,
@@ -554,7 +561,8 @@ func cmdProfiles() int {
 type probeFlags struct {
 	profiles, groupSet, invFile, groups, listFile *string
 	port, sni, alpn, starttls, socks5             *string
-	network, echConfig                            *string
+	network, echConfig, dns                       *string
+	echLookup                                     *bool
 	textfile, baseline, minSev, exitOn            *string
 	perGroup, sizeSweep, alpnCheck, perAddress    *bool
 	confirm, asMarkdown, asJSON                   *bool
@@ -584,6 +592,8 @@ func newProbeFlags() (*flag.FlagSet, *probeFlags) {
 	o.socks5 = fs.String("socks5", "", "reach endpoints through a no-auth SOCKS5 proxy")
 	o.network = fs.String("net", "", "pin the address family: tcp4 or tcp6")
 	o.echConfig = fs.String("ech-config", "", "also dial with Encrypted Client Hello, using this base64 ECHConfigList")
+	o.echLookup = fs.Bool("ech", false, "also dial with Encrypted Client Hello, taking each config from DNS")
+	o.dns = fs.String("dns", "", "resolver for --ech, as host:port (default: the system resolvers)")
 	o.timeout = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
 	o.confirm = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
 	o.concurrency = fs.Int("concurrency", 8, "endpoints in flight")
@@ -606,7 +616,7 @@ func cmdProbe(args []string) int {
 	groupSet, perAddress, invFile, groups := o.groupSet, o.perAddress, o.invFile, o.groups
 	listFile, port, sni, alpn := o.listFile, o.port, o.sni, o.alpn
 	starttls, socks5, timeout, confirm := o.starttls, o.socks5, o.timeout, o.confirm
-	network, echConfig := o.network, o.echConfig
+	network, echConfig, echLookup, dns := o.network, o.echConfig, o.echLookup, o.dns
 	concurrency, textfile, watch, baseline := o.concurrency, o.textfile, o.watch, o.baseline
 	asMarkdown, asJSON, asFindings := o.asMarkdown, o.asJSON, o.findings
 	minSev, exitOn, expWarn, expBad := o.minSev, o.exitOn, o.expWarn, o.expBad
@@ -631,6 +641,10 @@ func cmdProbe(args []string) int {
 	echList, echErr := parseECHConfig(*echConfig)
 	if echErr != nil {
 		fmt.Fprintln(os.Stderr, "pqprobe:", echErr)
+		return 2
+	}
+	if err := validECHFlags(echList, *echLookup); err != nil {
+		fmt.Fprintln(os.Stderr, "pqprobe:", err)
 		return 2
 	}
 	if !probe.ValidNet(*network) {
@@ -739,7 +753,15 @@ func cmdProbe(args []string) int {
 	opt.ExpiryWarnDays, opt.ExpiryBadDays = *expWarn, *expBad
 	opt.Now = time.Now()
 
-	reps := run(context.Background(), dialer, targets, sel, opt, *concurrency)
+	// The ECH configs are looked up once, before the run: a --watch that
+	// re-queried DNS every tick would report a config change as an endpoint
+	// change, which is a different finding from the one it looks like.
+	profilesFor := func(probe.Target) []clientprofile.Profile { return sel }
+	if *echLookup {
+		profilesFor = echProfilesFor(context.Background(), os.Stderr, targets, *dns, sel)
+	}
+
+	reps := run(context.Background(), dialer, targets, profilesFor, opt, *concurrency)
 	if *perAddress {
 		addressFindings(names, reps)
 	}
@@ -785,7 +807,7 @@ func cmdProbe(args []string) int {
 	// The first report is out; from here only what moves (PQ-13). It runs until
 	// interrupted, so nothing below this line happens during a watch.
 	if *watch > 0 {
-		return watchLoop(context.Background(), os.Stdout, dialer, targets, sel, opt,
+		return watchLoop(context.Background(), os.Stdout, dialer, targets, profilesFor, opt,
 			*concurrency, *watch, reps, *textfile)
 	}
 
@@ -806,7 +828,7 @@ func cmdProbe(args []string) int {
 // The profiles of one endpoint are dialled in sequence, deliberately: they are
 // the same endpoint, and three connections landing at once is how a probe
 // starts measuring a connection limit instead of a capability.
-func run(ctx context.Context, d probe.Dialer, targets []probe.Target, profiles []clientprofile.Profile, opt verdict.Options, concurrency int) []verdict.Report {
+func run(ctx context.Context, d probe.Dialer, targets []probe.Target, profilesFor func(probe.Target) []clientprofile.Profile, opt verdict.Options, concurrency int) []verdict.Report {
 	if concurrency < 1 {
 		concurrency = 1
 	}
@@ -821,7 +843,7 @@ func run(ctx context.Context, d probe.Dialer, targets []probe.Target, profiles [
 			defer func() { <-sem }()
 			var results []probe.Result
 			sweepStopped := false
-			for _, p := range profiles {
+			for _, p := range profilesFor(t) {
 				// Once a padded hello has gone unanswered, the sizes above it
 				// are a foregone conclusion and four more connections.
 				if sweepStopped && clientprofile.IsSizeProbe(p.Name) {
@@ -925,6 +947,56 @@ func collect(args []string, listFile, invFile string, groups []string, port, sni
 	return out, errs
 }
 
+// validECHFlags refuses the two sources of an ECH config at once.
+//
+// They answer different questions — one asks what this endpoint publishes, the
+// other what happens when it is offered a config somebody chose — and a silent
+// precedence rule would report a run as if it had asked the other one.
+func validECHFlags(list []byte, lookup bool) error {
+	if len(list) > 0 && lookup {
+		return errors.New("--ech takes the config from each endpoint's HTTPS record and --ech-config takes the one you pass; pick one, because they answer different questions")
+	}
+	return nil
+}
+
+// echProfilesFor looks up the ECH config of every distinct server name and
+// returns the profile set each target should be dialled with (PQ-51).
+//
+// One lookup per *name*, not per target: a fleet behind one CDN resolves to the
+// same record many times over, and a run that asked once per address would be a
+// small DNS flood nobody asked for. A name with nothing published keeps the
+// ordinary profile set and says so once — most endpoints are in that state, and
+// it is not a failure of anything.
+func echProfilesFor(ctx context.Context, w io.Writer, targets []probe.Target, at string,
+	base []clientprofile.Profile) func(probe.Target) []clientprofile.Profile {
+
+	byName := map[string][]clientprofile.Profile{}
+	for _, t := range targets {
+		name := t.ServerName()
+		if _, done := byName[name]; done {
+			continue
+		}
+		if net.ParseIP(name) != nil {
+			fmt.Fprintf(w, "pqprobe: %s has no name to look up an ECH config for; dial it with =sni or pass --ech-config\n", name)
+			byName[name] = base
+			continue
+		}
+		list, err := probe.LookupECHConfig(ctx, at, name)
+		if err != nil {
+			fmt.Fprintln(w, "pqprobe:", err)
+			byName[name] = base
+			continue
+		}
+		byName[name] = append(append([]clientprofile.Profile{}, base...), clientprofile.ECHProbes(list)...)
+	}
+	return func(t probe.Target) []clientprofile.Profile {
+		if ps, ok := byName[t.ServerName()]; ok {
+			return ps
+		}
+		return base
+	}
+}
+
 // parseECHConfig decodes the base64 ECHConfigList --ech-config takes — the
 // value an HTTPS DNS record publishes as `ech=` (PQ-50).
 //
@@ -1010,7 +1082,7 @@ func takesValue(flagArg string) bool {
 	case "profile", "inventory", "group", "list", "port", "sni", "alpn",
 		"timeout", "concurrency", "min-severity", "exit-on", "expiry-warn", "expiry-bad",
 		"baseline", "groups", "socks5", "watch", "textfile", "starttls", "net",
-		"ech-config":
+		"ech-config", "dns":
 		return true
 	}
 	return false

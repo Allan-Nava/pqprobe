@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**52 items · 50 shipped · 2 open · 7 milestones.**
+**52 items · 51 shipped · 1 open · 7 milestones.**
 
 ## At a glance
 
@@ -18,13 +18,12 @@
 | **M4** — Later | `ongoing` | later | `##########` 100% | 0 | 7 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 | **M6** — Reach the rest of the fleet | `v0.32.0` | shipped | `##########` 100% | 0 | 5 |
-| **M7** — Encrypted Client Hello | `v0.33.0` | **now** | `###.......` 33% | 2 | 1 |
+| **M7** — Encrypted Client Hello | `v0.33.0` | **now** | `#######...` 67% | 1 | 2 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-51** — The config comes from DNS, not from a paste · `med` · size `L` · probe,inventory (M7, target `v0.33.0`)
 - **PQ-52** — ECH does not decide the class · `med` · size `S` · verdict,output,docs (M7, target `v0.33.0`)
 
 ## Milestones
@@ -122,26 +121,26 @@ Target `v0.32.0` · shipped · 0 open · 5 shipped · `##########` 100%
 
 ### M7 — Encrypted Client Hello
 
-Target `v0.33.0` · **now** · 2 open · 1 shipped · `###.......` 33%
+Target `v0.33.0` · **now** · 1 open · 2 shipped · `#######...` 67%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-51** — The config comes from DNS, not from a paste | med | L | probe,inventory | open |
 | **PQ-52** — ECH does not decide the class | med | S | verdict,output,docs | open |
 | **PQ-50** — ECH as a capability class | high | M | profile,probe | done, unreleased |
+| **PQ-51** — The config comes from DNS, not from a paste | med | L | probe,inventory | done, unreleased |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
 | `docs` | 8 | 1 |
-| `inventory` | 4 | 1 |
 | `output` | 7 | 1 |
-| `probe` | 17 | 1 |
 | `verdict` | 7 | 1 |
 | `cli` | 8 | 0 |
 | `delivery` | 6 | 0 |
 | `integration` | 3 | 0 |
+| `inventory` | 4 | 0 |
+| `probe` | 17 | 0 |
 | `profile` | 6 | 0 |
 | `project` | 6 | 0 |
 | `release` | 5 | 0 |

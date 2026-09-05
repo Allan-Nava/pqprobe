@@ -812,3 +812,40 @@ func TestECHConfigFlagTakesBase64AndValidatesIt(t *testing.T) {
 		t.Error("--ech-config is not in --help")
 	}
 }
+
+// PQ-51. `--ech` takes the config from the endpoint's own HTTPS record, which
+// is the only spelling that works on a fleet. Giving both it and a pasted
+// config is a usage error rather than a silent precedence rule: the two answer
+// different questions, and a run that quietly picked one would be reported as
+// if it had asked the other.
+func TestECHLookupFlagsAreExclusiveAndDocumented(t *testing.T) {
+	if takesValue("--ech") {
+		t.Error("--ech takes no value: the config comes from the name being probed")
+	}
+	if !takesValue("--dns") {
+		t.Error("--dns takes a resolver address")
+	}
+	got := permute([]string{"origin.example", "--ech", "--dns", "9.9.9.9:53"})
+	want := []string{"--ech", "--dns", "9.9.9.9:53", "origin.example"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("permute = %v, want %v", got, want)
+	}
+
+	if err := validECHFlags([]byte{0, 0}, true); err == nil {
+		t.Error("--ech and --ech-config together must be an error")
+	}
+	if err := validECHFlags(nil, true); err != nil {
+		t.Errorf("--ech alone: %v", err)
+	}
+	if err := validECHFlags([]byte{0, 0}, false); err != nil {
+		t.Errorf("--ech-config alone: %v", err)
+	}
+
+	var b strings.Builder
+	usageTo(&b)
+	for _, f := range []string{"--ech", "--dns"} {
+		if !strings.Contains(b.String(), f) {
+			t.Errorf("%s is not in --help", f)
+		}
+	}
+}
