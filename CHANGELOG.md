@@ -6,6 +6,41 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.33.0] - 2026-09-05
+
+### Added
+
+- **`--ech-config` — Encrypted Client Hello as a capability class (PQ-50).** ECH
+  is the question this tool always asks, one layer out: a client capability that
+  makes the ClientHello **bigger**, on top of a hybrid hello already sitting near
+  the MTU, and Chrome and Firefox send it wherever DNS advertises a config.
+
+  It is dialled as a pair — `ech:off` and `ech:on`, both pinned to TLS 1.3 — so
+  the only difference on the wire is ECH itself. ECH requires 1.3, so a single
+  profile compared against plain `pq-preferred` would have differed in two things
+  at once, which is precisely the mistake PQ-25 made and recorded. Acceptance is
+  read from `ConnectionState.ECHAccepted`, never inferred from a completed
+  handshake: a server that ignores the extension completes one too, with the
+  server name still in the clear.
+
+  Real numbers: `crypto.cloudflare.com` accepts it, 1489 B → 1661 B (**+172
+  bytes**); `github.com` declines the same config. Declining is the new
+  non-abrupt kind `ech-reject`, an `OK` finding, and **no change of class** — no
+  client requires ECH, so an endpoint that does not offer it has failed nothing.
+  The one case that earns a WARN is the size story: the control connects and the
+  ECH twin is cut off.
+
+### Fixed
+
+- **A declined ECH is not a certificate problem.** Running it turned up what no
+  reading of the API would have: when a peer declines ECH, Go verifies its
+  certificate against the config's *public name* before trusting the retry
+  configs, and `InsecureSkipVerify` does not disable that path. An endpoint
+  behind a private CA therefore answered the ECH probe with a verification
+  error — the capability-versus-certificate confusion this tool exists to avoid.
+  It is now classified as what it is, a declined ECH, with the reason spelled out
+  in the error text.
+
 ## [0.32.1] - 2026-09-05
 
 ### Changed

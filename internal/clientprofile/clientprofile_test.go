@@ -332,3 +332,42 @@ func TestGroupNamesRoundTripThroughTheFlag(t *testing.T) {
 		}
 	}
 }
+
+// PQ-50. ECH is offered as a *pair*, and the pair is the whole point: PQ-25
+// learned this the hard way, when an ALPN probe that also pinned a TLS version
+// produced a smaller hello than the bare one and compared two variables at
+// once. ECH requires TLS 1.3, so its twin has to require it too.
+func TestECHProbesDifferOnlyInECH(t *testing.T) {
+	list := []byte{0xde, 0xad, 0xbe, 0xef}
+	ps := ECHProbes(list)
+	if len(ps) != 2 {
+		t.Fatalf("got %d profiles, want the pair", len(ps))
+	}
+	off, on := ps[0], ps[1]
+
+	for _, p := range ps {
+		if !IsECHProbe(p.Name) {
+			t.Errorf("%s is not recognised as an ECH probe, so the verdict would grade on it", p.Name)
+		}
+		if p.MinVersion != tls.VersionTLS13 || p.MaxVersion != tls.VersionTLS13 {
+			t.Errorf("%s: versions %x..%x, want TLS 1.3 pinned on both halves", p.Name, p.MinVersion, p.MaxVersion)
+		}
+	}
+	if off.Name == on.Name {
+		t.Fatal("the two halves need different names, or one result overwrites the other")
+	}
+
+	base, _ := ByName("pq-preferred")
+	if len(off.Groups) != len(base.Groups) {
+		t.Errorf("the twin must offer the same groups as pq-preferred, or it is measuring something else")
+	}
+
+	cfgOff := off.TLSConfig("origin.example", nil)
+	cfgOn := on.TLSConfig("origin.example", nil)
+	if len(cfgOff.EncryptedClientHelloConfigList) != 0 {
+		t.Error("the twin must not carry an ECH config: it is the control")
+	}
+	if string(cfgOn.EncryptedClientHelloConfigList) != string(list) {
+		t.Errorf("the ECH half carries %v, want the config list it was given", cfgOn.EncryptedClientHelloConfigList)
+	}
+}

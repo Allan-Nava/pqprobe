@@ -645,6 +645,7 @@ pqprobe version [--short] <span class="c-dim"># --short: the version alone, for 
           <tr><td><code>--sni NAME</code></td><td>—</td><td>server name for every target</td></tr>
           <tr><td><code>--alpn a,b</code></td><td>none</td><td>ALPN protocols to offer</td></tr>
           <tr><td><code>--starttls PROTO</code></td><td>—</td><td>upgrade to TLS through the protocol's own negotiation first: <code>smtp</code>, <code>imap</code>, <code>postgres</code>, <code>mysql</code></td></tr>
+          <tr><td><code>--ech-config BASE64</code></td><td>—</td><td>also dial the same client offering Encrypted Client Hello with this <code>ECHConfigList</code> — the <code>ech=</code> value of the endpoint's HTTPS DNS record; reported, never graded</td></tr>
           <tr><td><code>--net tcp4|tcp6</code></td><td>both</td><td>pin the address family every connection uses; the family is stated in the report, and one excluded here is never a grade against the endpoint</td></tr>
           <tr><td><code>--socks5 HOST:PORT</code></td><td>—</td><td>reach every endpoint through a no-auth SOCKS5 proxy (HTTP <code>CONNECT</code> is a request and is not supported)</td></tr>
           <tr><td><code>--timeout D</code></td><td><code>10s</code></td><td>per-handshake timeout</td></tr>

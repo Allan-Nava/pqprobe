@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"errors"
 	"flag"
 	"reflect"
@@ -773,5 +774,41 @@ func TestTargetsComeFromStdin(t *testing.T) {
 	}
 	if !errors.Is(errs[0], errStdinTwice) {
 		t.Fatalf("err = %v, want the usage sentinel: the command as written cannot do what it says, and a run that continued would look complete", errs[0])
+	}
+}
+
+// PQ-50. --ech-config takes the base64 an HTTPS DNS record publishes. Its own
+// input is the one thing pqprobe can validate before dialling, and a paste that
+// is not an ECHConfigList must be a usage error: a handshake that fails for a
+// reason nobody can see would be read as the endpoint's fault, which is the
+// confusion this tool exists to prevent.
+func TestECHConfigFlagTakesBase64AndValidatesIt(t *testing.T) {
+	if !takesValue("--ech-config") {
+		t.Fatal("--ech-config takes a value")
+	}
+	got := permute([]string{"origin.example", "--ech-config", "AEX+DQ=="})
+	want := []string{"--ech-config", "AEX+DQ==", "origin.example"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("permute = %v, want %v", got, want)
+	}
+
+	// A well-formed list: a two-byte length that covers the rest.
+	list := []byte{0, 4, 0xfe, 0x0d, 0, 0}
+	if _, err := parseECHConfig(base64.StdEncoding.EncodeToString(list)); err != nil {
+		t.Errorf("a valid ECHConfigList was refused: %v", err)
+	}
+	if _, err := parseECHConfig(""); err != nil {
+		t.Errorf("no flag is not an error: %v", err)
+	}
+	for _, bad := range []string{"not base64!", "AAAA", base64.StdEncoding.EncodeToString([]byte{0, 9, 1, 2})} {
+		if _, err := parseECHConfig(bad); err == nil {
+			t.Errorf("%q was accepted; a config that is not one fails later, where it reads as the endpoint's fault", bad)
+		}
+	}
+
+	var b strings.Builder
+	usageTo(&b)
+	if !strings.Contains(b.String(), "--ech-config") {
+		t.Error("--ech-config is not in --help")
 	}
 }

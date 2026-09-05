@@ -999,3 +999,72 @@ func TestSizeFindingSilentWhenNoHelloReachedThePeer(t *testing.T) {
 		t.Fatalf("want no size finding when no hello was written, got %s: %s", f.Status, f.Message)
 	}
 }
+
+// PQ-50. ECH is a paired measurement, like ALPN: the control and the same
+// client offering Encrypted Client Hello. What it reports is a cost in bytes
+// and whether the peer took it — never a grade, because no real client requires
+// ECH and an endpoint that does not offer it has failed nothing.
+func TestECHIsReportedAndNeverDecidesTheClass(t *testing.T) {
+	base := []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true),
+		ok("pq-only", "TLS 1.3", "X25519MLKEM768", true),
+	}
+
+	// Accepted: the interesting number is what it costs.
+	off := ok("ech:off", "TLS 1.3", "X25519MLKEM768", true)
+	off.HelloBytes = 1507
+	on := ok("ech:on", "TLS 1.3", "X25519MLKEM768", true)
+	on.HelloBytes = 1834
+	on.ECHAccepted = true
+
+	rep := Evaluate("h:443", append(append([]probe.Result{}, base...), off, on), opts())
+	if rep.Class != PQReady {
+		t.Fatalf("class = %s, want pq-ready: the ECH pair must not move the class", rep.Class)
+	}
+	f := find(t, rep, "ech")
+	if f.Status != finding.OK {
+		t.Errorf("status = %s, want OK", f.Status)
+	}
+	if f.Value == nil || *f.Value != 327 {
+		t.Fatalf("value = %v, want the 327 bytes ECH added — a consumer must not parse the message", f.Value)
+	}
+	if f.Unit != "bytes" {
+		t.Errorf("unit = %q, want bytes", f.Unit)
+	}
+
+	// Declined: most endpoints, today. Still not a grade, and still not silence
+	// — somebody asked the question and deserves the answer.
+	declined := fail("ech:on", probe.KindECHReject)
+	rep = Evaluate("h:443", append(append([]probe.Result{}, base...), off, declined), opts())
+	if rep.Class != PQReady {
+		t.Fatalf("class = %s, want pq-ready: declining ECH is not a failure of any client class", rep.Class)
+	}
+	f = find(t, rep, "ech")
+	if f.Status != finding.OK {
+		t.Errorf("status = %s, want OK: no client requires ECH, so this is information", f.Status)
+	}
+
+	// Cut off with ECH while the identical hello without it connects: that is
+	// the size story again, and the only case worth a WARN.
+	dropped := fail("ech:on", probe.KindTimeout)
+	rep = Evaluate("h:443", append(append([]probe.Result{}, base...), off, dropped), opts())
+	f = find(t, rep, "ech")
+	if f.Status != finding.WARN {
+		t.Errorf("status = %s, want WARN: the same client with a bigger hello was cut off", f.Status)
+	}
+	if rep.Class != PQReady {
+		t.Fatalf("class = %s: even then, ECH does not decide the class", rep.Class)
+	}
+	if !strings.Contains(f.Hint, "size") && !strings.Contains(f.Hint, "MTU") {
+		t.Errorf("hint = %q, want it to name the size problem and the next step", f.Hint)
+	}
+
+	// And no pair, no sentence.
+	rep = Evaluate("h:443", base, opts())
+	for _, f := range rep.Finding {
+		if f.Check == "ech" {
+			t.Fatal("nothing was asked about ECH; a finding about it would be a claim nobody measured")
+		}
+	}
+}

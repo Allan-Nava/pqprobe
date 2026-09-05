@@ -11,6 +11,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
@@ -370,6 +371,13 @@ flags:
                            credential (a MySQL SSLRequest stops exactly where
                            the login would start). Implicit TLS ports (465, 993,
                            6514) need none of this
+  --ech-config BASE64      also dial the same client offering Encrypted Client
+                           Hello with this ECHConfigList — the ech= value of
+                           the endpoint's HTTPS DNS record. Dialled as a pair,
+                           with and without, so the only difference measured is
+                           ECH itself; it reports what ECH costs on the wire and
+                           whether the peer accepted it, and never decides the
+                           class
   --net tcp4|tcp6          pin the address family every connection uses; the
                            default lets the resolver choose, which is how a
                            dual-stack name gets graded on whichever address it
@@ -546,7 +554,7 @@ func cmdProfiles() int {
 type probeFlags struct {
 	profiles, groupSet, invFile, groups, listFile *string
 	port, sni, alpn, starttls, socks5             *string
-	network                                       *string
+	network, echConfig                            *string
 	textfile, baseline, minSev, exitOn            *string
 	perGroup, sizeSweep, alpnCheck, perAddress    *bool
 	confirm, asMarkdown, asJSON                   *bool
@@ -575,6 +583,7 @@ func newProbeFlags() (*flag.FlagSet, *probeFlags) {
 	o.starttls = fs.String("starttls", "", "upgrade to TLS through this protocol first: smtp, imap, postgres, mysql")
 	o.socks5 = fs.String("socks5", "", "reach endpoints through a no-auth SOCKS5 proxy")
 	o.network = fs.String("net", "", "pin the address family: tcp4 or tcp6")
+	o.echConfig = fs.String("ech-config", "", "also dial with Encrypted Client Hello, using this base64 ECHConfigList")
 	o.timeout = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
 	o.confirm = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
 	o.concurrency = fs.Int("concurrency", 8, "endpoints in flight")
@@ -597,7 +606,7 @@ func cmdProbe(args []string) int {
 	groupSet, perAddress, invFile, groups := o.groupSet, o.perAddress, o.invFile, o.groups
 	listFile, port, sni, alpn := o.listFile, o.port, o.sni, o.alpn
 	starttls, socks5, timeout, confirm := o.starttls, o.socks5, o.timeout, o.confirm
-	network := o.network
+	network, echConfig := o.network, o.echConfig
 	concurrency, textfile, watch, baseline := o.concurrency, o.textfile, o.watch, o.baseline
 	asMarkdown, asJSON, asFindings := o.asMarkdown, o.asJSON, o.findings
 	minSev, exitOn, expWarn, expBad := o.minSev, o.exitOn, o.expWarn, o.expBad
@@ -617,6 +626,11 @@ func cmdProbe(args []string) int {
 	if !probe.ValidStartTLS(*starttls) {
 		fmt.Fprintf(os.Stderr, "pqprobe: unknown --starttls protocol %q (have: %s)\n",
 			*starttls, strings.Join(probe.StartTLSProtocols(), ", "))
+		return 2
+	}
+	echList, echErr := parseECHConfig(*echConfig)
+	if echErr != nil {
+		fmt.Fprintln(os.Stderr, "pqprobe:", echErr)
 		return 2
 	}
 	if !probe.ValidNet(*network) {
@@ -672,6 +686,9 @@ func cmdProbe(args []string) int {
 	}
 	if *alpnCheck {
 		sel = append(sel, clientprofile.ALPNProbe())
+	}
+	if len(echList) > 0 {
+		sel = append(sel, clientprofile.ECHProbes(echList)...)
 	}
 	if *groupSet != "" {
 		custom, unknown := clientprofile.CustomProfile(splitList(*groupSet))
@@ -908,6 +925,31 @@ func collect(args []string, listFile, invFile string, groups []string, port, sni
 	return out, errs
 }
 
+// parseECHConfig decodes the base64 ECHConfigList --ech-config takes — the
+// value an HTTPS DNS record publishes as `ech=` (PQ-50).
+//
+// It is validated here because this is pqprobe's *own* input, and it is the one
+// thing that can be checked before anything is dialled: a paste that is not a
+// config list would otherwise fail inside the handshake, where the report reads
+// as though the endpoint had done something wrong.
+func parseECHConfig(s string) ([]byte, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil, nil
+	}
+	raw, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("--ech-config is not base64: %w (it is the `ech=` value of the endpoint's HTTPS DNS record)", err)
+	}
+	if len(raw) < 4 {
+		return nil, fmt.Errorf("--ech-config decodes to %d bytes, which is too short for an ECHConfigList", len(raw))
+	}
+	if n := int(raw[0])<<8 | int(raw[1]); n != len(raw)-2 {
+		return nil, fmt.Errorf("--ech-config says it carries %d bytes of configs and has %d: that is not an ECHConfigList", n, len(raw)-2)
+	}
+	return raw, nil
+}
+
 func splitList(s string) []string {
 	var out []string
 	for _, p := range strings.Split(s, ",") {
@@ -967,7 +1009,8 @@ func takesValue(flagArg string) bool {
 	switch name {
 	case "profile", "inventory", "group", "list", "port", "sni", "alpn",
 		"timeout", "concurrency", "min-severity", "exit-on", "expiry-warn", "expiry-bad",
-		"baseline", "groups", "socks5", "watch", "textfile", "starttls", "net":
+		"baseline", "groups", "socks5", "watch", "textfile", "starttls", "net",
+		"ech-config":
 		return true
 	}
 	return false

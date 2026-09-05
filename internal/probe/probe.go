@@ -59,6 +59,11 @@ const (
 	KindReset Kind = "reset"
 	// KindEOF: the peer closed without saying anything.
 	KindEOF Kind = "eof"
+	// KindECHReject: the peer declined Encrypted Client Hello and answered with
+	// a retry config. Never abrupt: it parsed the hello, found no key of its own
+	// for it, and said so — an endpoint that simply does not do ECH, which is
+	// most of them, and not one that chokes on a larger hello.
+	KindECHReject Kind = "ech-reject"
 	// KindAlert: a TLS alert. The peer parsed the ClientHello and said no.
 	KindAlert Kind = "alert"
 	// KindRecord: the answer was not a TLS record at all (a plaintext HTTP
@@ -155,6 +160,11 @@ type Result struct {
 	// connected. The endpoint works and is unstable, which is a third state and
 	// must not render as either of the other two.
 	Flapped bool `json:"flapped,omitempty"`
+	// ECHAccepted is true when the peer accepted Encrypted Client Hello. Read
+	// from the connection state and never inferred: a server that ignores ECH
+	// completes the handshake too, and calling that acceptance would be a claim
+	// about privacy that is not true (PQ-50).
+	ECHAccepted bool `json:"ech_accepted,omitempty"`
 	// HelloBytes is the size on the wire of the first ClientHello record,
 	// measured rather than estimated. It is the number the whole
 	// size-intolerance conversation turns on: the hybrid hello is roughly
@@ -896,6 +906,19 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 	res.Elapsed = time.Since(start)
 	if err != nil {
 		res.Kind, res.Err = classify(err)
+		// Found by running it: when a peer declines ECH, Go verifies its
+		// certificate against the *public name* in the config before it will
+		// trust the retry configs — and `InsecureSkipVerify` does not disable
+		// that path. So a peer behind a private CA answers the ECH probe with a
+		// verification error rather than a rejection, and reading that as
+		// "something is wrong with this endpoint" would be exactly the
+		// capability-versus-certificate confusion this tool exists to avoid.
+		// It is the same event: the peer declined ECH.
+		if len(cfg.EncryptedClientHelloConfigList) > 0 && res.Kind == KindOther &&
+			strings.Contains(res.Err, "failed to verify certificate") {
+			res.Kind = KindECHReject
+			res.Err = "the peer declined ECH, and Go verified its certificate against the config's public name before trusting the retry configs (InsecureSkipVerify does not disable that): " + res.Err
+		}
 		return res
 	}
 	defer conn.Close()
@@ -908,6 +931,7 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 	res.PQ = clientprofile.IsPQ(st.CurveID)
 	res.Cipher = tls.CipherSuiteName(st.CipherSuite)
 	res.ALPN = st.NegotiatedProtocol
+	res.ECHAccepted = st.ECHAccepted
 	res.PeerChainLen = len(st.PeerCertificates)
 	for _, c := range st.PeerCertificates {
 		// len(c.Raw) is the DER the peer actually sent, not a re-encoding of the
@@ -997,6 +1021,13 @@ func classify(err error) (Kind, string) {
 	}
 	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 		return KindEOF, msg
+	}
+	// An ECH rejection is a negotiation, not a wall: the peer parsed the hello
+	// and answered with a retry config. It is checked before the alert cases
+	// because it arrives wrapped in one.
+	var echErr *tls.ECHRejectionError
+	if errors.As(err, &echErr) {
+		return KindECHReject, msg
 	}
 	var alert tls.AlertError
 	if errors.As(err, &alert) {

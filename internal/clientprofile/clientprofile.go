@@ -43,6 +43,12 @@ type Profile struct {
 	// about ALPN has to control that field, or the difference it is measuring
 	// is not the difference being tested.
 	ALPN []string
+	// ECHConfigList, when set, is a serialized ECHConfigList the client offers
+	// Encrypted Client Hello with. It is a capability of the *client* — the
+	// hello grows by a few hundred bytes and the server name leaves in the
+	// clear only as the config's public name — and Go requires TLS 1.3 for it,
+	// which is why the ECH probe is a pair rather than a single profile.
+	ECHConfigList []byte
 	// Pad is roughly how many bytes of filler to add to the ClientHello, for
 	// the size sweep. See TLSConfig: the filler is ALPN, because Go exposes no
 	// padding extension and in TLS 1.3 the cipher list is fixed.
@@ -70,6 +76,8 @@ func (p Profile) TLSConfig(serverName string, alpn []string) *tls.Config {
 		MaxVersion:         p.MaxVersion,
 		CurvePreferences:   p.Groups,
 		NextProtos:         alpn,
+
+		EncryptedClientHelloConfigList: p.ECHConfigList,
 	}
 }
 
@@ -216,6 +224,48 @@ func ALPNProbe() Profile {
 	p.Clients = "Chrome, Edge, Firefox and any CDN speaking HTTP/2 — the same capability class as pq-preferred, a slightly larger hello"
 	p.ALPN = []string{"h2", "http/1.1"}
 	return p
+}
+
+// ECHPrefix marks the two halves of the Encrypted Client Hello pair.
+const ECHPrefix = "ech:"
+
+// IsECHProbe reports whether a name is one of them. Like the group, size and
+// ALPN probes they stay out of the classification: no real client requires ECH,
+// so an endpoint that does not take it has not failed a class of client.
+func IsECHProbe(name string) bool { return strings.HasPrefix(name, ECHPrefix) }
+
+// ECHProbes are `pq-preferred` with and without Encrypted Client Hello (PQ-50).
+//
+// A pair, and for the reason PQ-25 wrote down after getting it wrong: ECH
+// requires TLS 1.3, so a single ECH profile compared against plain
+// pq-preferred would differ in *two* things — the ECH extension and the version
+// window, which changes the cipher list and therefore the hello size. Both
+// halves pin 1.3, so the only difference left on the wire is ECH itself, and
+// the byte count means something.
+//
+// The question it answers is the one this tool always asks, one layer out: ECH
+// adds a few hundred bytes to a hybrid ClientHello that already sits near the
+// MTU, and Chrome and Firefox send it today wherever DNS advertises it.
+func ECHProbes(list []byte) []Profile {
+	base, ok := ByName("pq-preferred")
+	if !ok {
+		panic("clientprofile: pq-preferred is missing")
+	}
+	base.MinVersion = tls.VersionTLS13
+	base.MaxVersion = tls.VersionTLS13
+
+	off := base
+	off.Name = ECHPrefix + "off"
+	off.Summary = "pq-preferred pinned to TLS 1.3 — the control for the ECH pair"
+	off.Clients = "the same capability class as pq-preferred; it exists so the ECH hello has something to be compared with"
+
+	on := base
+	on.Name = ECHPrefix + "on"
+	on.Summary = "the same client, offering Encrypted Client Hello"
+	on.Clients = "Chrome and Firefox wherever DNS advertises an ECH config — a larger hello again, on top of the ML-KEM key share"
+	on.ECHConfigList = list
+
+	return []Profile{off, on}
 }
 
 // CustomPrefix marks the profile built from --groups.

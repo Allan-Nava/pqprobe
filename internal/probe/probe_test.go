@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -1447,5 +1448,106 @@ func TestHasEgressIsLocalCheapAndStable(t *testing.T) {
 	}
 	if HasEgress("tcp") || HasEgress("") {
 		t.Error("only a pinned family can be answered; anything else has to be false rather than a guess")
+	}
+}
+
+// echConfig builds an ECHConfigList and the matching server key, by hand.
+//
+// There is no helper for this anywhere: the wire format is the whole contract
+// between a client and a server that have never met, so it is written out here
+// — version 0xfe0d, an X25519 HPKE key, one cipher suite — exactly as a DNS
+// HTTPS record would carry it. Building it is also what makes ECH assertable
+// offline, which is the bar every profile in this repository has had to clear.
+func echConfig(t *testing.T) ([]byte, tls.EncryptedClientHelloKey) {
+	t.Helper()
+	key, err := ecdh.X25519().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pub := key.PublicKey().Bytes()
+
+	var cfg []byte
+	be16 := func(b []byte, v int) []byte { return append(b, byte(v>>8), byte(v)) }
+
+	contents := []byte{1}               // config_id
+	contents = be16(contents, 0x0020)   // kem_id: DHKEM(X25519, HKDF-SHA256)
+	contents = be16(contents, len(pub)) // public_key
+	contents = append(contents, pub...)
+	contents = be16(contents, 4)      // cipher_suites: one suite
+	contents = be16(contents, 0x0001) // kdf_id: HKDF-SHA256
+	contents = be16(contents, 0x0001) // aead_id: AES-128-GCM
+	contents = append(contents, 0)    // maximum_name_length
+	name := "public.example"
+	contents = append(contents, byte(len(name)))
+	contents = append(contents, name...)
+	contents = be16(contents, 0) // extensions
+
+	cfg = be16(cfg, 0xfe0d) // version, draft-ietf-tls-esni-17 / final
+	cfg = be16(cfg, len(contents))
+	cfg = append(cfg, contents...)
+
+	var list []byte
+	list = be16(list, len(cfg))
+	list = append(list, cfg...)
+
+	return list, tls.EncryptedClientHelloKey{Config: cfg, PrivateKey: key.Bytes()}
+}
+
+// PQ-50. The question ECH asks is the one this tool always asks, one layer out:
+// it is a client capability that makes the ClientHello bigger, on top of a
+// hybrid hello already sitting near the MTU. Whether the peer *accepted* it is
+// read from the connection state, never inferred from the handshake having
+// worked — a server that ignores ECH completes a handshake too.
+func TestECHIsOfferedAndItsAcceptanceIsRead(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	list, key := echConfig(t)
+	tg := serveTLS(t, &tls.Config{
+		Certificates:             []tls.Certificate{cert},
+		MinVersion:               tls.VersionTLS13,
+		EncryptedClientHelloKeys: []tls.EncryptedClientHelloKey{key},
+	})
+
+	ps := clientprofile.ECHProbes(list)
+	d := Dialer{Timeout: 5 * time.Second}
+	off := d.Do(context.Background(), tg, ps[0])
+	on := d.Do(context.Background(), tg, ps[1])
+
+	if !off.OK {
+		t.Fatalf("the control handshake failed: %s (%s)", off.Err, off.Kind)
+	}
+	if !on.OK {
+		t.Fatalf("the ECH handshake failed against a server holding the key: %s (%s)", on.Err, on.Kind)
+	}
+	if !on.ECHAccepted {
+		t.Fatal("the server holds the key and the handshake completed, but acceptance was not recorded")
+	}
+	if off.ECHAccepted {
+		t.Fatal("the control offered no ECH; it cannot have been accepted")
+	}
+	if on.HelloBytes <= off.HelloBytes {
+		t.Fatalf("ECH hello = %d B, control = %d B: the extra bytes are the whole point of measuring this", on.HelloBytes, off.HelloBytes)
+	}
+}
+
+// A server that does not hold the key rejects ECH and offers a retry config.
+// That is a *negotiation*: the peer parsed the hello and answered. Reading it
+// as the peer cutting us off would file an endpoint that simply does not do ECH
+// as intolerant of large hellos.
+func TestAnECHRejectionIsCivil(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	list, _ := echConfig(t)
+	tg := serveTLS(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13})
+
+	on := clientprofile.ECHProbes(list)[1]
+	res := Dialer{Timeout: 5 * time.Second}.Do(context.Background(), tg, on)
+
+	if res.OK || res.ECHAccepted {
+		t.Fatal("no key on that server; ECH cannot have been accepted")
+	}
+	if res.Kind != KindECHReject {
+		t.Fatalf("kind = %q, want %q", res.Kind, KindECHReject)
+	}
+	if res.Kind.Abrupt() {
+		t.Fatal("an ECH rejection is an answer the peer chose to give; abrupt is the pq-intolerant bucket")
 	}
 }

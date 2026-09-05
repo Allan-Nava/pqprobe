@@ -642,7 +642,7 @@ repository exists to name. Nothing here grades a *configuration*: an endpoint
 without ECH has not failed anything, and no item in this milestone may make it
 look like it has.
 
-- [ ] **PQ-50 — ECH as a capability class**: a profile that offers Encrypted
+- [x] **PQ-50 — ECH as a capability class**: a profile that offers Encrypted
   Client Hello with a config the caller supplies (`--ech-config BASE64`), and a
   finding that says whether the peer **accepted** it — `ConnectionState.
   ECHAccepted`, not an inference from the handshake having worked. Go supports
@@ -654,7 +654,25 @@ look like it has.
   A server that declines and answers with a retry config has *negotiated* —
   `tls.ECHRejectionError`, a civil refusal in the sense `Kind.Abrupt()` already
   means — and it must never be graded as the peer choking on the hello.
-  <!-- pq: prio=high size=M labels=profile,probe -->
+  Shipped as `--ech-config BASE64` and a **pair** of profiles, `ech:off` and
+  `ech:on`, both pinned to TLS 1.3. The pair is the item's real content: ECH
+  requires 1.3, so a single ECH profile compared against plain `pq-preferred`
+  would have differed in two things at once — exactly the mistake PQ-25 made and
+  wrote down. Acceptance comes from `ConnectionState.ECHAccepted`, and the new
+  kind `ech-reject` is not abrupt.
+  Real numbers: `crypto.cloudflare.com` accepts it and the hello goes 1489 B →
+  1661 B, **+172 bytes** on top of the ML-KEM key share; `github.com` declines
+  the same config, `OK`, class untouched.
+  Running it also turned up something no reading of the API would have shown:
+  when a peer declines ECH, Go verifies its certificate against the config's
+  *public name* before trusting the retry configs, and `InsecureSkipVerify` does
+  not disable that path. An endpoint behind a private CA therefore answers with
+  a verification error, which is the capability-versus-certificate confusion
+  this repository exists to avoid — so it is classified as the same event, a
+  declined ECH, and the error text says why. The offline test builds an
+  ECHConfigList by hand, wire format and all, because there is no helper for it
+  anywhere and being assertable offline is the bar every profile here clears.
+  <!-- pq: prio=high size=M labels=profile,probe ver=unreleased -->
 
 - [ ] **PQ-51 — The config comes from DNS, not from a paste**: pasting base64 is
   not a fleet workflow, and the ECH config lives in the HTTPS resource record

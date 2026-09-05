@@ -190,7 +190,7 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	// single-group ClientHello answers "does the peer accept this group", which
 	// is not the question the class answers — no realistic client dials that
 	// way, and grading on it would call a peer intolerant for declining P-521.
-	var client, groups, sizes []probe.Result
+	var client, groups, sizes, ech []probe.Result
 	var alpnPair *probe.Result
 	for i, r := range results {
 		switch {
@@ -200,6 +200,8 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 			sizes = append(sizes, r)
 		case clientprofile.IsALPNProbe(r.Profile):
 			alpnPair = &results[i]
+		case clientprofile.IsECHProbe(r.Profile):
+			ech = append(ech, r)
 		default:
 			client = append(client, r)
 		}
@@ -225,6 +227,10 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 		rep.Finding = append(rep.Finding, f)
 	}
 	if f, ok := sizeFinding(target, sizes); ok {
+		rep.Finding = append(rep.Finding, f)
+	}
+
+	if f, ok := echFinding(target, ech); ok {
 		rep.Finding = append(rep.Finding, f)
 	}
 
@@ -516,6 +522,86 @@ func addressOf(target string) string {
 		return target[:i]
 	}
 	return target
+}
+
+// echFinding reports what Encrypted Client Hello costs here and whether the
+// peer took it (PQ-50).
+//
+// It is never a grade. No real client requires ECH — a browser offers it where
+// DNS advertises a config and connects perfectly well where it does not — so an
+// endpoint that declines has failed no class of client, and moving it to a
+// worse bucket would be a claim about capability that is not true. What the
+// pair *can* say is a size sentence: ECH adds a few hundred bytes to a hybrid
+// hello already near the MTU, and a peer that takes the control and drops the
+// ECH twin has a threshold sitting between the two.
+func echFinding(target string, results []probe.Result) (finding.Finding, bool) {
+	var off, on *probe.Result
+	for i, r := range results {
+		switch r.Profile {
+		case clientprofile.ECHPrefix + "off":
+			off = &results[i]
+		case clientprofile.ECHPrefix + "on":
+			on = &results[i]
+		}
+	}
+	if off == nil || on == nil {
+		return finding.Finding{}, false
+	}
+
+	sizes := ""
+	if off.HelloBytes > 0 && on.HelloBytes > 0 {
+		sizes = fmt.Sprintf(" (%d B against %d B)", off.HelloBytes, on.HelloBytes)
+	}
+
+	switch {
+	case on.OK && on.ECHAccepted:
+		diff := on.HelloBytes - off.HelloBytes
+		return finding.Finding{
+			Check:   "ech",
+			Target:  target,
+			Status:  finding.OK,
+			Message: fmt.Sprintf("Encrypted Client Hello accepted, %d bytes larger than the same hello without it%s", diff, sizes),
+			Value:   finding.Num(float64(diff)),
+			Unit:    "bytes",
+			Hint:    "the server name is no longer in the clear for clients that offer ECH, and this is what it costs on the wire — the number to watch as the hybrid key share and the certificate chain grow into the same 1500-byte budget",
+		}, true
+
+	case off.OK && !on.OK && on.Kind.Abrupt():
+		diff := on.HelloBytes - off.HelloBytes
+		f := finding.Finding{
+			Check:   "ech",
+			Target:  target,
+			Status:  finding.WARN,
+			Message: fmt.Sprintf("the same client connects without ECH and is cut off with it%s", sizes),
+			Unit:    "bytes",
+			Hint:    "that is a size threshold, not an ECH policy: the peer answered the smaller hello and never answered the larger one. Chrome and Firefox send ECH wherever DNS advertises a config, so this breaks real browsers while a bare probe keeps saying the endpoint is fine — run --size-sweep to find where the MTU or the middlebox draws the line",
+		}
+		if diff > 0 {
+			f.Value = finding.Num(float64(diff))
+		}
+		return f, true
+
+	case !on.OK:
+		// Declined, which is most endpoints today: the peer parsed the hello
+		// and said it holds no key for that config. An answer, not a fault.
+		return finding.Finding{
+			Check:   "ech",
+			Target:  target,
+			Status:  finding.OK,
+			Message: fmt.Sprintf("Encrypted Client Hello was declined by the peer (%s)", on.Kind),
+			Hint:    "nothing is wrong: no client requires ECH, and one that offers it falls back. The config offered here has to be the one this endpoint publishes in DNS, or a rejection says nothing about the endpoint at all",
+		}, true
+
+	case on.OK && !on.ECHAccepted:
+		return finding.Finding{
+			Check:   "ech",
+			Target:  target,
+			Status:  finding.OK,
+			Message: fmt.Sprintf("the handshake completed but Encrypted Client Hello was not accepted%s", sizes),
+			Hint:    "the peer ignored the extension rather than refusing it, so the server name still travelled in the clear — read from the connection state, because a completed handshake is not acceptance",
+		}, true
+	}
+	return finding.Finding{}, false
 }
 
 // alpnFinding compares the same client with and without an ALPN list (PQ-25).

@@ -44,6 +44,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--sni NAME` | — | server name for every target |
 | `--alpn a,b` | none | ALPN protocols to offer |
 | `--starttls PROTO` | — | upgrade to TLS through the protocol's own negotiation first: `smtp`, `imap`, `postgres`, `mysql` |
+| `--ech-config BASE64` | — | also dial the same client offering Encrypted Client Hello with this `ECHConfigList` |
 | `--net tcp4\|tcp6` | both | pin the address family every connection uses; the family is stated in the report |
 | `--socks5 HOST:PORT` | — | reach every endpoint through a no-auth SOCKS5 proxy |
 | `--timeout D` | `10s` | per-handshake timeout |
@@ -160,6 +161,41 @@ A peer that will not upgrade gets the class **`no-tls`** with an `ERROR`, never
 `pq-intolerant`: a relay with TLS switched off has refused *TLS*, and grading
 that as a post-quantum failure would send somebody looking for a middlebox that
 does not exist.
+
+## Encrypted Client Hello
+
+```sh
+pqprobe probe crypto.cloudflare.com --ech-config "$(dig +short -t TYPE65 crypto.cloudflare.com | …)"
+```
+
+ECH is the question this tool always asks, one layer out: a **client capability
+that makes the ClientHello bigger**, on top of a hybrid hello already sitting
+near the MTU. Chrome and Firefox send it wherever DNS advertises a config.
+
+It is dialled as a **pair** — the same client with and without ECH, both pinned
+to TLS 1.3 — so the only difference on the wire is ECH itself. (PQ-25 learned
+that the hard way: a probe that also changed the version window changed the
+cipher list, and compared two variables at once.) Acceptance is read from the
+connection state, never inferred from the handshake having completed: a server
+that ignores the extension completes one too, with the server name still in the
+clear.
+
+Real numbers, September 2026: `crypto.cloudflare.com` accepts it and the hello
+goes from 1489 B to 1661 B — **+172 bytes** on top of the ML-KEM key share.
+`github.com` declines the same config, which is `ech-reject`, an `OK` finding
+and no change of class: no client requires ECH, so an endpoint that does not
+offer it has failed nothing. The one case that earns a `WARN` is the size story
+— the control connects and the ECH twin is cut off.
+
+The config has to be the one that endpoint publishes, or a rejection says
+nothing about it. Fetching it from DNS is `PQ-51`; today it is pasted.
+
+One surprise worth knowing: when a peer declines ECH, Go verifies its
+certificate against the config's **public name** before trusting the retry
+configs, and `InsecureSkipVerify` does not disable that. An endpoint behind a
+private CA therefore answers the ECH probe with a verification error — pqprobe
+reports it as the same event, a declined ECH, rather than as something wrong
+with the endpoint.
 
 ## From a pipe
 
