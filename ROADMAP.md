@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**44 items · 44 shipped · 0 open · 5 milestones.**
+**48 items · 44 shipped · 4 open · 6 milestones.**
 
 ## At a glance
 
@@ -17,12 +17,16 @@
 | **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 16 |
 | **M4** — Later | `ongoing` | later | `##########` 100% | 0 | 7 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
+| **M6** — Reach the rest of the fleet | `v0.30.0` | **now** | `..........` 0% | 4 | 0 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-_Nothing in flight._
+- **PQ-46** — Choose the address family · `high` · size `S` · probe,cli (M6, target `v0.30.0`)
+- **PQ-45** — MySQL STARTTLS · `med` · size `M` · probe (M6, target `v0.30.0`)
+- **PQ-47** — A prober with no route says it once · `med` · size `M` · probe,verdict,output (M6, target `v0.30.0`)
+- **PQ-48** — Targets on stdin · `low` · size `S` · inventory,ux (M6, target `v0.30.0`)
 
 ## Milestones
 
@@ -105,20 +109,31 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 | **PQ-35** — Egress through a proxy, but only SOCKS5 | med | M | probe,cli | shipped `0.15.0` |
 | **PQ-28** — `explain <class>` | low | S | cli,docs | shipped `0.13.0` |
 
+### M6 — Reach the rest of the fleet
+
+Target `v0.30.0` · **now** · 4 open · 0 shipped · `..........` 0%
+
+| Item | Priority | Size | Labels | Status |
+|---|---|---|---|---|
+| **PQ-46** — Choose the address family | high | S | probe,cli | open |
+| **PQ-45** — MySQL STARTTLS | med | M | probe | open |
+| **PQ-47** — A prober with no route says it once | med | M | probe,verdict,output | open |
+| **PQ-48** — Targets on stdin | low | S | inventory,ux | open |
+
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `cli` | 7 | 0 |
+| `probe` | 15 | 3 |
+| `cli` | 8 | 1 |
+| `inventory` | 3 | 1 |
+| `output` | 6 | 1 |
+| `ux` | 2 | 1 |
+| `verdict` | 6 | 1 |
 | `delivery` | 6 | 0 |
 | `docs` | 7 | 0 |
 | `integration` | 3 | 0 |
-| `inventory` | 2 | 0 |
-| `output` | 5 | 0 |
-| `probe` | 12 | 0 |
 | `profile` | 5 | 0 |
 | `project` | 6 | 0 |
 | `release` | 4 | 0 |
 | `tests` | 4 | 0 |
-| `ux` | 1 | 0 |
-| `verdict` | 5 | 0 |

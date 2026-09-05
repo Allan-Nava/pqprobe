@@ -499,3 +499,59 @@ how the answer reaches a pull request without a second tool.
   explanation and that its status matches the grading table, so a class added
   later cannot arrive without one.
   <!-- pq: prio=low size=S labels=cli,docs ver=0.13.0 -->
+
+## M6 — Reach the rest of the fleet <!-- ms: target=v0.30.0 phase=now -->
+
+Everything shipped so far answers *this* endpoint, over a path that already
+works. These items are the cases where the answer is missing not because the
+grading is wrong but because the connection never happened — a protocol whose
+upgrade is not a line exchange, an address family the resolver decided for us, a
+prober with no route, and a fleet that arrives on a pipe instead of in a file.
+Each one turns a page of failures that look like findings back into a single
+true statement.
+
+- [ ] **PQ-45 — MySQL STARTTLS**: the port PQ-20 deliberately left out. Its
+  upgrade is not a line protocol: the server opens with a handshake packet and
+  the client answers with a connection-phase response carrying `CLIENT_SSL`,
+  which is packet framing rather than a `STARTTLS` line, and folding it into the
+  same switch as SMTP would have made that switch a parser. Ports 3306 and 33060
+  are where a fleet's data actually lives, and a database driver is exactly the
+  kind of client that pins an old TLS stack — the group list there is worth
+  knowing before an operator finds out from an outage. The bytes sent stay
+  inside the handshake and get the same clause in INTENT.md that PQ-20 needed;
+  the red test is an in-process server that speaks the real packet exchange,
+  and a server with TLS switched off must come out as `no-tls`, never
+  `pq-intolerant`. <!-- pq: prio=med size=M labels=probe -->
+
+- [ ] **PQ-46 — Choose the address family**: `--net tcp4|tcp6`, because today
+  the resolver chooses and the run does not say so. A dual-stack name that
+  answers on A and dies on AAAA reports whatever the prober's resolver felt like
+  handing over that minute — the same class of blindness `--per-address` (PQ-12)
+  fixed for a single name, still present for the fleet, and the reason a
+  finding can flip between two runs with nothing having changed on the endpoint.
+  Pinning the family makes an IPv6-only failure reproducible on demand and makes
+  the two answers comparable. The selected family belongs in the report, not
+  only in the flag: a run that could only use IPv4 has to say so, or its silence
+  reads as "IPv6 is fine". <!-- pq: prio=high size=S labels=probe,cli -->
+
+- [ ] **PQ-47 — A prober with no route says it once**: PQ-12 already refuses to
+  call an unroutable address `tls-broken`, which was the dangerous half. The
+  half left over is volume — a workstation without IPv6 egress produces one
+  `unroutable` per AAAA record across the whole fleet, and forty findings that
+  are all the same local fact bury the one finding that is about an endpoint. A
+  preflight that establishes what this prober can reach at all, reported once as
+  a run-level note, and the per-target results attributed to it rather than
+  repeated. It is not a new judgement: it is the existing one, said once and in
+  the right place. The test plants a family with no route and asserts both that
+  the note appears and that no endpoint is graded on it.
+  <!-- pq: prio=med size=M labels=probe,verdict,output -->
+
+- [ ] **PQ-48 — Targets on stdin**: `pqprobe -` reads the target list from the
+  pipe, in the same forms `--inventory` already accepts. The fleet that needs
+  probing is usually the output of something else — a `dig`, a Consul query, an
+  `awk` over a config — and today that has to become a temporary file first,
+  which is the step people skip, which is how a stale list gets probed. Small,
+  but it is the difference between composing with the tools around it and being
+  a destination. `-` is a target name nobody has, and everything downstream —
+  parsing, `--per-address`, the renderers — is unchanged.
+  <!-- pq: prio=low size=S labels=inventory,ux -->
