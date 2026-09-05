@@ -582,6 +582,22 @@ func sizeFinding(target string, results []probe.Result) (finding.Finding, bool) 
 		return finding.Finding{}, false
 	}
 
+	// A result whose hello never left the machine — a dial that failed, an
+	// address with no route — carries HelloBytes 0. It is not a small hello
+	// that was answered, and it is not a small hello that was refused: it is
+	// no evidence either way, and a sweep made only of those proves nothing
+	// about size. Grading it would report headroom on a host nothing answered.
+	wrote := false
+	for _, r := range results {
+		if r.HelloBytes > 0 {
+			wrote = true
+			break
+		}
+	}
+	if !wrote {
+		return finding.Finding{}, false
+	}
+
 	lastOK, firstBad := 0, 0
 	for _, r := range results {
 		if r.OK {

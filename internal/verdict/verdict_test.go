@@ -984,3 +984,18 @@ func TestNoChainSizeFindingWithoutAHandshake(t *testing.T) {
 		}
 	}
 }
+
+// A sweep against an address that never answered wrote no ClientHello at all,
+// so every result carries HelloBytes 0. Reporting "answered a ClientHello of
+// 0 B, the largest tried" as OK is the size check contradicting the verdict
+// beside it: nothing was answered, and a sweep that never left the machine is
+// not evidence of headroom.
+func TestSizeFindingSilentWhenNoHelloReachedThePeer(t *testing.T) {
+	results := []probe.Result{
+		{Profile: "size-1200", Kind: probe.KindUnroutable},
+		{Profile: "size-4000", Kind: probe.KindUnroutable},
+	}
+	if f, ok := sizeFinding("h:443", results); ok {
+		t.Fatalf("want no size finding when no hello was written, got %s: %s", f.Status, f.Message)
+	}
+}

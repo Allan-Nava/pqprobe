@@ -6,6 +6,19 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.29.2] - 2026-09-05
+
+### Fixed
+
+- **`size-limit` no longer reports headroom on an endpoint that answered
+  nothing.** A sweep against an unroutable address never writes a ClientHello,
+  so every attempt carries 0 bytes — and the check read that as "answered a
+  ClientHello of 0 B, the largest tried" and marked it OK, directly beside an
+  `unreachable` verdict saying no conclusion was available. A hello that never
+  left the machine is not evidence either way, so a sweep made only of those now
+  produces no finding at all. Same rule as grading against the baseline: silence
+  beats a reassuring number nobody earned.
+
 ## [0.29.1] - 2026-09-05
 
 ### Changed
@@ -952,6 +965,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.29.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.2
 [0.29.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.1
 [0.29.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.0
 [0.28.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.28.0
