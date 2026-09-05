@@ -571,7 +571,7 @@ func TestExpandAddressesProbesEveryStackByAddress(t *testing.T) {
 
 	got, errs := ExpandAddresses(context.Background(), r, []Target{
 		{Host: "origin.example", Port: "443"},
-	})
+	}, "")
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)
 	}
@@ -598,7 +598,7 @@ func TestExpandAddressesKeepsAnExplicitSNI(t *testing.T) {
 
 	got, _ := ExpandAddresses(context.Background(), r, []Target{
 		{Host: "lb.example", Port: "443", SNI: "origin.example"},
-	})
+	}, "")
 	if len(got) != 1 || got[0].SNI != "origin.example" {
 		t.Fatalf("got %+v, want the SNI preserved", got)
 	}
@@ -610,7 +610,7 @@ func TestExpandAddressesLeavesLiteralsAlone(t *testing.T) {
 	r := &fakeResolver{}
 	got, _ := ExpandAddresses(context.Background(), r, []Target{
 		{Host: "192.0.2.5", Port: "8443", SNI: "origin.example"},
-	})
+	}, "")
 	if len(got) != 1 || got[0].Host != "192.0.2.5" || got[0].Port != "8443" {
 		t.Fatalf("got %+v, want the literal untouched", got)
 	}
@@ -627,7 +627,7 @@ func TestExpandAddressesKeepsATargetThatDoesNotResolve(t *testing.T) {
 	r := &fakeResolver{err: errors.New("no such host")}
 	got, errs := ExpandAddresses(context.Background(), r, []Target{
 		{Host: "gone.example", Port: "443"},
-	})
+	}, "")
 	if len(got) != 1 || got[0].Host != "gone.example" {
 		t.Fatalf("got %+v, want the target kept for the dialler to report", got)
 	}
@@ -1209,4 +1209,94 @@ func mustProfile(t *testing.T, name string) clientprofile.Profile {
 		t.Fatalf("no profile %q", name)
 	}
 	return p
+}
+
+// PQ-46. --net pins the address family, because today the resolver chooses and
+// the run does not say so. A dual-stack name that answers on A and dies on AAAA
+// reports whichever address the resolver felt like handing over that minute.
+func TestNetPinsTheAddressFamily(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := serveTLS(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13})
+	p, _ := clientprofile.ByName("classic")
+
+	ok := Dialer{Timeout: 5 * time.Second, Net: "tcp4"}.Do(context.Background(), tg, p)
+	if !ok.OK {
+		t.Fatalf("--net tcp4 against a v4 listener failed: %s (%s)", ok.Err, ok.Kind)
+	}
+
+	// The same listener, asked for over IPv6 only: it cannot be reached, and
+	// that is a fact about this prober's choice — never a property of the peer.
+	res := Dialer{Timeout: 5 * time.Second, Net: "tcp6"}.Do(context.Background(), tg, p)
+	if res.OK {
+		t.Fatal("a v4 listener answered a tcp6-only dial; the family is not being pinned")
+	}
+	if res.Kind != KindUnroutable {
+		t.Fatalf("kind = %q, want %q: an address family this run excluded says nothing about the endpoint", res.Kind, KindUnroutable)
+	}
+	if res.Kind.Abrupt() {
+		t.Fatal("an excluded address family must never be abrupt: that would grade the peer for our own flag")
+	}
+}
+
+// The empty value is the default and means what the tool did before: whatever
+// the resolver hands over. Anything that is not a family Go dials is a usage
+// error rather than a silently different run.
+func TestValidNet(t *testing.T) {
+	if !ValidNet("") {
+		t.Error("no --net is the default: whatever the resolver hands over")
+	}
+	for _, n := range Nets() {
+		if !ValidNet(n) {
+			t.Errorf("%s is listed but not accepted", n)
+		}
+	}
+	for _, bad := range []string{"tcp", "udp", "ipv4", "4"} {
+		if ValidNet(bad) {
+			t.Errorf("%q is not an address family this dials", bad)
+		}
+	}
+}
+
+// PQ-46. --per-address is where the family blindness is worst: a name behind an
+// A and an AAAA is two stacks, and a run pinned to one family must probe only
+// the addresses of that family — otherwise every excluded record comes back as
+// a failure the operator has to read past.
+func TestExpandAddressesHonoursTheAddressFamily(t *testing.T) {
+	r := &fakeResolver{table: map[string][]string{
+		"origin.example": {"192.0.2.1", "2001:db8::1"},
+	}}
+
+	v4, errs := ExpandAddresses(context.Background(), r, []Target{{Host: "origin.example", Port: "443"}}, "tcp4")
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(v4) != 1 || v4[0].Host != "192.0.2.1" {
+		t.Fatalf("got %+v, want only the A record under --net tcp4", v4)
+	}
+
+	v6, errs := ExpandAddresses(context.Background(), r, []Target{{Host: "origin.example", Port: "443"}}, "tcp6")
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(v6) != 1 || v6[0].Host != "2001:db8::1" {
+		t.Fatalf("got %+v, want only the AAAA record under --net tcp6", v6)
+	}
+	if v6[0].SNI != "origin.example" {
+		t.Fatalf("sni = %q, want the name", v6[0].SNI)
+	}
+
+	// A name with nothing in the selected family keeps its target and says why:
+	// an endpoint must never vanish from a fleet report, and "no AAAA record"
+	// is a different sentence from "did not resolve".
+	only4 := &fakeResolver{table: map[string][]string{"v4.example": {"192.0.2.7"}}}
+	got, errs := ExpandAddresses(context.Background(), only4, []Target{{Host: "v4.example", Port: "443"}}, "tcp6")
+	if len(got) != 1 || got[0].Host != "v4.example" {
+		t.Fatalf("got %+v, want the target kept", got)
+	}
+	if len(errs) != 1 {
+		t.Fatalf("errs = %v, want one explanation of the empty family", errs)
+	}
+	if !strings.Contains(errs[0].Error(), "tcp6") {
+		t.Fatalf("errs = %v, want the family named: without it this reads as a DNS failure", errs)
+	}
 }

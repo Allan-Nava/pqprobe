@@ -143,6 +143,12 @@ $ pqprobe probe --inventory ansible/inventory/edge --group edge --findings | jq 
 - `--per-address` does that automatically for every A/AAAA record of a name, and
   one `addresses` finding says whether the pool agrees:
   `7 addresses disagree: 6 pq-ready, 1 unreachable`.
+- `--net tcp4|tcp6` pins the address family. Unpinned, a dual-stack name is
+  graded on whichever address the resolver handed over that minute, and two runs
+  can disagree with nothing having changed on the endpoint. The family the run
+  used is stated in the report, because a run that could only use IPv4 and says
+  nothing reads afterwards as "IPv6 is fine" — and a family excluded here is
+  `unroutable`, never a grade against the peer.
 
 Real output over three public endpoints, September 2026:
 

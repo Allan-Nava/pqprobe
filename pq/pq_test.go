@@ -234,3 +234,32 @@ func TestClassifyIsAvailableToAnEmbedderThatDialsItself(t *testing.T) {
 		}
 	}
 }
+
+// PQ-46. An embedder pins the address family the same way the CLI does, and an
+// unknown one is an error rather than a run over both families that looks like
+// the one that was asked for.
+func TestProbeTakesAnAddressFamily(t *testing.T) {
+	addr := serve(t, &tls.Config{MinVersion: tls.VersionTLS13})
+
+	reps, err := pq.Probe(context.Background(), []string{addr}, pq.Options{Net: "tcp4"})
+	if err != nil {
+		t.Fatalf("Probe: %v", err)
+	}
+	if len(reps) != 1 || reps[0].Class == "unreachable" {
+		t.Fatalf("got %+v, want the v4 listener probed over IPv4", reps)
+	}
+
+	// The same listener asked for over IPv6: unreachable, and never a grade —
+	// the family was excluded here, which says nothing about the endpoint.
+	reps, err = pq.Probe(context.Background(), []string{addr}, pq.Options{Net: "tcp6"})
+	if err != nil {
+		t.Fatalf("Probe: %v", err)
+	}
+	if len(reps) != 1 || reps[0].Class != "unreachable" {
+		t.Fatalf("got %+v, want unreachable: an excluded family is not a capability answer", reps)
+	}
+
+	if _, err := pq.Probe(context.Background(), []string{addr}, pq.Options{Net: "ipv4"}); err == nil {
+		t.Fatal("an unknown address family must be an error, not a silently different run")
+	}
+}

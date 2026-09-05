@@ -44,6 +44,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--sni NAME` | — | server name for every target |
 | `--alpn a,b` | none | ALPN protocols to offer |
 | `--starttls PROTO` | — | upgrade to TLS through the protocol's own negotiation first: `smtp`, `imap`, `postgres` |
+| `--net tcp4\|tcp6` | both | pin the address family every connection uses; the family is stated in the report |
 | `--socks5 HOST:PORT` | — | reach every endpoint through a no-auth SOCKS5 proxy |
 | `--timeout D` | `10s` | per-handshake timeout |
 | `--confirm` | on | re-dial an abrupt failure once before believing it (`--confirm=false` to dial once) |
@@ -148,6 +149,33 @@ A peer that will not upgrade gets the class **`no-tls`** with an `ERROR`, never
 `pq-intolerant`: a relay with TLS switched off has refused *TLS*, and grading
 that as a post-quantum failure would send somebody looking for a middlebox that
 does not exist.
+
+## One address family at a time
+
+```sh
+pqprobe probe --net tcp6 origin.example
+```
+
+Without it the resolver chooses, and it chooses again on the next run: a
+dual-stack name that answers on its A record and dies on its AAAA can be graded
+either way, with nothing having changed on the endpoint. Pinning the family is
+what makes that failure reproducible on demand, and what makes the two answers
+comparable.
+
+The family is stated in the report as an `OK` finding, not left in the shell
+history — a run that could only use IPv4 and says nothing about it reads
+afterwards as "IPv6 is fine". With `--per-address` only the records of that
+family are probed, so the ones this run excluded do not come back as failures to
+read past; a name that resolves with nothing in the family keeps its target and
+says so in those words.
+
+An address family excluded here is `unroutable`, never a grade: it is a fact
+about this prober, in exactly the way an AAAA record probed from a machine
+without IPv6 egress is.
+
+With `--socks5` the flag can only govern the hop to the proxy — which family the
+proxy uses to reach the endpoint is its own choice, and pqprobe says so if you
+combine them.
 
 ## Through a proxy
 

@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Allan-Nava/pqprobe/internal/clientprofile"
@@ -72,6 +73,11 @@ type Options struct {
 	ALPN []string
 	// Socks5 is a no-auth SOCKS5 proxy to reach the endpoints through.
 	Socks5 string
+	// Net pins the address family: "tcp4", "tcp6", or empty for whatever the
+	// resolver hands over. Unpinned, a dual-stack name is graded on whichever
+	// address the resolver chose that minute, and two runs can disagree with
+	// nothing having changed on the endpoint. An unknown value is an error.
+	Net string
 	// NoConfirm turns off the second dial after an abrupt failure. The default
 	// is to confirm, because "cut off" is a claim somebody takes to a vendor.
 	NoConfirm bool
@@ -133,10 +139,14 @@ func Probe(ctx context.Context, targets []string, opt Options) ([]Report, error)
 		concurrency = 8
 	}
 
+	if !probe.ValidNet(opt.Net) {
+		return nil, fmt.Errorf("unknown address family %q (have: %s)", opt.Net, strings.Join(probe.Nets(), ", "))
+	}
 	d := probe.Dialer{
 		Timeout: timeout,
 		ALPN:    opt.ALPN,
 		Socks5:  opt.Socks5,
+		Net:     opt.Net,
 		Confirm: !opt.NoConfirm,
 	}
 	vopt := verdict.DefaultOptions()

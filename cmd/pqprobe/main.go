@@ -187,6 +187,30 @@ func addTransitions(path string, reps []verdict.Report) error {
 	return nil
 }
 
+// netFindings states the address family the run was pinned to, once per report
+// (PQ-46).
+//
+// It is OK, not a problem: the operator asked for it. It exists because the
+// absence of it is what misleads — a run that could only use IPv4 and says
+// nothing reads afterwards as "IPv6 is fine", and the endpoint whose AAAA
+// record is broken was never dialled at all. An unpinned run says nothing,
+// because a line on every endpoint of every run is noise nobody reads.
+func netFindings(network string, reps []verdict.Report) {
+	if network == "" {
+		return
+	}
+	for i := range reps {
+		reps[i].Finding = append(reps[i].Finding, finding.Finding{
+			Check:   "net",
+			Target:  reps[i].Target,
+			Status:  finding.OK,
+			Message: fmt.Sprintf("dialled over %s only (--net %s)", probe.NetName(network), network),
+			Hint:    "the other address family was not probed here; nothing in this report is a statement about it",
+		})
+		finding.SortWorstFirst(reps[i].Finding)
+	}
+}
+
 // addressFindings adds one `addresses` finding per name that resolved to more
 // than one address, next to the report of the address that differs (PQ-12).
 // Grouping happens here because this is the only place that still knows which
@@ -261,6 +285,12 @@ flags:
                            first: smtp, imap or postgres. Only the negotiation
                            is sent — no mail, no query, no credential. Implicit
                            TLS ports (465, 993, 6514) need none of this
+  --net tcp4|tcp6          pin the address family every connection uses; the
+                           default lets the resolver choose, which is how a
+                           dual-stack name gets graded on whichever address it
+                           handed over that minute. The family is stated in the
+                           report, and an address family excluded here is never
+                           a grade against the endpoint
   --socks5 HOST:PORT       reach every endpoint through a no-auth SOCKS5 proxy
                            (the name is sent unresolved, so the proxy resolves
                            it; HTTP CONNECT is a request and is not supported)
@@ -431,6 +461,7 @@ func cmdProfiles() int {
 type probeFlags struct {
 	profiles, groupSet, invFile, groups, listFile *string
 	port, sni, alpn, starttls, socks5             *string
+	network                                       *string
 	textfile, baseline, minSev, exitOn            *string
 	perGroup, sizeSweep, alpnCheck, perAddress    *bool
 	confirm, asMarkdown, asJSON                   *bool
@@ -458,6 +489,7 @@ func newProbeFlags() (*flag.FlagSet, *probeFlags) {
 	o.alpn = fs.String("alpn", "", "ALPN protocols")
 	o.starttls = fs.String("starttls", "", "upgrade to TLS through this protocol first: smtp, imap, postgres")
 	o.socks5 = fs.String("socks5", "", "reach endpoints through a no-auth SOCKS5 proxy")
+	o.network = fs.String("net", "", "pin the address family: tcp4 or tcp6")
 	o.timeout = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
 	o.confirm = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
 	o.concurrency = fs.Int("concurrency", 8, "endpoints in flight")
@@ -480,6 +512,7 @@ func cmdProbe(args []string) int {
 	groupSet, perAddress, invFile, groups := o.groupSet, o.perAddress, o.invFile, o.groups
 	listFile, port, sni, alpn := o.listFile, o.port, o.sni, o.alpn
 	starttls, socks5, timeout, confirm := o.starttls, o.socks5, o.timeout, o.confirm
+	network := o.network
 	concurrency, textfile, watch, baseline := o.concurrency, o.textfile, o.watch, o.baseline
 	asMarkdown, asJSON, asFindings := o.asMarkdown, o.asJSON, o.findings
 	minSev, exitOn, expWarn, expBad := o.minSev, o.exitOn, o.expWarn, o.expBad
@@ -499,6 +532,11 @@ func cmdProbe(args []string) int {
 	if !probe.ValidStartTLS(*starttls) {
 		fmt.Fprintf(os.Stderr, "pqprobe: unknown --starttls protocol %q (have: %s)\n",
 			*starttls, strings.Join(probe.StartTLSProtocols(), ", "))
+		return 2
+	}
+	if !probe.ValidNet(*network) {
+		fmt.Fprintf(os.Stderr, "pqprobe: unknown --net address family %q (have: %s)\n",
+			*network, strings.Join(probe.Nets(), ", "))
 		return 2
 	}
 	if err := validWatch(*watch); err != nil {
@@ -568,12 +606,19 @@ func cmdProbe(args []string) int {
 	for i, t := range targets {
 		names[i] = t.ServerName()
 	}
+	if *network != "" && *socks5 != "" {
+		// Truthful about what the flag can still do: the second hop is the
+		// proxy's to make, and claiming the endpoint was reached over one
+		// family would be a claim about somebody else's routing table.
+		fmt.Fprintf(os.Stderr,
+			"pqprobe: --net %s applies to the connection to the SOCKS5 proxy; which family the proxy uses to reach the endpoint is its own choice\n", *network)
+	}
 	if *perAddress && *socks5 != "" {
 		fmt.Fprintln(os.Stderr,
 			"pqprobe: --per-address resolves names on this host, which is the opposite of what --socks5 is for; the addresses it finds may not be the ones the proxy would reach")
 	}
 	if *perAddress {
-		expanded, errs := probe.ExpandAddresses(context.Background(), net.DefaultResolver, targets)
+		expanded, errs := probe.ExpandAddresses(context.Background(), net.DefaultResolver, targets, *network)
 		for _, err := range errs {
 			fmt.Fprintln(os.Stderr, "pqprobe:", err)
 		}
@@ -584,7 +629,7 @@ func cmdProbe(args []string) int {
 		}
 	}
 
-	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn), Confirm: *confirm, Socks5: *socks5, StartTLS: *starttls}
+	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn), Confirm: *confirm, Socks5: *socks5, StartTLS: *starttls, Net: *network}
 	opt := verdict.DefaultOptions()
 	opt.ExpiryWarnDays, opt.ExpiryBadDays = *expWarn, *expBad
 	opt.Now = time.Now()
@@ -593,6 +638,7 @@ func cmdProbe(args []string) int {
 	if *perAddress {
 		addressFindings(names, reps)
 	}
+	netFindings(*network, reps)
 
 	// The baseline is read *after* the probe: a run that produced findings must
 	// still print them if the comparison cannot be made.
@@ -781,7 +827,7 @@ func takesValue(flagArg string) bool {
 	switch name {
 	case "profile", "inventory", "group", "list", "port", "sni", "alpn",
 		"timeout", "concurrency", "min-severity", "exit-on", "expiry-warn", "expiry-bad",
-		"baseline", "groups", "socks5", "watch", "textfile", "starttls":
+		"baseline", "groups", "socks5", "watch", "textfile", "starttls", "net":
 		return true
 	}
 	return false

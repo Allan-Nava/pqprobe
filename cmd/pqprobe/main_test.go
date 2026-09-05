@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Allan-Nava/pqprobe/internal/finding"
 	"github.com/Allan-Nava/pqprobe/internal/probe"
 	"github.com/Allan-Nava/pqprobe/internal/verdict"
 )
@@ -548,5 +549,64 @@ func TestEveryProbeFlagIsDocumentedAndEveryDocumentedFlagExists(t *testing.T) {
 		if !declared[name] {
 			t.Errorf("--help documents --%s, which the probe does not accept", name)
 		}
+	}
+}
+
+// PQ-46. --net takes an address family, and an unknown one is a usage error:
+// a run that quietly used both families answers a different question from the
+// one that was asked, and nothing in the output would say so.
+func TestNetFlagTakesAFamilyAndValidatesIt(t *testing.T) {
+	if !takesValue("--net") {
+		t.Fatal("--net takes an address family")
+	}
+	got := permute([]string{"origin.example", "--net", "tcp6"})
+	want := []string{"--net", "tcp6", "origin.example"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("permute = %v, want %v", got, want)
+	}
+
+	var b strings.Builder
+	usageTo(&b)
+	if !strings.Contains(b.String(), "--net") {
+		t.Error("--net is not in --help")
+	}
+	for _, n := range probe.Nets() {
+		if !strings.Contains(b.String(), n) {
+			t.Errorf("--help does not list %s", n)
+		}
+	}
+}
+
+// The family the run could use belongs in the report, not only in the flag: a
+// run pinned to IPv4 that says nothing reads afterwards as "IPv6 is fine", and
+// that is the reading this item exists to remove.
+func TestTheSelectedFamilyIsStatedInTheReport(t *testing.T) {
+	reps := []verdict.Report{{Target: "origin.example:443"}, {Target: "other.example:443"}}
+	netFindings("tcp4", reps)
+
+	for _, r := range reps {
+		var f *finding.Finding
+		for i := range r.Finding {
+			if r.Finding[i].Check == "net" {
+				f = &r.Finding[i]
+			}
+		}
+		if f == nil {
+			t.Fatalf("%s has no `net` finding: the pinned family is invisible in every renderer", r.Target)
+		}
+		if f.Status != finding.OK {
+			t.Errorf("status = %s, want OK: a flag the operator passed is not a problem with the endpoint", f.Status)
+		}
+		if !strings.Contains(f.Message, "IPv4") {
+			t.Errorf("message = %q, want the family in words", f.Message)
+		}
+	}
+
+	// The default run is unpinned, and a finding on every endpoint of every run
+	// saying "both families" is noise nobody reads.
+	quiet := []verdict.Report{{Target: "origin.example:443"}}
+	netFindings("", quiet)
+	if len(quiet[0].Finding) != 0 {
+		t.Fatalf("got %+v, want nothing said when no family was pinned", quiet[0].Finding)
 	}
 }

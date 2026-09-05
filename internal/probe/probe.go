@@ -205,6 +205,38 @@ func ValidStartTLS(proto string) bool {
 	return false
 }
 
+// Nets is what --net accepts: the two address families Go dials, in the order
+// the help lists them.
+func Nets() []string { return []string{"tcp4", "tcp6"} }
+
+// ValidNet reports whether n is one of them. The empty string is valid and is
+// the default: whatever the resolver hands over, which is what every run did
+// before PQ-46 — and which is exactly why a dual-stack name could answer on one
+// stack and die on the other without the report ever saying which was dialled.
+func ValidNet(n string) bool {
+	if n == "" {
+		return true
+	}
+	for _, v := range Nets() {
+		if v == n {
+			return true
+		}
+	}
+	return false
+}
+
+// NetName is the family in the words an operator uses. It exists so no renderer
+// has to translate "tcp6" itself, and so the two spellings cannot drift.
+func NetName(n string) string {
+	switch n {
+	case "tcp4":
+		return "IPv4"
+	case "tcp6":
+		return "IPv6"
+	}
+	return "IPv4 and IPv6"
+}
+
 // startTLS performs a protocol's plaintext upgrade so the TLS handshake can
 // happen at all (PQ-20).
 //
@@ -329,8 +361,8 @@ func ehloName(serverName string) string {
 // No authentication, deliberately: pqprobe holds no credentials by design, and
 // a flag that took a proxy password would be the first secret this tool ever
 // asked for. A proxy that demands one says so, in those words.
-func socks5Connect(ctx context.Context, proxy, host, port string) (net.Conn, error) {
-	c, err := (&net.Dialer{}).DialContext(ctx, "tcp", proxy)
+func socks5Connect(ctx context.Context, network, proxy, host, port string) (net.Conn, error) {
+	c, err := (&net.Dialer{}).DialContext(ctx, network, proxy)
 	if err != nil {
 		return nil, fmt.Errorf("socks5 proxy %s: %w", proxy, err)
 	}
@@ -489,7 +521,12 @@ type Resolver interface {
 // keeps its target and the error is returned as well: the dialler then reports
 // it as a DNS failure in the usual words, and no endpoint silently disappears
 // from a fleet report.
-func ExpandAddresses(ctx context.Context, r Resolver, targets []Target) ([]Target, []error) {
+// network is the family the run is pinned to (PQ-46): "tcp4", "tcp6", or ""
+// for both. Records outside it are dropped here rather than dialled and
+// reported as failures — a run pinned to one family that still probes the other
+// produces a page of results the operator has to learn to read past, which is
+// the same noise --per-address was built to cut.
+func ExpandAddresses(ctx context.Context, r Resolver, targets []Target, network string) ([]Target, []error) {
 	var out []Target
 	var errs []error
 	for _, t := range targets {
@@ -509,11 +546,37 @@ func ExpandAddresses(ctx context.Context, r Resolver, targets []Target) ([]Targe
 			continue
 		}
 		sni := t.ServerName()
+		kept := 0
 		for _, a := range addrs {
+			if !inFamily(a.IP, network) {
+				continue
+			}
+			kept++
 			out = append(out, Target{Host: a.IP.String(), Port: t.Port, SNI: sni})
+		}
+		if kept == 0 {
+			// The name resolved; it simply has nothing in the family this run
+			// was pinned to. Said in those words, because "no AAAA record" and
+			// "did not resolve" send an operator to two different places — and
+			// the target is kept, so no endpoint vanishes from a fleet report.
+			errs = append(errs, fmt.Errorf("%s: resolved, but no address in the %s family (--net %s)",
+				t.Host, NetName(network), network))
+			out = append(out, t)
 		}
 	}
 	return out, errs
+}
+
+// inFamily reports whether ip belongs to the pinned family. An empty network
+// pins nothing, which is the default and takes both.
+func inFamily(ip net.IP, network string) bool {
+	switch network {
+	case "tcp4":
+		return ip.To4() != nil
+	case "tcp6":
+		return ip.To4() == nil && ip.To16() != nil
+	}
+	return true
 }
 
 // Dialer performs one handshake. It exists so tests can drive the classifier
@@ -531,6 +594,12 @@ type Dialer struct {
 	// point at production. The target name is passed to the proxy unresolved,
 	// because inside a network that is often the only place it resolves.
 	Socks5 string
+	// Net pins the address family every connection uses: "tcp4", "tcp6", or ""
+	// for whatever the resolver hands over. Pinning it is what makes an
+	// IPv6-only failure reproducible on demand — unpinned, a dual-stack name
+	// answers on whichever address the resolver felt like handing over, and two
+	// runs can disagree with nothing having changed on the endpoint.
+	Net string
 	// Confirm re-dials an abrupt failure once before it is believed. See
 	// DoConfirmed.
 	Confirm bool
@@ -539,6 +608,14 @@ type Dialer struct {
 	ConfirmDelay time.Duration
 	// Now is the clock used for expiry arithmetic; tests set it.
 	Now func() time.Time
+}
+
+// network is the dial network: the pinned family, or "tcp" for both.
+func (d Dialer) network() string {
+	if d.Net == "" {
+		return "tcp"
+	}
+	return d.Net
 }
 
 // DoConfirmed dials once and, when the failure was abrupt and Confirm is set,
@@ -604,7 +681,9 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 	var raw net.Conn
 	var err error
 	if d.Socks5 != "" {
-		raw, err = socks5Connect(ctx, d.Socks5, t.Host, t.Port)
+		// Through a proxy the family is the *proxy's* to choose for the second
+		// hop; here it can only govern the hop to the proxy itself.
+		raw, err = socks5Connect(ctx, d.network(), d.Socks5, t.Host, t.Port)
 		if err != nil {
 			// Attributed to the proxy on purpose: the endpoint has not been
 			// reached, so nothing here is a statement about it.
@@ -613,7 +692,7 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 			return res
 		}
 	} else {
-		raw, err = (&net.Dialer{}).DialContext(ctx, "tcp", t.Addr())
+		raw, err = (&net.Dialer{}).DialContext(ctx, d.network(), t.Addr())
 		if err != nil {
 			res.Kind, res.Err = classify(err)
 			res.Elapsed = time.Since(start)
@@ -752,6 +831,13 @@ func classify(err error) (Kind, string) {
 	}
 	// A route that does not exist is a fact about the prober, not the peer.
 	if errors.Is(err, syscall.EHOSTUNREACH) || errors.Is(err, syscall.ENETUNREACH) {
+		return KindUnroutable, msg
+	}
+	// An address family this run excluded (--net, PQ-46): Go answers "no
+	// suitable address found", which is our own flag talking. Unroutable, for
+	// the same reason an AAAA record probed without IPv6 egress is: it is a
+	// fact about the prober, and grading the peer on it would be a lie.
+	if strings.Contains(msg, "no suitable address found") {
 		return KindUnroutable, msg
 	}
 	if errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) {

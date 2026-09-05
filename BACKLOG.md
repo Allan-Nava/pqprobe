@@ -523,7 +523,7 @@ true statement.
   and a server with TLS switched off must come out as `no-tls`, never
   `pq-intolerant`. <!-- pq: prio=med size=M labels=probe -->
 
-- [ ] **PQ-46 — Choose the address family**: `--net tcp4|tcp6`, because today
+- [x] **PQ-46 — Choose the address family**: `--net tcp4|tcp6`, because today
   the resolver chooses and the run does not say so. A dual-stack name that
   answers on A and dies on AAAA reports whatever the prober's resolver felt like
   handing over that minute — the same class of blindness `--per-address` (PQ-12)
@@ -532,7 +532,22 @@ true statement.
   Pinning the family makes an IPv6-only failure reproducible on demand and makes
   the two answers comparable. The selected family belongs in the report, not
   only in the flag: a run that could only use IPv4 has to say so, or its silence
-  reads as "IPv6 is fine". <!-- pq: prio=high size=S labels=probe,cli -->
+  reads as "IPv6 is fine".
+  Shipped as `--net tcp4|tcp6`, with the family stated as an `OK` finding —
+  `net` — carrying the hint that the other family was not probed here. Writing
+  the test first paid immediately: a `tcp6` dial against a v4 listener came back
+  as Go's plain "no suitable address found", which classified as `other` and
+  would have been read as the endpoint doing something. It is `unroutable` now,
+  for the same reason PQ-12 made a missing route one: it is a fact about the
+  prober, and this time about a flag the operator passed. `--per-address`
+  probes only the records of the selected family, and a name that resolves with
+  nothing in it keeps its target with "resolved, but no address in the IPv6
+  family" — a different sentence from "did not resolve", and one that sends
+  somebody to a different place. With `--socks5` the second hop is the proxy's
+  choice and pqprobe says so rather than implying the endpoint was reached over
+  one family. `pq.Options.Net` carries it to embedders, where an unknown family
+  is an error rather than a quietly wider run.
+  <!-- pq: prio=high size=S labels=probe,cli ver=unreleased -->
 
 - [ ] **PQ-47 — A prober with no route says it once**: PQ-12 already refuses to
   call an unroutable address `tls-broken`, which was the dangerous half. The

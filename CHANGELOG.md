@@ -6,6 +6,34 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.30.0] - 2026-09-05
+
+### Added
+
+- **`--net tcp4|tcp6` pins the address family every connection uses (PQ-46).**
+  Unpinned — which is still the default — a dual-stack name is graded on
+  whichever address the resolver handed over that minute, so two runs can
+  disagree with nothing having changed on the endpoint. Pinning the family makes
+  an IPv6-only failure reproducible on demand and the two answers comparable.
+
+  The family the run used is stated in the report as an `OK` `net` finding: a
+  run that could only use IPv4 and says nothing about it reads afterwards as
+  "IPv6 is fine". With `--per-address` only the records of that family are
+  probed, and a name that resolves with nothing in it keeps its target with
+  *resolved, but no address in the IPv6 family* — a different sentence from
+  "did not resolve". With `--socks5` the flag governs only the hop to the proxy,
+  and pqprobe says so. `pq.Options.Net` carries the same choice to embedders,
+  where an unknown family is an error rather than a quietly wider run.
+
+### Fixed
+
+- **An address family excluded by `--net` is `unroutable`, never a grade.** Go
+  reports it as "no suitable address found", which classified as `other` and
+  would have been read as the endpoint doing something. It is a fact about the
+  prober — the same judgement PQ-12 made for a missing route — and this time
+  about a flag the operator passed. Found by the failing test, before the flag
+  was wired up.
+
 ## [0.29.2] - 2026-09-05
 
 ### Fixed
