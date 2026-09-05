@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**48 items · 46 shipped · 2 open · 6 milestones.**
+**49 items · 47 shipped · 2 open · 6 milestones.**
 
 ## At a glance
 
@@ -17,7 +17,7 @@
 | **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 16 |
 | **M4** — Later | `ongoing` | later | `##########` 100% | 0 | 7 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
-| **M6** — Reach the rest of the fleet | `v0.30.0` | **now** | `#####.....` 50% | 2 | 2 |
+| **M6** — Reach the rest of the fleet | `v0.30.0` | **now** | `######....` 60% | 2 | 3 |
 
 ## Next up
 
@@ -109,13 +109,14 @@ Target `v0.15.0` · shipped · 0 open · 8 shipped · `##########` 100%
 
 ### M6 — Reach the rest of the fleet
 
-Target `v0.30.0` · **now** · 2 open · 2 shipped · `#####.....` 50%
+Target `v0.30.0` · **now** · 2 open · 3 shipped · `######....` 60%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-47** — A prober with no route says it once | med | M | probe,verdict,output | open |
 | **PQ-48** — Targets on stdin | low | S | inventory,ux | open |
 | **PQ-46** — Choose the address family | high | S | probe,cli | done, unreleased |
+| **PQ-49** — The release renders its derived files in both states | high | S | release,tests | done, unreleased |
 | **PQ-45** — MySQL STARTTLS | med | M | probe | done, unreleased |
 
 ## By label
@@ -133,5 +134,5 @@ Target `v0.30.0` · **now** · 2 open · 2 shipped · `#####.....` 50%
 | `integration` | 3 | 0 |
 | `profile` | 5 | 0 |
 | `project` | 6 | 0 |
-| `release` | 4 | 0 |
-| `tests` | 4 | 0 |
+| `release` | 5 | 0 |
+| `tests` | 5 | 0 |

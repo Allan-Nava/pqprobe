@@ -6,6 +6,25 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.31.1] - 2026-09-05
+
+### Fixed
+
+- **The release renders and checks its derived files in both states (PQ-49).**
+  `scripts/seo.sh render` sat inside the arm taken only when the CHANGELOG still
+  had an `[Unreleased]` section, so a release whose section was written already
+  dated — a state `release.sh --state` recognises and accepts — committed a
+  `docs/llms.txt` still naming the previous version. Two releases in a row were
+  tagged that way and had to be amended on top of the tag, which is the one
+  operation that goes badly wrong once a tag has been pushed.
+
+  The render now happens after the branch, and `seo.sh check` runs *before* the
+  commit rather than only after the tag: a gate that fails afterwards leaves no
+  fix but an amend. Only `version.sh check`, which genuinely needs the tag to
+  exist, stays behind it. Two structural assertions in `release_test.sh` hold
+  both lines where they are — no gate can test this by running `release.sh`,
+  since `release.sh` is what runs the gates.
+
 ## [0.31.0] - 2026-09-05
 
 ### Added

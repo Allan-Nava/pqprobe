@@ -580,6 +580,27 @@ true statement.
   the note appears and that no endpoint is graded on it.
   <!-- pq: prio=med size=M labels=probe,verdict,output -->
 
+- [x] **PQ-49 — The release renders its derived files in both states**: two
+  releases in a row committed and tagged before `seo.sh check` noticed that
+  `docs/llms.txt` still named the previous version, so both needed an amend on
+  top of a tag — the one operation that goes badly wrong once a tag has been
+  pushed. The cause is a branch: `seo.sh render` lives inside the arm taken only
+  when the CHANGELOG still has an `[Unreleased]` section, so a release whose
+  section is already dated — a state `release.sh --state` explicitly
+  recognises and accepts — skips it and commits derived files that describe the
+  version before. The render is idempotent, so it belongs after the branch, not
+  inside one arm of it; and the check that catches it has to run *before* the
+  commit, because a gate that only fails afterwards is a gate whose fix is an
+  amend. Asserted structurally, the way `gates_test.sh` asserts wiring: no gate
+  script can run the whole gate suite, since `release.sh` is what runs it.
+  Shipped: the render moved out of the branch — it is idempotent, so running it
+  twice costs nothing and skipping it once cost two amended tags — and the check
+  moved ahead of `git commit`, leaving only the one thing that genuinely cannot
+  be checked before the tag exists (`version.sh check`) behind it. Two
+  structural assertions in `release_test.sh` hold both lines in place, by line
+  number against the branch they must sit outside of.
+  <!-- pq: prio=high size=S labels=release,tests ver=unreleased -->
+
 - [ ] **PQ-48 — Targets on stdin**: `pqprobe -` reads the target list from the
   pipe, in the same forms `--inventory` already accepts. The fleet that needs
   probing is usually the output of something else — a `dig`, a Consul query, an

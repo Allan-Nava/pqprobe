@@ -161,5 +161,31 @@ got=$(state "$tmp/empty.md" 0.2.0)
 [ "$got" = "nothing" ] && ok "an Unreleased section with no entries is nothing to release" ||
 	notok "state gave \`$got\`, wanted nothing"
 
+# PQ-49. Two releases in a row were committed and tagged before the SEO check
+# noticed that llms.txt still named the previous version — both needed an amend
+# on top of a tag. Neither property below can be tested by running release.sh:
+# it is the script that runs this one. So they are asserted structurally, the
+# way gates_test.sh asserts wiring.
+printf '\nrelease.sh shape:\n'
+
+line_of() { grep -n "$1" "$release" | head -1 | cut -d: -f1; }
+
+branch=$(line_of '^if \[ "\$state" = already-prepared \]')
+render=$(line_of 'scripts/seo\.sh render')
+close=$(awk -v start="$branch" 'NR > start && /^fi$/ { print NR; exit }' "$release")
+if [ -n "$render" ] && [ -n "$close" ] && [ "$render" -gt "$close" ]; then
+	ok "the derived files are rendered in both states, not only when preparing"
+else
+	notok "seo.sh render (line ${render:-none}) is inside the state branch closing at line ${close:-none}: an already-dated CHANGELOG commits llms.txt describing the previous version"
+fi
+
+check=$(line_of 'scripts/seo\.sh check')
+commit=$(line_of '^git commit ')
+if [ -n "$check" ] && [ -n "$commit" ] && [ "$check" -lt "$commit" ]; then
+	ok "the derived files are checked before the commit, while the fix is still an edit"
+else
+	notok "seo.sh check (line ${check:-none}) does not run before git commit (line ${commit:-none}): the only fix left is an amend on top of a tag"
+fi
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
