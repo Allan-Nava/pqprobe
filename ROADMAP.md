@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**52 items · 52 shipped · 0 open · 7 milestones.**
+**55 items · 55 shipped · 0 open · 8 milestones.**
 
 ## At a glance
 
@@ -19,6 +19,7 @@
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 | **M6** — Reach the rest of the fleet | `v0.32.0` | shipped | `##########` 100% | 0 | 5 |
 | **M7** — Encrypted Client Hello | `v0.35.0` | shipped | `##########` 100% | 0 | 3 |
+| **M8** — Reach the ports that are left | `v0.36.0` | shipped | `##########` 100% | 0 | 3 |
 
 ## Next up
 
@@ -129,6 +130,16 @@ Target `v0.35.0` · shipped · 0 open · 3 shipped · `##########` 100%
 | **PQ-51** — The config comes from DNS, not from a paste | med | L | probe,inventory | done, unreleased |
 | **PQ-52** — ECH does not decide the class | med | S | verdict,output,docs | done, unreleased |
 
+### M8 — Reach the ports that are left
+
+Target `v0.36.0` · shipped · 0 open · 3 shipped · `##########` 100%
+
+| Item | Priority | Size | Labels | Status |
+|---|---|---|---|---|
+| **PQ-53** — The remaining line protocols | med | S | probe | done, unreleased |
+| **PQ-54** — LDAP StartTLS | med | M | probe | done, unreleased |
+| **PQ-55** — XMPP | low | M | probe | done, unreleased |
+
 ## By label
 
 | Label | Items | Open |
@@ -139,7 +150,7 @@ Target `v0.35.0` · shipped · 0 open · 3 shipped · `##########` 100%
 | `integration` | 3 | 0 |
 | `inventory` | 4 | 0 |
 | `output` | 7 | 0 |
-| `probe` | 17 | 0 |
+| `probe` | 20 | 0 |
 | `profile` | 6 | 0 |
 | `project` | 6 | 0 |
 | `release` | 5 | 0 |

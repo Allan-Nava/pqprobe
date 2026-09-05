@@ -366,7 +366,8 @@ flags:
   --sni NAME               server name for every target (overrides per-target =sni)
   --alpn a,b               ALPN protocols to offer (default none)
   --starttls PROTO         upgrade to TLS through a protocol's own negotiation
-                           first: smtp, imap, postgres or mysql. Only the
+                           first: smtp, imap, postgres, mysql, ftp, nntp,
+                           ldap or xmpp. Only the
                            negotiation is sent — no mail, no query, no
                            credential (a MySQL SSLRequest stops exactly where
                            the login would start). Implicit TLS ports (465, 993,
@@ -605,7 +606,7 @@ func newProbeFlags() (*flag.FlagSet, *probeFlags) {
 	o.port = fs.String("port", inventory.DefaultPort, "default port")
 	o.sni = fs.String("sni", "", "server name for every target")
 	o.alpn = fs.String("alpn", "", "ALPN protocols")
-	o.starttls = fs.String("starttls", "", "upgrade to TLS through this protocol first: smtp, imap, postgres, mysql")
+	o.starttls = fs.String("starttls", "", "upgrade to TLS through this protocol first: smtp, imap, postgres, mysql, ftp, nntp, ldap, xmpp")
 	o.socks5 = fs.String("socks5", "", "reach endpoints through a no-auth SOCKS5 proxy")
 	o.network = fs.String("net", "", "pin the address family: tcp4 or tcp6")
 	o.echConfig = fs.String("ech-config", "", "also dial with Encrypted Client Hello, using this base64 ECHConfigList")

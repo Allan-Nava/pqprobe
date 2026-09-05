@@ -46,7 +46,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--port N` | `443` | default port for targets written without one |
 | `--sni NAME` | — | server name for every target |
 | `--alpn a,b` | none | ALPN protocols to offer |
-| `--starttls PROTO` | — | upgrade to TLS through the protocol's own negotiation first: `smtp`, `imap`, `postgres`, `mysql` |
+| `--starttls PROTO` | — | upgrade to TLS through the protocol's own negotiation first: `smtp`, `imap`, `postgres`, `mysql`, `ftp`, `nntp`, `ldap`, `xmpp` |
 | `--ech` | — | also dial with Encrypted Client Hello, taking each config from the endpoint's HTTPS DNS record |
 | `--dns HOST:PORT` | system | resolver to ask for that record |
 | `--ech-config BASE64` | — | the same, with a config you pass instead of one from DNS |
@@ -142,6 +142,10 @@ pqprobe probe --starttls smtp  mx.example:587
 pqprobe probe --starttls imap  mail.example:143
 pqprobe probe --starttls postgres db.example:5432
 pqprobe probe --starttls mysql    db.example:3306
+pqprobe probe --starttls ldap     dc.example:389
+pqprobe probe --starttls xmpp     chat.example:5222
+pqprobe probe --starttls ftp      files.example:21
+pqprobe probe --starttls nntp     news.example:119
 ```
 
 Real output, September 2026: `smtp.gmail.com:587` is `pq-ready`.
@@ -153,6 +157,18 @@ after them, stopping exactly where the credentials would have gone. Nothing
 else — no mail, no query, no credential, no application data. That is the line
 this flag walks: without the negotiation these ports cannot be probed at all,
 and with anything more it would be a different tool.
+
+Four more ports, none of which a browser will ever visit — which is exactly why
+nobody has noticed what their TLS stacks look like. FTP (`AUTH TLS`, RFC 4217)
+and NNTP (`STARTTLS`, RFC 4642) are SMTP's shape; NNTP greets `200` **or** `201`
+depending on whether posting is allowed, and both are healthy. LDAP is the
+extended operation of RFC 4511 §4.14 — a BER-encoded request carrying OID
+`1.3.6.1.4.1.1466.20037`, no bind and therefore no credentials — and a non-zero
+result code arrives with the server's own diagnostic quoted, because "unwilling
+to perform" and "protocol error" send you to two different files. XMPP opens a
+stream and asks for `<starttls/>`; the `to=` attribute is the name pqprobe is
+already sending as SNI, and it is not decoration — a virtual host answers for
+whatever it is asked about.
 
 MySQL is the one protocol here where the **server speaks first**, and its
 capability flags say whether TLS is on offer at all: no `CLIENT_SSL`, no

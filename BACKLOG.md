@@ -723,3 +723,63 @@ look like it has.
   prints both vocabularies, and a topic renders without a status because it has
   none — a grade is exactly what it is not. A test asserts no word is both.
   <!-- pq: prio=med size=S labels=verdict,output,docs ver=unreleased -->
+
+## M8 — Reach the ports that are left <!-- ms: target=v0.36.0 phase=shipped -->
+
+PQ-20 and PQ-45 established the pattern and the boundary: TLS reached through a
+protocol's own negotiation, **only** the negotiation on the wire, and a peer
+that will not upgrade graded `no-tls` rather than as a post-quantum failure.
+What is left is the rest of the ports where a fleet's old TLS stacks actually
+live — a directory server, a news or file transfer daemon, a chat server — none
+of which any browser will ever visit, which is exactly why nobody has noticed
+what their group lists look like.
+
+- [x] **PQ-53 — The remaining line protocols**: `--starttls ftp` (`AUTH TLS`,
+  RFC 4217) and `--starttls nntp` (`STARTTLS`, RFC 4642). Both are the SMTP
+  shape — a coded greeting, one command, a coded answer — so the item is small
+  by construction and the test server is the one that already exists. The two
+  edges that are not SMTP: NNTP greets `200` *or* `201` depending on whether
+  posting is allowed, and both are a healthy server, while FTP's refusal is a
+  `5xx` that must arrive as `no-tls` and never as a grade.
+  Shipped — and the "small by construction" premise was wrong in exactly one
+  place, which running it found. FTP does **not** share SMTP's multi-line rule:
+  RFC 959 marks continuation with a dash on the first line and then says nothing
+  about the lines that follow, which carry banners and terms of use with no code
+  at all. Reusing `expectSMTP` turned a real server's `220-Welcome` into "the
+  server answered See https://…" — a refusal that never happened, on an endpoint
+  that was fine, which is the precise failure mode this tool exists to avoid.
+  `expectFTP` is its own reader now, bounded at 100 lines, and the test server
+  speaks the real banner shape rather than the one the code expected.
+  Verified against a real FTPS server: `pq-blind`.
+  <!-- pq: prio=med size=S labels=probe ver=unreleased -->
+
+- [x] **PQ-54 — LDAP StartTLS**: `--starttls ldap`, the extended operation of
+  RFC 4511 §4.14 — a BER-encoded request carrying OID 1.3.6.1.4.1.1466.20037,
+  and a response whose `resultCode` decides it. Not a line protocol, so it needs
+  what MySQL needed: enough of the encoding to ask the question and read the
+  answer, and nothing more. It earns its place because a directory server is the
+  most likely thing in a fleet to be running a TLS stack nobody has touched in a
+  decade, on a port no browser will ever complain about.
+  A non-zero result code is `no-tls` with the server's own diagnostic message
+  quoted, because "unwilling to perform" and "protocol error" send an operator
+  to two different places.
+  Shipped with just enough BER to ask and to read the answer — a length reader
+  that refuses the long forms nobody uses here, and a field walker. No bind is
+  sent, which is what would carry credentials. The first run hung both sides for
+  five seconds: the request's outer length was written as a constant that had
+  drifted from its contents by two bytes, so the test server waited for a
+  message that had already arrived in full. The lengths are arithmetic now.
+  <!-- pq: prio=med size=M labels=probe ver=unreleased -->
+
+- [x] **PQ-55 — XMPP**: `--starttls xmpp`, the stream header and the
+  `<starttls/>` of RFC 6120, on 5222. The `to=` attribute is the server name
+  pqprobe is already sending as SNI, and a server that is a virtual host will
+  answer differently without it — which is the same reason `1.2.3.4=origin`
+  exists. `<failure/>`, or features without a `<starttls/>` element, is `no-tls`.
+  Shipped by *scanning* for the elements that decide it rather than parsing:
+  there is no XML document at this point, only the opening of one, and a parser
+  waiting for a close tag that will never arrive is a hang rather than an
+  answer. Bounded at 16 KB, on top of the deadline PQ-45 put on every plaintext
+  negotiation. A target with no name to open a stream to is told to use the
+  `address=name` form rather than being sent an empty `to=`.
+  <!-- pq: prio=low size=M labels=probe ver=unreleased -->

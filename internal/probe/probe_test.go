@@ -1061,6 +1061,81 @@ func starttlsServer(t *testing.T, proto string, cfg *tls.Config, refuse bool) Ta
 						return
 					}
 					fmt.Fprint(c, "a1 OK begin TLS negotiation now\r\n")
+				case "ldap":
+					// The StartTLS extended request, and an extendedResp whose
+					// resultCode is the whole answer: 0 success, 53 unwilling
+					// to perform — with the server's own words attached, which
+					// is what sends an operator to the right file.
+					head := make([]byte, 2)
+					if _, err := io.ReadFull(br, head); err != nil {
+						return
+					}
+					body := make([]byte, int(head[1]))
+					if _, err := io.ReadFull(br, body); err != nil {
+						return
+					}
+					if !strings.Contains(string(body), "1.3.6.1.4.1.1466.20037") {
+						t.Error("ldap: the request does not carry the StartTLS OID")
+						return
+					}
+					if refuse {
+						msg := "TLS not enabled"
+						resp := []byte{0x30, 0, 0x02, 0x01, 0x01, 0x78, 0, 0x0a, 0x01, 53, 0x04, 0x00, 0x04, byte(len(msg))}
+						resp = append(resp, msg...)
+						resp[6] = byte(len(resp) - 7)
+						resp[1] = byte(len(resp) - 2)
+						_, _ = c.Write(resp)
+						return
+					}
+					_, _ = c.Write([]byte{0x30, 0x0c, 0x02, 0x01, 0x01, 0x78, 0x07, 0x0a, 0x01, 0x00, 0x04, 0x00, 0x04, 0x00})
+				case "xmpp":
+					open := make([]byte, 512)
+					n, _ := br.Read(open)
+					if !strings.Contains(string(open[:n]), "to=") {
+						t.Error("xmpp: the stream header carries no to=, so a virtual host would answer for the wrong name")
+					}
+					features := "<stream:features><starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/></stream:features>"
+					if refuse {
+						features = "<stream:features><mechanisms/></stream:features>"
+					}
+					fmt.Fprint(c, "<?xml version='1.0'?><stream:stream id='1' version='1.0' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams'>"+features)
+					if refuse {
+						return
+					}
+					req := make([]byte, 256)
+					n, _ = br.Read(req)
+					if !strings.Contains(string(req[:n]), "starttls") {
+						return
+					}
+					fmt.Fprint(c, "<proceed xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>")
+				case "ftp":
+					// The real shape, from a public server: a dash on the
+					// first line and then lines with no code at all.
+					fmt.Fprint(c, "220-Welcome to files.example\r\n")
+					fmt.Fprint(c, "See https://files.example/ for the terms of use.\r\n")
+					fmt.Fprint(c, "220 ready\r\n")
+					line, _ := br.ReadString('\n')
+					if !strings.HasPrefix(strings.ToUpper(line), "AUTH TLS") {
+						return
+					}
+					if refuse {
+						fmt.Fprint(c, "500 AUTH not understood\r\n")
+						return
+					}
+					fmt.Fprint(c, "234 AUTH TLS successful\r\n")
+				case "nntp":
+					// 201 rather than 200: posting is not allowed here, and that
+					// is a healthy server, not a refusal.
+					fmt.Fprint(c, "201 news.example ready - no posting allowed\r\n")
+					line, _ := br.ReadString('\n')
+					if !strings.HasPrefix(strings.ToUpper(line), "STARTTLS") {
+						return
+					}
+					if refuse {
+						fmt.Fprint(c, "580 Can not initiate TLS negotiation\r\n")
+						return
+					}
+					fmt.Fprint(c, "382 Continue with TLS negotiation\r\n")
 				case "mysql":
 					// The server speaks first: a handshake packet whose
 					// capability flags say whether CLIENT_SSL is on offer.
@@ -1411,7 +1486,8 @@ func TestAPlaintextNegotiationThatHangsIsBoundedAndIsNotAVerdict(t *testing.T) {
 // not this packet exchange — and it is left out on purpose, the same way MySQL
 // itself was left out of PQ-20. The list is the promise, so it is asserted.
 func TestStartTLSListIsExactlyWhatIsSpoken(t *testing.T) {
-	want := map[string]bool{"smtp": true, "imap": true, "postgres": true, "mysql": true}
+	want := map[string]bool{"smtp": true, "imap": true, "postgres": true, "mysql": true,
+		"ftp": true, "nntp": true, "ldap": true, "xmpp": true}
 	got := StartTLSProtocols()
 	if len(got) != len(want) {
 		t.Fatalf("StartTLSProtocols() = %v, want exactly %d protocols", got, len(want))

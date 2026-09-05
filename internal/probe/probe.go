@@ -199,7 +199,9 @@ type Result struct {
 
 // StartTLSProtocols is what --starttls accepts, in the order the help lists
 // them.
-func StartTLSProtocols() []string { return []string{"smtp", "imap", "postgres", "mysql"} }
+func StartTLSProtocols() []string {
+	return []string{"smtp", "imap", "postgres", "mysql", "ftp", "nntp", "ldap", "xmpp"}
+}
 
 // ValidStartTLS reports whether the protocol is one of them. The empty string
 // is valid and means no negotiation: implicit TLS, which is every other port.
@@ -305,6 +307,46 @@ func startTLS(c net.Conn, proto, serverName string) error {
 			}
 		}
 
+	case "ftp":
+		// RFC 4217. The greeting and the reply use SMTP's grammar exactly — a
+		// three-digit code, a dash for continuation — so the same reader serves
+		// both, and 234 is the only answer that means "start now".
+		if err := expectFTP(br, "220"); err != nil {
+			return fmt.Errorf("ftp: %w", err)
+		}
+		if _, err := fmt.Fprint(c, "AUTH TLS\r\n"); err != nil {
+			return fmt.Errorf("ftp: %w", err)
+		}
+		if err := expectFTP(br, "234"); err != nil {
+			return fmt.Errorf("ftp: AUTH TLS refused: %w", err)
+		}
+		return nil
+
+	case "nntp":
+		// RFC 4642. The greeting is 200 or 201 — the difference is whether
+		// posting is allowed, which is not a fact about TLS, and reading 201 as
+		// a failure would report a perfectly healthy news server as broken.
+		line, err := br.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("nntp: reading the greeting: %w", err)
+		}
+		if !strings.HasPrefix(line, "200") && !strings.HasPrefix(line, "201") {
+			return fmt.Errorf("nntp: greeting was %q, not 200 or 201", strings.TrimSpace(line))
+		}
+		if _, err := fmt.Fprint(c, "STARTTLS\r\n"); err != nil {
+			return fmt.Errorf("nntp: %w", err)
+		}
+		if err := expectSMTP(br, "382"); err != nil {
+			return fmt.Errorf("nntp: STARTTLS refused: %w", err)
+		}
+		return nil
+
+	case "ldap":
+		return startTLSLDAP(br, c)
+
+	case "xmpp":
+		return startTLSXMPP(br, c, serverName)
+
 	case "mysql":
 		return startTLSMySQL(br, c)
 
@@ -329,6 +371,179 @@ func startTLS(c net.Conn, proto, serverName string) error {
 		}
 	}
 	return fmt.Errorf("unknown starttls protocol %q (have: %s)", proto, strings.Join(StartTLSProtocols(), ", "))
+}
+
+// startTLSLDAP performs the StartTLS extended operation of RFC 4511 §4.14
+// (PQ-54).
+//
+// A directory server is the most likely thing in a fleet to be running a TLS
+// stack nobody has touched in a decade, on a port no browser will ever complain
+// about. The request is one fixed BER-encoded message carrying the StartTLS
+// OID and no credentials of any kind — a bind is what would carry those, and
+// pqprobe never sends one.
+func startTLSLDAP(br *bufio.Reader, c net.Conn) error {
+	// LDAPMessage ::= SEQUENCE { messageID 1, ExtendedRequest [APPLICATION 23]
+	// { requestName [0] "1.3.6.1.4.1.1466.20037" } }
+	oid := "1.3.6.1.4.1.1466.20037"
+	// The lengths are arithmetic rather than constants so the OID and the
+	// message cannot drift apart: 3 bytes of messageID, then the request's own
+	// two-byte header around its contents.
+	req := []byte{0x30, byte(3 + 2 + 2 + len(oid)), 0x02, 0x01, 0x01, 0x77, byte(2 + len(oid)), 0x80, byte(len(oid))}
+	req = append(req, oid...)
+	if _, err := c.Write(req); err != nil {
+		return fmt.Errorf("ldap: %w", err)
+	}
+
+	body, err := berValue(br, 0x30)
+	if err != nil {
+		return fmt.Errorf("ldap: reading the response: %w", err)
+	}
+	// messageID, then the ExtendedResponse.
+	i := 0
+	if _, i, err = berField(body, i); err != nil {
+		return fmt.Errorf("ldap: %w", err)
+	}
+	resp, _, err := berField(body, i)
+	if err != nil {
+		return fmt.Errorf("ldap: %w", err)
+	}
+	// resultCode ENUMERATED, matchedDN, diagnosticMessage.
+	code, j, err := berField(resp, 0)
+	if err != nil || len(code) != 1 {
+		return errors.New("ldap: the response carries no result code")
+	}
+	if code[0] == 0 {
+		return nil
+	}
+	msg := ""
+	if _, j, err = berField(resp, j); err == nil {
+		if diag, _, err := berField(resp, j); err == nil {
+			msg = strings.TrimSpace(string(diag))
+		}
+	}
+	if msg == "" {
+		msg = "no diagnostic message"
+	}
+	// The server's own words, quoted: "unwilling to perform" and "protocol
+	// error" send an operator to two different files.
+	return fmt.Errorf("ldap: StartTLS refused with result code %d: %s", code[0], msg)
+}
+
+// berValue reads one BER element of the expected tag and returns its contents.
+func berValue(br *bufio.Reader, tag byte) ([]byte, error) {
+	head := make([]byte, 2)
+	if _, err := io.ReadFull(br, head); err != nil {
+		return nil, err
+	}
+	if head[0] != tag {
+		return nil, fmt.Errorf("expected tag %#x, got %#x — this does not look like LDAP", tag, head[0])
+	}
+	n := int(head[1])
+	if n&0x80 != 0 {
+		// Long form: the low bits say how many length bytes follow.
+		count := n & 0x7f
+		if count == 0 || count > 3 {
+			return nil, errors.New("a length this shape is not an LDAP response")
+		}
+		lb := make([]byte, count)
+		if _, err := io.ReadFull(br, lb); err != nil {
+			return nil, err
+		}
+		n = 0
+		for _, b := range lb {
+			n = n<<8 | int(b)
+		}
+	}
+	if n > 65535 {
+		return nil, fmt.Errorf("a %d-byte LDAP response is not one", n)
+	}
+	out := make([]byte, n)
+	_, err := io.ReadFull(br, out)
+	return out, err
+}
+
+// berField returns the contents of the element at off and the offset after it.
+func berField(b []byte, off int) ([]byte, int, error) {
+	if off+2 > len(b) {
+		return nil, 0, errors.New("a field runs past the end of the message")
+	}
+	n := int(b[off+1])
+	start := off + 2
+	if n&0x80 != 0 {
+		count := n & 0x7f
+		if count == 0 || count > 3 || start+count > len(b) {
+			return nil, 0, errors.New("a length this shape is not LDAP")
+		}
+		n = 0
+		for _, x := range b[start : start+count] {
+			n = n<<8 | int(x)
+		}
+		start += count
+	}
+	if start+n > len(b) {
+		return nil, 0, errors.New("a field claims more data than the message holds")
+	}
+	return b[start : start+n], start + n, nil
+}
+
+// startTLSXMPP opens a stream and asks for TLS, per RFC 6120 (PQ-55).
+//
+// The `to` attribute is the server name pqprobe is already sending as SNI, and
+// it is not decoration: a virtual host answers for whatever it is asked about,
+// so a stream opened without it probes a different service — the same reason
+// the `1.2.3.4=origin.example` form exists.
+//
+// The reply is scanned for the elements that decide it rather than parsed:
+// there is no XML document here yet, only the opening of one, and a parser
+// waiting for a close tag that will never come is a hang rather than an answer.
+func startTLSXMPP(br *bufio.Reader, c net.Conn, serverName string) error {
+	if serverName == "" {
+		return errors.New("xmpp: no server name to open a stream to — dial the name, or use the address=name form")
+	}
+	open := "<?xml version='1.0'?><stream:stream to='" + serverName +
+		"' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0'>"
+	if _, err := fmt.Fprint(c, open); err != nil {
+		return fmt.Errorf("xmpp: %w", err)
+	}
+
+	seen, err := readUntil(br, "</stream:features>", "<stream:error", "</stream:stream>")
+	if err != nil {
+		return fmt.Errorf("xmpp: reading the stream features: %w", err)
+	}
+	if !strings.Contains(seen, "<starttls") {
+		return errors.New("xmpp: the stream features do not offer STARTTLS — TLS is not enabled on this service")
+	}
+	if _, err := fmt.Fprint(c, "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>"); err != nil {
+		return fmt.Errorf("xmpp: %w", err)
+	}
+	seen, err = readUntil(br, "<proceed", "<failure", "</stream:stream>")
+	if err != nil {
+		return fmt.Errorf("xmpp: reading the STARTTLS reply: %w", err)
+	}
+	if !strings.Contains(seen, "<proceed") {
+		return errors.New("xmpp: the server answered <failure/> to STARTTLS")
+	}
+	return nil
+}
+
+// readUntil reads until one of the markers appears, bounded so a peer that
+// talks for ever cannot make a fleet run wait for it. The deadline set before
+// the negotiation is what stops one that says nothing at all.
+func readUntil(br *bufio.Reader, markers ...string) (string, error) {
+	var b strings.Builder
+	for b.Len() < 16384 {
+		ch, err := br.ReadByte()
+		if err != nil {
+			return b.String(), err
+		}
+		b.WriteByte(ch)
+		for _, m := range markers {
+			if strings.HasSuffix(b.String(), m) {
+				return b.String(), nil
+			}
+		}
+	}
+	return b.String(), errors.New("the peer sent 16 KB without answering")
 }
 
 // MySQL capability bits, from the connection phase. Only these three are ever
@@ -436,9 +651,47 @@ func mysqlErrText(payload []byte) string {
 	return strings.TrimSpace(string(msg))
 }
 
+// expectFTP reads an FTP reply, whose multi-line rule is *not* SMTP's.
+//
+// Found by running it against a real server: RFC 959 marks continuation with a
+// dash on the first line and then says nothing about the lines that follow —
+// they carry banners, terms of use, a user count, and no code at all — until a
+// line beginning with the code and a space. Reading them with SMTP's rule
+// turned "220-Welcome" into "the server answered See https://…", a refusal that
+// never happened, on an endpoint that was fine.
+func expectFTP(br *bufio.Reader, code string) error {
+	line, err := br.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("reading a %s reply: %w", code, err)
+	}
+	if len(line) < 4 {
+		return fmt.Errorf("short reply %q", strings.TrimSpace(line))
+	}
+	if line[:3] != code {
+		return fmt.Errorf("answered %s", strings.TrimSpace(line))
+	}
+	if line[3] == ' ' {
+		return nil
+	}
+	if line[3] != '-' {
+		return fmt.Errorf("answered %s", strings.TrimSpace(line))
+	}
+	// A banner, bounded: a peer that never closes the reply would otherwise be
+	// a hang, and the deadline on the negotiation is the other half of this.
+	for i := 0; i < 100; i++ {
+		if line, err = br.ReadString('\n'); err != nil {
+			return fmt.Errorf("reading the rest of a %s reply: %w", code, err)
+		}
+		if len(line) >= 4 && line[:3] == code && line[3] == ' ' {
+			return nil
+		}
+	}
+	return fmt.Errorf("the %s reply did not end after 100 lines", code)
+}
+
 // expectSMTP reads a possibly multi-line reply and checks its code. SMTP marks
-// continuation with a dash after the code, so the last line is the one whose
-// fourth byte is a space.
+// continuation with a dash after the code and **every** line carries the code —
+// which is exactly where FTP differs, and why expectFTP exists.
 func expectSMTP(br *bufio.Reader, code string) error {
 	for {
 		line, err := br.ReadString('\n')

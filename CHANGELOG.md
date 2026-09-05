@@ -6,6 +6,47 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.36.0] - 2026-09-05
+
+### Added
+
+- **Four more ports: `--starttls ftp|nntp|ldap|xmpp` (PQ-53, PQ-54, PQ-55).**
+  None of them is a port a browser will ever visit, which is exactly why nobody
+  has noticed what their TLS stacks look like — and a directory server is the
+  most likely thing in a fleet to be running one nobody has touched in a decade.
+
+  FTP (`AUTH TLS`, RFC 4217) and NNTP (`STARTTLS`, RFC 4642) are SMTP's shape;
+  NNTP greets `200` **or** `201` depending on whether posting is allowed, and
+  both are a healthy server. LDAP is the extended operation of RFC 4511 §4.14 —
+  a BER-encoded request carrying OID `1.3.6.1.4.1.1466.20037`, with **no bind**
+  and therefore no credentials — and a non-zero result code arrives as `no-tls`
+  with the server's own diagnostic quoted, because "unwilling to perform" and
+  "protocol error" send an operator to two different files. XMPP opens a stream
+  and asks for `<starttls/>`, carrying the `to=` attribute pqprobe already sends
+  as SNI: a virtual host answers for whatever it is asked about, which is the
+  same reason the `1.2.3.4=origin.example` form exists.
+
+  Everything the rest of `--starttls` promises still holds: only the negotiation
+  goes on the wire, and a peer that will not upgrade is `no-tls` rather than a
+  post-quantum verdict. **M8 is complete.**
+
+### Fixed
+
+- **FTP's multi-line reply is not SMTP's, and reading it as one invented a
+  refusal.** RFC 959 marks continuation with a dash on the *first* line and says
+  nothing about the lines after it — real servers put a banner and terms of use
+  there, with no code at all. Reusing the SMTP reader turned a live server's
+  `220-Welcome` into "the server answered See https://…" and graded a healthy
+  endpoint `no-tls`. Found by running it against a real FTPS server rather than
+  by reading the RFC; `expectFTP` is now its own reader, bounded at 100 lines,
+  and the test server speaks the real banner shape.
+
+  Verified against real services: FTP and XMPP and LDAP all come back
+  `pq-blind` — a public FTPS host, `jabber.org:5222`, and a FreeIPA demo
+  directory whose private CA is reported by the chain check and not by the
+  capability one, which is the separation this tool promises. NNTP is covered
+  offline only: the public servers tried were unreachable from here.
+
 ## [0.35.0] - 2026-09-05
 
 ### Added

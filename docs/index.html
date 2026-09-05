@@ -644,7 +644,7 @@ pqprobe version [--short] <span class="c-dim"># --short: the version alone, for 
           <tr><td><code>--port N</code></td><td><code>443</code></td><td>default port for targets written without one</td></tr>
           <tr><td><code>--sni NAME</code></td><td>—</td><td>server name for every target</td></tr>
           <tr><td><code>--alpn a,b</code></td><td>none</td><td>ALPN protocols to offer</td></tr>
-          <tr><td><code>--starttls PROTO</code></td><td>—</td><td>upgrade to TLS through the protocol's own negotiation first: <code>smtp</code>, <code>imap</code>, <code>postgres</code>, <code>mysql</code></td></tr>
+          <tr><td><code>--starttls PROTO</code></td><td>—</td><td>upgrade to TLS through the protocol's own negotiation first: <code>smtp</code>, <code>imap</code>, <code>postgres</code>, <code>mysql</code>, <code>ftp</code>, <code>nntp</code>, <code>ldap</code>, <code>xmpp</code></td></tr>
           <tr><td><code>--ech</code></td><td>—</td><td>also dial with Encrypted Client Hello, taking each endpoint's config from the <code>ech=</code> parameter of its HTTPS DNS record</td></tr>
           <tr><td><code>--dns HOST:PORT</code></td><td>system</td><td>resolver to ask for that record</td></tr>
           <tr><td><code>--ech-config BASE64</code></td><td>—</td><td>also dial the same client offering Encrypted Client Hello with this <code>ECHConfigList</code> — the <code>ech=</code> value of the endpoint's HTTPS DNS record; reported, never graded</td></tr>
