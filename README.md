@@ -35,6 +35,12 @@ BAD   origin.example.com:443  pq-intolerant
   OK    handshake/classic            TLS 1.3, X25519, TLS_AES_128_GCM_SHA256
 ```
 
+`X25519MLKEM768` is **hybrid**: an X25519 key share *and* an ML-KEM-768 one, so
+the session survives if either holds. The ML-KEM share is 1216 bytes, which takes
+the ClientHello from ~270 bytes to ~1500 — just past what fits a single TCP
+segment on a standard MTU. Thirty years of ClientHellos fitted one. This one does
+not, and that is the whole story: [why it breaks things](docs/background.md).
+
 That endpoint is up. `curl` is happy, the load balancer's health check is green,
 the origin's own logs show 200s — and every request arriving through a CDN with
 post-quantum enabled fails, because the CDN's ClientHello carries a ~1.2 KB

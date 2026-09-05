@@ -629,6 +629,24 @@ func sizeFinding(target string, results []probe.Result) (finding.Finding, bool) 
 	}, true
 }
 
+// chainBytesWarn is where a chain stops having room for post-quantum
+// authentication. It is not a limit anybody enforces today: an ML-DSA-65
+// signature is roughly 3.3 KB against 64 bytes for ECDSA, and its public key
+// about 2 KB, so a two-certificate chain gains something like 8 KB when it
+// migrates. A chain already at 8 KB lands past 16 — the largest handshake
+// message many stacks will accept, and well past what fits the initial flight
+// somebody's middlebox is willing to reassemble.
+const chainBytesWarn = 8000
+
+func chainSizeHint(src *probe.Result) string {
+	base := "post-quantum authentication is the next migration and it is a size problem again: an ML-DSA signature is around 3.3 KB where an ECDSA one is 64 bytes, so this chain grows by roughly 4 KB per certificate when it moves. This is the headroom you have today"
+	if src.ChainBytes >= chainBytesWarn {
+		return "this chain is already large, and post-quantum certificates will roughly double it: an ML-DSA signature is around 3.3 KB where an ECDSA one is 64 bytes. " +
+			"Shortening the chain — one intermediate rather than two, no unnecessary cross-signs — is the cheap thing to do now, while it is a choice rather than an outage"
+	}
+	return base
+}
+
 // anyClientCertRequested reports whether the peer asked for a client
 // certificate on any attempt.
 func anyClientCertRequested(rs []probe.Result) bool {
@@ -840,6 +858,24 @@ func chainFindings(target string, results []probe.Result, opt Options) []finding
 		Check: "expiry", Target: target, Status: st, Message: msg,
 		Value: finding.Num(days), Unit: "days",
 	})
+
+	// What the chain costs on the wire (PQ-44). Reported on every run because
+	// post-quantum *authentication* is the next migration and it will fail the
+	// same way key exchange did — by being too big — so the useful moment to
+	// know the headroom is before anybody enables it.
+	if src.ChainBytes > 0 {
+		st, hint := finding.OK, chainSizeHint(src)
+		if src.ChainBytes >= chainBytesWarn {
+			st = finding.WARN
+		}
+		out = append(out, finding.Finding{
+			Check: "chain-size", Target: target, Status: st,
+			Message: fmt.Sprintf("the peer sent %d certificate(s), %d bytes of chain",
+				src.PeerChainLen, src.ChainBytes),
+			Value: finding.Num(float64(src.ChainBytes)), Unit: "bytes",
+			Hint: hint,
+		})
+	}
 
 	if !src.ChainVerified {
 		out = append(out, finding.Finding{

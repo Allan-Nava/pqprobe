@@ -301,10 +301,42 @@ footer a:hover { color:var(--link-hover); }
     <p class="kicker">The question it answers</p>
     <h2>An endpoint can be up for <code>curl</code> and down for a CDN</h2>
     <p>
-      Hybrid post-quantum key exchange (<code>X25519MLKEM768</code>) is now the
-      default in Chrome, Edge and Firefox, in Go 1.24+, in OpenSSL 3.5+ and at
-      several CDNs. The ML-KEM key share is roughly <strong>1.2 KB</strong>, so
-      the ClientHello carrying it no longer fits one TCP segment. Anything on the
+      <strong>ML-KEM</strong> (FIPS 203, formerly Kyber) is a key encapsulation
+      mechanism whose security does not rest on the discrete logarithm problem —
+      the thing a quantum computer would break, and with it every X25519 and
+      P-256 handshake ever <em>recorded</em>. That word is the point: traffic
+      captured today can be decrypted years later, which is why key exchange is
+      migrating first and why the threat is called <em>harvest now, decrypt
+      later</em>.
+    </p>
+    <p>
+      <code>X25519MLKEM768</code> is a <strong>hybrid</strong> — an X25519 share
+      and an ML-KEM-768 share, combined so the session survives if either does.
+      Nobody is betting on the new mathematics alone, and nobody is betting on
+      the old. The cost is size, and it is the entire reason this tool exists:
+    </p>
+    <div class="tbl">
+      <table>
+        <thead><tr><th></th><th>classical</th><th>hybrid</th></tr></thead>
+        <tbody>
+          <tr><td>key share in the ClientHello</td><td>32 bytes (X25519)</td><td>32 + <strong>1216</strong> bytes</td></tr>
+          <tr><td>ClientHello on the wire</td><td>~270 bytes</td><td><strong>~1500 bytes</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Measured, not estimated: <code>pqprobe probe example.com</code> prints
+      <code>hello 273 B</code> for the classical profile and
+      <code>hello 1495 B</code> for the hybrid one. And ~1500 is exactly the
+      wrong number — a standard MTU is 1500, leaving about 1460 for TCP payload,
+      so <strong>the hybrid ClientHello no longer fits one segment</strong>,
+      where every ClientHello has fitted one for thirty years. It gets split, and
+      anything on the path that assumed otherwise now has an opinion about the
+      second half.
+    </p>
+    <p>
+      Hybrid key exchange is now the default in Chrome, Edge and Firefox, in
+      Go 1.24+, in OpenSSL 3.5+ and at several CDNs. Anything on the
       path that assumed it did — an old TLS library, a middlebox inspecting the
       hello, a load balancer with its own parser — now has a chance to mishandle
       the second segment. When it does, the connection resets or hangs, and
@@ -445,6 +477,23 @@ footer a:hover { color:var(--link-hover); }
       the dial — but it does not decide the class: a set you described is a
       question, not a baseline. An unknown group name is a usage error listing
       the known ones, never a silently smaller set.
+    </p>
+
+    <h3>The next migration is authentication, and it is bigger</h3>
+    <p>
+      <strong>ML-DSA</strong> (FIPS 204, formerly Dilithium) is the post-quantum
+      signature algorithm, and certificates will eventually be signed with it. A
+      signature goes from 64 bytes to about <strong>3.3 KB</strong> and a public
+      key from 64 bytes to about <strong>2 KB</strong>, so every certificate in a
+      chain gains roughly 4 KB — travelling in the <em>server's</em> direction
+      this time, past a different set of middleboxes.
+    </p>
+    <p>
+      Nothing serves those certificates yet, so pqprobe cannot probe them. What
+      it reports on every run is the number you would be starting from:
+      <code>chain-size</code>, measured on the wire — 2718 bytes for
+      <code>example.com</code>, 3658 for <code>github.com</code>. Shortening a
+      chain is a choice today and an outage later.
     </p>
 
     <h3>Which group, not whether some group</h3>
@@ -745,6 +794,7 @@ pqprobe probe --inventory inventory/edge --baseline yesterday.json --exit-on BAD
           <tr><td><code>groups</code></td><td><code>host:port</code></td><td>with <code>--per-group</code>: which groups the peer accepted alone, and how it refused the others</td></tr>
           <tr><td><code>expiry</code></td><td><code>host:port</code></td><td>days to leaf expiry (<code>--expiry-warn</code>, <code>--expiry-bad</code>)</td></tr>
           <tr><td><code>chain</code></td><td><code>host:port</code></td><td>the chain does not verify, or the peer sent the leaf alone</td></tr>
+          <tr><td><code>chain-size</code></td><td><code>host:port</code></td><td>what the certificate chain costs on the wire — the headroom for post-quantum authentication</td></tr>
           <tr><td><code>client-auth</code></td><td><code>host:port</code></td><td>the peer requested a client certificate: this endpoint is mutual TLS</td></tr>
           <tr><td><code>addresses</code></td><td>the name</td><td>with <code>--per-address</code>: how many addresses the name has, and which one answers differently</td></tr>
           <tr><td><code>transition</code></td><td><code>host:port</code></td><td>with <code>--baseline</code>: the class changed since a stored run, or the endpoint is new or gone</td></tr>

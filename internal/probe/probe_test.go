@@ -1154,3 +1154,59 @@ func TestAnUnknownSTARTTLSProtocolIsRefused(t *testing.T) {
 		t.Error("gopher is not a STARTTLS protocol this tool speaks")
 	}
 }
+
+// PQ-44. Post-quantum *authentication* is the next migration, and its failure
+// will be a size failure again — an ML-DSA signature is about 3.3 KB where an
+// ECDSA one is 64 bytes, so the chain a server sends grows from roughly 3 KB to
+// well past 10. The number to watch is therefore what the chain costs today,
+// measured on the wire rather than guessed.
+func TestTheCertificateChainIsMeasured(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := serveTLS(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13})
+
+	res := dial(t, tg, "classic")
+	if !res.OK {
+		t.Fatalf("handshake failed: %s", res.Err)
+	}
+	if res.ChainBytes <= 0 {
+		t.Fatal("no chain size recorded")
+	}
+	// One self-signed P-256 leaf: a few hundred bytes, and certainly not the
+	// kilobytes an ML-DSA chain will cost.
+	if res.ChainBytes < 200 || res.ChainBytes > 2000 {
+		t.Errorf("chain = %d bytes, which is implausible for a single ECDSA leaf", res.ChainBytes)
+	}
+	// It has to be the sum of what the peer actually sent, not a re-encoding.
+	sum := 0
+	for _, c := range res.Chain {
+		if c.Bytes <= 0 {
+			t.Errorf("a certificate with no size: %+v", c)
+		}
+		sum += c.Bytes
+	}
+	if sum != res.ChainBytes {
+		t.Errorf("chain bytes = %d but the certificates add up to %d", res.ChainBytes, sum)
+	}
+}
+
+// A failed handshake has no chain, and reporting zero as if it were a
+// measurement is how a dashboard grows a cliff nobody can explain.
+func TestNoChainNoMeasurement(t *testing.T) {
+	res := Dialer{Timeout: 2 * time.Second}.Do(context.Background(),
+		Target{Host: "127.0.0.1", Port: "1"}, mustProfile(t, "classic"))
+	if res.OK {
+		t.Fatal("nothing is listening on port 1")
+	}
+	if res.ChainBytes != 0 {
+		t.Errorf("chain bytes = %d for a handshake that never happened", res.ChainBytes)
+	}
+}
+
+func mustProfile(t *testing.T, name string) clientprofile.Profile {
+	t.Helper()
+	p, ok := clientprofile.ByName(name)
+	if !ok {
+		t.Fatalf("no profile %q", name)
+	}
+	return p
+}

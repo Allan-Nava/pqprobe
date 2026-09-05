@@ -110,6 +110,11 @@ func (t Target) ServerName() string {
 
 // Cert is the part of a peer certificate a report can use.
 type Cert struct {
+	// Bytes is the DER length the peer sent for this certificate. Post-quantum
+	// *authentication* is the next migration and its failure will be a size
+	// failure again — an ML-DSA signature is around 3.3 KB where an ECDSA one
+	// is 64 — so what a chain costs today is worth having in hand.
+	Bytes     int       `json:"bytes,omitempty"`
 	Subject   string    `json:"subject"`
 	Issuer    string    `json:"issuer"`
 	NotAfter  time.Time `json:"not_after"`
@@ -171,6 +176,10 @@ type Result struct {
 	// happens inside the handshake, and then this is the only thing that tells
 	// the failure apart from "no mutually supported group".
 	ClientCertRequested bool `json:"client_cert_requested,omitempty"`
+	// ChainBytes is what the whole chain cost on the wire, in bytes of DER. It
+	// is the headroom number for post-quantum authentication: a chain that is
+	// already 6 KB has a different future from one that is 2.
+	ChainBytes int `json:"chain_bytes,omitempty"`
 	// PeerChainLen is how many certificates the peer sent. One means the peer
 	// sent the leaf alone: browsers with a cached intermediate will be fine and
 	// a fresh client will not, which is the most confusing class of bug there
@@ -670,6 +679,10 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 	res.ALPN = st.NegotiatedProtocol
 	res.PeerChainLen = len(st.PeerCertificates)
 	for _, c := range st.PeerCertificates {
+		// len(c.Raw) is the DER the peer actually sent, not a re-encoding of the
+		// parsed structure — the number that has to travel, which is what the
+		// size question is about (PQ-44).
+		res.ChainBytes += len(c.Raw)
 		res.Chain = append(res.Chain, Cert{
 			Subject:   c.Subject.CommonName,
 			Issuer:    c.Issuer.CommonName,
@@ -677,6 +690,7 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 			NotBefore: c.NotBefore,
 			DNSNames:  c.DNSNames,
 			IsCA:      c.IsCA,
+			Bytes:     len(c.Raw),
 		})
 	}
 	res.ChainVerified, res.ChainError = verifyChain(st.PeerCertificates, t.ServerName(), d.now())

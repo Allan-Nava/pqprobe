@@ -919,3 +919,68 @@ func TestNoTLSCanBeExplained(t *testing.T) {
 		t.Errorf("action = %q", e.Action)
 	}
 }
+
+// PQ-44. The chain size is reported because the next migration is
+// authentication, and it will fail the same way key exchange did: by being too
+// big. The finding has to carry the number and say what it is for — a byte
+// count with no explanation is a number nobody acts on.
+func TestTheChainSizeIsReportedWithItsMeaning(t *testing.T) {
+	r := ok("classic", "TLS 1.3", "X25519", false)
+	r.ChainBytes = 3200
+	r.PeerChainLen = 2
+	r.Chain = []probe.Cert{
+		{Subject: "leaf", NotAfter: opts().Now.Add(60 * 24 * time.Hour), Bytes: 1200},
+		{Subject: "intermediate", NotAfter: opts().Now.Add(600 * 24 * time.Hour), Bytes: 2000, IsCA: true},
+	}
+	r.ChainVerified = true
+
+	rep := Evaluate("h:443", []probe.Result{r}, opts())
+
+	f := find(t, rep, "chain-size")
+	if f.Value == nil || *f.Value != 3200 {
+		t.Errorf("value = %v, want the measured bytes", f.Value)
+	}
+	if f.Unit != "bytes" {
+		t.Errorf("unit = %q, want bytes", f.Unit)
+	}
+	if f.Status != finding.OK {
+		t.Errorf("status = %s: 3.2 KB is an ordinary chain today", f.Status)
+	}
+	if !strings.Contains(strings.ToLower(f.Hint), "ml-dsa") {
+		t.Errorf("the hint has to say what the number is for: %q", f.Hint)
+	}
+}
+
+// A chain that is already large is worth a warning *now*: it is the one that
+// will not survive post-quantum certificates, and the time to know is before
+// somebody enables them.
+func TestALargeChainIsFlaggedBeforePostQuantumCertificatesExist(t *testing.T) {
+	r := ok("classic", "TLS 1.3", "X25519", false)
+	r.ChainBytes = 9000
+	r.PeerChainLen = 4
+	r.Chain = []probe.Cert{
+		{Subject: "leaf", NotAfter: opts().Now.Add(60 * 24 * time.Hour), Bytes: 3000},
+		{Subject: "intermediate", NotAfter: opts().Now.Add(600 * 24 * time.Hour), Bytes: 6000, IsCA: true},
+	}
+	r.ChainVerified = true
+
+	rep := Evaluate("h:443", []probe.Result{r}, opts())
+	f := find(t, rep, "chain-size")
+	if f.Status != finding.WARN {
+		t.Errorf("status = %s, want WARN for a 9 KB chain", f.Status)
+	}
+	if !strings.Contains(f.Message, "9000") && !strings.Contains(f.Message, "8.8") {
+		t.Errorf("message = %q, want the number in it", f.Message)
+	}
+}
+
+// No handshake, no chain, no finding — a zero would render as a suspiciously
+// small chain rather than as the absence of one.
+func TestNoChainSizeFindingWithoutAHandshake(t *testing.T) {
+	rep := Evaluate("h:443", []probe.Result{fail("classic", probe.KindRefused)}, opts())
+	for _, f := range rep.Finding {
+		if f.Check == "chain-size" {
+			t.Fatalf("unexpected finding: %+v", f)
+		}
+	}
+}

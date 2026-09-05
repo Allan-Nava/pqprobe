@@ -24,6 +24,7 @@ not an endpoint that passed, and an operator has to see it first.
 | `groups` | `host:port` | with `--per-group`: which groups the peer accepted alone, and how it refused the others |
 | `expiry` | `host:port` | days to leaf expiry (`--expiry-warn`, `--expiry-bad`) |
 | `chain` | `host:port` | chain does not verify, or the peer sent the leaf alone |
+| `chain-size` | `host:port` | what the chain costs on the wire, and the headroom it leaves for post-quantum certificates |
 | `client-auth` | `host:port` | the peer requested a client certificate: this endpoint is mutual TLS |
 | `addresses` | the name | with `--per-address`: how many addresses the name has, and which one answers differently |
 | `transition` | `host:port` | with `--baseline`: the class changed since a stored run, or the endpoint is new or gone |

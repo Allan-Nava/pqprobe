@@ -1,10 +1,43 @@
 # Background — up for `curl`, down for a CDN
 
+## What ML-KEM is, and why the hello grew
+
+**ML-KEM** (FIPS 203, formerly Kyber) is a key encapsulation mechanism whose
+security does not rest on the discrete logarithm problem — the thing a
+cryptographically relevant quantum computer would break, and with it every
+X25519 and P-256 handshake ever recorded. The word that matters is *recorded*:
+traffic captured today can be decrypted years later, which is why the industry
+is migrating key exchange first and calls the threat **harvest now, decrypt
+later**. It is not a prediction about next year; it is about the shelf life of
+what is being copied this afternoon.
+
+`X25519MLKEM768` is a **hybrid**: both an X25519 share and an ML-KEM-768 share,
+combined so the session is secure if *either* survives. Nobody is betting on the
+new mathematics alone, and nobody is betting on the old.
+
+The cost is size, and it is the entire reason this tool exists:
+
+| | classical | hybrid |
+|---|---|---|
+| key share in the ClientHello | 32 bytes (X25519) | 32 + **1216** bytes |
+| ClientHello on the wire | ~270 bytes | **~1500 bytes** |
+
+Those are measured numbers: `pqprobe probe example.com` prints `hello 273 B` for
+the classical profile and `hello 1495 B` for the hybrid one, today.
+
+And ~1500 bytes is exactly the wrong number. A standard Ethernet MTU is 1500,
+leaving about 1460 for TCP payload, so **the hybrid ClientHello no longer fits
+one segment** — where every ClientHello has fitted one for thirty years. It gets
+split, and anything on the path that assumed otherwise now has an opinion about
+the second half.
+
+## Why that breaks things that were fine yesterday
+
 Hybrid post-quantum key exchange (`X25519MLKEM768`) is now the default in
 Chrome, Edge and Firefox, in Go 1.24+, in OpenSSL 3.5+, and at several CDNs. The
-change is invisible on a healthy stack and brutal on an unhealthy one, for a
-mechanical reason: the ML-KEM key share is roughly 1.2 KB, so the ClientHello
-that carries it no longer fits in a single TCP segment.
+change is invisible on a healthy stack and brutal on an unhealthy one, for the
+mechanical reason above: the ClientHello no longer fits in a single TCP
+segment.
 
 Anything on the path that assumes it does — an old TLS library, a middlebox
 inspecting the hello, a load balancer with its own parser — now has a chance to
@@ -29,6 +62,32 @@ BAD   origin.example.com:443  pq-intolerant
   OK    handshake/classic            TLS 1.3, X25519, TLS_AES_128_GCM_SHA256
   WARN  handshake/pq-preferred       no handshake (reset): read: connection reset by peer
 ```
+
+## The next one: ML-DSA, and the chain
+
+Key exchange is the first migration, not the only one. **ML-DSA** (FIPS 204,
+formerly Dilithium) is the post-quantum signature algorithm, and it is what
+certificates will eventually be signed with — and it is a size problem again,
+in the other direction:
+
+| | ECDSA P-256 | ML-DSA-65 |
+|---|---|---|
+| signature | 64 bytes | **~3.3 KB** |
+| public key | 64 bytes | **~2 KB** |
+
+A certificate carries both, so each one in a chain gains roughly 4 KB. A typical
+chain today is two or three certificates and two to four kilobytes — pqprobe
+reports it on every run as `chain-size` — and the same chain lands somewhere past
+10 KB after the migration. That is larger than the largest handshake message
+many stacks accept without special handling, and it travels in the *server's*
+direction, so the middleboxes that will object are a different set from the ones
+that object today.
+
+Nothing serves ML-DSA certificates yet, so pqprobe cannot probe them. What it
+can do is tell you the number you will be starting from, which is why the chain
+size is reported before it is a problem: shortening a chain — one intermediate
+instead of two, no unnecessary cross-signs — is a choice today and an outage
+later.
 
 ## The two other states worth planning for
 

@@ -361,6 +361,20 @@ prints what to pick up.
   saying it says nothing about this endpoint. Reporting it as "example.com
   refuses Safari" would have been the exact lie this tool exists to avoid.
   <!-- pq: prio=med size=XL labels=profile ver=0.25.0 -->
+- [x] **PQ-44 — What the chain costs today**: the honest half of PQ-18 that can
+  be done before anything serves an ML-DSA certificate — measure the chain on
+  the wire (`chain-size`, the sum of the DER the peer actually sent) and say
+  what the number is *for*. Post-quantum authentication is a size problem in the
+  other direction: an ML-DSA-65 signature is ~3.3 KB against 64 bytes for ECDSA
+  and its public key ~2 KB, so each certificate gains roughly 4 KB and a typical
+  3 KB chain lands past 10. A chain already at 8 KB is a WARN now, while
+  shortening it is a choice rather than an outage. Real numbers today:
+  `example.com` 2718 bytes over 3 certificates, `github.com` 3658 over 4.
+  It also carries the explanation the tool was missing: `docs/background.md` now
+  says what ML-KEM *is* — a hybrid, 1216 bytes of key share, ~1500 on the wire
+  against an MTU of 1500 — and what ML-DSA will be. A tool whose whole subject
+  is one number should explain where the number comes from.
+  <!-- pq: prio=med size=M labels=verdict,docs ver=0.29.0 -->
 - [ ] **PQ-18 — Beyond key exchange**: post-quantum *authentication* (ML-DSA
   certificates) is the next migration, and the failure mode is again a size one
   — a chain several kilobytes long. Worth a profile once there is anything to

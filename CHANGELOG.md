@@ -6,6 +6,42 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.29.0] - 2026-09-05
+
+### Added
+
+- **What the certificate chain costs** (PQ-44) — a `chain-size` finding on every
+  run: the bytes of DER the peer actually sent, with the number of certificates.
+  `example.com` sends 2718 bytes over 3, `github.com` 3658 over 4.
+
+  It is reported *before* it is a problem, which is the point. Post-quantum
+  **authentication** is the next migration and it is a size problem in the other
+  direction: an ML-DSA-65 signature is around **3.3 KB** where an ECDSA one is
+  64 bytes, and its public key around 2 KB, so every certificate in a chain
+  gains roughly 4 KB and a typical 3 KB chain lands past 10 — travelling towards
+  the client, past a different set of middleboxes from the ones that mishandle a
+  large ClientHello today. A chain already at 8 KB is a WARN now, while
+  shortening it is a choice rather than an outage.
+
+  This is as far as PQ-18 can honestly go: nothing serves ML-DSA certificates
+  yet, so there is nothing to probe. What can be given is the number somebody
+  will be starting from.
+
+- **An explanation of ML-KEM** (PQ-44) — the tool's entire subject is one
+  number and the documentation never said where it comes from.
+  [docs/background.md](docs/background.md), the site and the README now do:
+  ML-KEM is a key encapsulation mechanism whose security does not rest on the
+  discrete logarithm problem; `X25519MLKEM768` is a **hybrid**, so the session
+  survives if either half does; the ML-KEM share is **1216 bytes**, which takes
+  the ClientHello from ~270 to ~1500; and a standard MTU is 1500, leaving ~1460
+  for TCP payload — so the hybrid hello is the first ClientHello in thirty years
+  that does not fit one segment. *Harvest now, decrypt later* is why the
+  migration is happening at all: the traffic being copied this afternoon is what
+  a future machine decrypts.
+
+  Every number there is one the tool prints — `hello 273 B` classical against
+  `hello 1495 B` hybrid — rather than a figure quoted from a specification.
+
 ## [0.28.0] - 2026-09-05
 
 ### Added
@@ -898,6 +934,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.29.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.0
 [0.28.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.28.0
 [0.27.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.27.1
 [0.27.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.27.0
