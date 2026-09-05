@@ -516,6 +516,12 @@ func explainTo(w io.Writer, args []string) int {
 			e, _ := verdict.Explain(c)
 			fmt.Fprintf(w, "  %-14s %-5s %s\n", c, e.Status, verdict.Describe(c))
 		}
+		// The words a report uses that are not classes, because they are
+		// reported and never graded (PQ-52).
+		fmt.Fprintln(w, "\ntopics:")
+		for _, name := range verdict.Topics() {
+			fmt.Fprintf(w, "  %s\n", name)
+		}
 		return 0
 	}
 
@@ -524,14 +530,25 @@ func explainTo(w io.Writer, args []string) int {
 	name := strings.TrimLeft(args[0], "-")
 	e, ok := verdict.Explain(verdict.Class(name))
 	if !ok {
-		fmt.Fprintf(w, "pqprobe: %q is not a class. These are:\n", args[0])
+		e, ok = verdict.ExplainTopic(name)
+	}
+	if !ok {
+		fmt.Fprintf(w, "pqprobe: %q is neither a class nor a topic. These are:\n", args[0])
 		for _, c := range verdict.Classes() {
 			fmt.Fprintf(w, "  %s\n", c)
+		}
+		for _, name := range verdict.Topics() {
+			fmt.Fprintf(w, "  %s\n", name)
 		}
 		return 2
 	}
 
-	fmt.Fprintf(w, "%s  (%s)\n\n", e.Class, e.Status)
+	if e.Status == "" {
+		// A topic has no status: it is a word a report uses, not a grade.
+		fmt.Fprintf(w, "%s\n\n", e.Class)
+	} else {
+		fmt.Fprintf(w, "%s  (%s)\n\n", e.Class, e.Status)
+	}
 	fmt.Fprintf(w, "means      %s\n\n", e.Meaning)
 	if e.Affected != "" {
 		fmt.Fprintf(w, "affects    %s\n\n", e.Affected)

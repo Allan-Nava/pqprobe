@@ -1068,3 +1068,39 @@ func TestECHIsReportedAndNeverDecidesTheClass(t *testing.T) {
 		}
 	}
 }
+
+// PQ-52. A finding nobody can look up is a finding nobody acts on. `explain`
+// knew only classes, and ECH is deliberately not one — so the vocabulary it
+// answers for has to widen, or the `ech` finding is a sentence with nowhere to
+// read the rest of it.
+func TestExplainCoversTheTopicsThatAreNotClasses(t *testing.T) {
+	topics := Topics()
+	if len(topics) == 0 {
+		t.Fatal("no topics: the ech finding has nothing behind it")
+	}
+	seen := map[string]bool{}
+	for _, name := range topics {
+		e, ok := ExplainTopic(name)
+		if !ok {
+			t.Fatalf("%s is listed and cannot be explained", name)
+		}
+		if e.Meaning == "" || e.Action == "" {
+			t.Errorf("%s: meaning %q, action %q — both are the point", name, e.Meaning, e.Action)
+		}
+		seen[name] = true
+	}
+	for _, want := range []string{"ech", "ech-reject"} {
+		if !seen[want] {
+			t.Errorf("%s is not among the topics", want)
+		}
+	}
+	if _, ok := ExplainTopic("gopher"); ok {
+		t.Error("an unknown word must not resolve")
+	}
+	// A topic is not a class and must not pretend to be one.
+	for _, c := range Classes() {
+		if seen[string(c)] {
+			t.Errorf("%s is both a class and a topic; one of the two lists is wrong", c)
+		}
+	}
+}

@@ -3,7 +3,7 @@
 ```
 pqprobe probe <target>... [flags]
 pqprobe profiles
-pqprobe explain [class]
+pqprobe explain [class|topic]
 pqprobe version [--short]
 ```
 
@@ -13,7 +13,10 @@ without reading `pqprobe pqprobe X.Y.Z`.
 
 `pqprobe explain pq-intolerant` prints what the class means, which real clients
 it affects and what to do next — with **no network call**, so it is runnable
-while the incident is still on. With no argument it lists every class.
+while the incident is still on. With no argument it lists every class, and the
+**topics** — words a report uses that are deliberately not classes, because they
+are reported and never graded: `ech` and `ech-reject` today. A finding nobody can
+look up is a finding nobody acts on.
 
 ## Targets
 

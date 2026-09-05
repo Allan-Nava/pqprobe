@@ -41,8 +41,9 @@ twice.
 
 ## Classes
 
-`pqprobe explain <class>` prints any of these out of context — meaning,
-affected clients, next action — without touching the network.
+`pqprobe explain <class>` — and `explain ech`, for the words that are reported
+rather than graded — prints any of these out of context: meaning, affected
+clients, next action, without touching the network.
 
 | Class | Status | Meaning |
 |---|---|---|

@@ -631,7 +631,7 @@ true statement.
   a fleet probed and a report that looks complete.
   <!-- pq: prio=low size=S labels=inventory,ux ver=unreleased -->
 
-## M7 — Encrypted Client Hello <!-- ms: target=v0.33.0 phase=now -->
+## M7 — Encrypted Client Hello <!-- ms: target=v0.35.0 phase=shipped -->
 
 ECH is the same question this tool already asks, one layer further out: it is a
 **client capability that makes the ClientHello bigger**, on top of a hybrid
@@ -706,7 +706,7 @@ look like it has.
   `github.com` publishes none and says so once, keeping its ordinary profiles.
   <!-- pq: prio=med size=L labels=probe,inventory ver=unreleased -->
 
-- [ ] **PQ-52 — ECH does not decide the class**: it is findings and a hint, on
+- [x] **PQ-52 — ECH does not decide the class**: it is findings and a hint, on
   the pattern `--per-group` established — no real client is ECH-only, so an
   endpoint that does not offer it must not fall into a worse bucket for a
   capability nobody requires yet. What the report gains is the sentence an
@@ -714,4 +714,12 @@ look like it has.
   handshake here, and how much of the MTU the combination is using. `explain`
   gains the vocabulary in the same commit, because the table-driven test refuses
   a finding nobody can look up.
-  <!-- pq: prio=med size=S labels=verdict,output,docs -->
+  The grading half shipped with PQ-50 and is asserted there: the pair is held
+  out of the classification, and an endpoint cut off with ECH keeps its class.
+  What was left is the vocabulary, and it needed `explain` to stop being a
+  dictionary of *classes* only — ECH is deliberately not one, so it had no entry
+  to look up. `Topics()` and `ExplainTopic()` answer for the words a report uses
+  and never grades (`ech`, `ech-reject`), the listing shows them, an unknown word
+  prints both vocabularies, and a topic renders without a status because it has
+  none — a grade is exactly what it is not. A test asserts no word is both.
+  <!-- pq: prio=med size=S labels=verdict,output,docs ver=unreleased -->

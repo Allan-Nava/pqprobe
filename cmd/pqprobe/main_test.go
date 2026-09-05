@@ -849,3 +849,31 @@ func TestECHLookupFlagsAreExclusiveAndDocumented(t *testing.T) {
 		}
 	}
 }
+
+// PQ-52. `explain ech` has to work while the run that produced the finding is
+// still on screen — same as every class, and with no network call.
+func TestExplainAnswersForTopicsToo(t *testing.T) {
+	var b strings.Builder
+	if code := explainTo(&b, []string{"ech"}); code != 0 {
+		t.Fatalf("explain ech exited %d", code)
+	}
+	if !strings.Contains(strings.ToLower(b.String()), "encrypted client hello") {
+		t.Errorf("explain ech said %q", b.String())
+	}
+
+	// The listing has to mention them, or nobody discovers they exist.
+	b.Reset()
+	explainTo(&b, nil)
+	if !strings.Contains(b.String(), "ech") {
+		t.Error("the no-argument listing does not mention the topics")
+	}
+
+	// And an unknown word still fails with the vocabulary, now including them.
+	b.Reset()
+	if code := explainTo(&b, []string{"gopher"}); code != 2 {
+		t.Fatalf("an unknown word exited %d, want 2", code)
+	}
+	if !strings.Contains(b.String(), "ech") || !strings.Contains(b.String(), "pq-ready") {
+		t.Errorf("the vocabulary printed on failure is incomplete: %q", b.String())
+	}
+}

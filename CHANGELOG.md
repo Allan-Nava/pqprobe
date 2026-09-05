@@ -6,6 +6,23 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.35.0] - 2026-09-05
+
+### Added
+
+- **`explain` answers for topics, not only classes (PQ-52).** ECH is reported
+  and deliberately never graded, so it has no class — and `explain` knew only
+  classes, which left the `ech` finding as a sentence with nowhere to read the
+  rest of it. `pqprobe explain ech` and `explain ech-reject` now print meaning,
+  who is affected and what to do, with no network call; the no-argument listing
+  shows the topics under the classes, and an unknown word prints both
+  vocabularies. A topic renders without a status, because a grade is exactly
+  what it is not, and a test asserts no word is both a class and a topic.
+
+  The grading half of the item shipped with PQ-50 and is asserted there: the ECH
+  pair is held out of the classification, and an endpoint cut off with ECH keeps
+  its class. **M7 is complete.**
+
 ## [0.34.0] - 2026-09-05
 
 ### Added

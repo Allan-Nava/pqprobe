@@ -86,6 +86,34 @@ type Explanation struct {
 	Action   string         `json:"action"`
 }
 
+// Topics is the vocabulary `explain` answers for that is *not* a class (PQ-52).
+//
+// ECH is the reason it exists: it is reported and deliberately never graded, so
+// it has no class to look up — and a finding nobody can look up is a finding
+// nobody acts on. A topic is a word that appears in a report; nothing in the
+// grading reads this list.
+func Topics() []string { return []string{"ech", "ech-reject"} }
+
+// ExplainTopic answers for a topic. The Class field carries the topic's name so
+// one renderer serves both — a topic has no status, and an empty one is what
+// says so.
+func ExplainTopic(name string) (Explanation, bool) {
+	e := Explanation{Class: Class(name)}
+	switch name {
+	case "ech":
+		e.Meaning = "Encrypted Client Hello: the client encrypts the real server name to a public key the endpoint publishes in DNS, so only the public name travels in the clear. pqprobe dials it as a pair — the same client with and without — and reports whether the peer accepted it and what it cost in bytes"
+		e.Affected = "nobody, in the sense of a client class: no real client requires ECH, and one that offers it falls back where a config is not published. It is reported and never graded"
+		e.Action = "read it as a size number first. ECH adds a few hundred bytes to a hybrid ClientHello already near the 1500-byte MTU, so the case worth acting on is the one where the control connects and the ECH twin is cut off — that is a threshold on the path, not an ECH policy, and --size-sweep finds where it sits"
+	case "ech-reject":
+		e.Meaning = "the peer declined Encrypted Client Hello and answered with a retry config. It parsed the hello and said no: a negotiation, which is why it is never counted as the peer cutting us off"
+		e.Affected = "nobody. Most endpoints are in this state, and a browser that offers ECH connects to them perfectly well"
+		e.Action = "check the config is the one this endpoint publishes — `--ech` takes it from the endpoint's own HTTPS record, and a config from somewhere else says nothing about it. Note that when a peer declines ECH, Go verifies its certificate against the config's public name, so an endpoint behind a private CA arrives here with a certificate error rather than a clean rejection"
+	default:
+		return Explanation{}, false
+	}
+	return e, true
+}
+
 // Explain returns the explanation for a class.
 func Explain(c Class) (Explanation, bool) {
 	e := Explanation{Class: c, Status: StatusOf(c), Meaning: Describe(c)}
