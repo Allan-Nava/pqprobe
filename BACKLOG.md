@@ -1047,3 +1047,46 @@ shaped not to see. Seven, and the same mistake three times.
   They arrive as reports with class `unreachable` now, like everything else that
   cannot be probed.
   <!-- pq: prio=high size=M labels=probe,verdict,cli,integration ver=unreleased -->
+
+## M13 — Invariants a machine can check <!-- ms: target=v0.47.0 phase=now -->
+
+The audit (PQ-65) found seven bugs in code that every gate called green, and
+they had one shape: an invariant this repository states in prose, checked by a
+test written by whoever wrote the code. Three of them were the *same* mistake in
+three places, and one of them — a byte count derived from a hello that never
+went out — had already been fixed once, in 0.29.2, for a neighbouring case.
+
+A fuzzer and a property do not share the author's assumptions. Go has both in
+the standard library, so this costs no dependency: `go test -fuzz` and a table
+of invariants over generated inputs.
+
+There is a second reason, and it is the one INTENT.md cares about: three of
+these parsers read bytes **an endpoint chose** — a DNS answer, an LDAP response,
+a MySQL greeting. A panic there is not a wrong answer, it is a monitoring tool
+that dies halfway through somebody's fleet.
+
+- [ ] **PQ-66 — Fuzz the parsers that read what a peer sent**: the HTTPS/SVCB
+  answer walker with its compression pointers, the BER reader, the MySQL
+  greeting, the XMPP element reader. No panic, no unbounded read, no hang, and
+  a seed corpus taken from the real captures already in the tests — the
+  Cloudflare ECH record, slapd's response, MySQL 8.4's greeting. Wired into CI
+  with a short run per parser, because a fuzz target nobody runs is a file.
+  <!-- pq: prio=high size=M labels=tests,probe -->
+
+- [ ] **PQ-67 — The verdict's invariants, as properties**: for *any* set of
+  results — generated, not chosen — the class is one of `Classes()`, a
+  post-quantum grade never appears without a working baseline, no finding
+  carries a negative byte count or a number derived from an unsent hello, every
+  finding with a `Value` has a `Unit`, the findings are sorted worst-first, and
+  every class the evaluator can produce has an explanation. Every one of those
+  sentences is already written in prose somewhere in this repository; three of
+  them were false last week and no gate said so.
+  <!-- pq: prio=high size=M labels=tests,verdict -->
+
+- [ ] **PQ-68 — Fuzz the target parser, and pin what it may never do**: the
+  `?q=1` bug lives here — a query string contains an `=`, and reading it as a
+  server name is a silently wrong probe. Fuzz `Parse` for panics, and assert the
+  properties a target must satisfy however it was written: a port nobody wrote
+  is never marked as written (PQ-65), an SNI is never taken from a path or a
+  query, and a parsed target's address round-trips through `String`.
+  <!-- pq: prio=med size=S labels=tests,inventory -->
