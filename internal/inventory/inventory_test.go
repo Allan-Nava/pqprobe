@@ -112,3 +112,35 @@ func TestReadAnsibleINIFiltersGroupsAndDeduplicates(t *testing.T) {
 		t.Fatalf("a host in two groups is one endpoint, got %d", len(all))
 	}
 }
+
+// Audit. `--port` is documented as "default port for targets written without
+// one", and it was applied to every target whose port *equalled* 443 — so
+// `--port 8443 origin.example:443` silently probed 8443, an endpoint the
+// operator did not name. The parser is the only place that still knows whether
+// a port was written, so it has to record it.
+func TestAWrittenPortIsRememberedAsWritten(t *testing.T) {
+	written, err := Parse("origin.example:443")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !written.PortWritten {
+		t.Error("`origin.example:443` names its port, and --port must not replace it")
+	}
+
+	bare, err := Parse("origin.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bare.PortWritten {
+		t.Error("`origin.example` has no port; --port is exactly for that")
+	}
+	if bare.Port != DefaultPort {
+		t.Errorf("port = %q, want the default", bare.Port)
+	}
+
+	// The URL form carries one too, and the =sni form must not confuse it.
+	u, _ := Parse("https://origin.example:8443/x?q=1=lb.example")
+	if !u.PortWritten || u.Port != "8443" {
+		t.Errorf("got %+v, want the port from the URL remembered", u)
+	}
+}

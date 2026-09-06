@@ -1088,6 +1088,23 @@ func starttlsServer(t *testing.T, proto string, cfg *tls.Config, refuse bool) Ta
 						return
 					}
 					_, _ = c.Write([]byte{0x30, 0x0c, 0x02, 0x01, 0x01, 0x78, 0x07, 0x0a, 0x01, 0x00, 0x04, 0x00, 0x04, 0x00})
+				case "xmpp-split":
+					// The same exchange, with the proceed element split across
+					// two writes — which is all a TCP segment boundary is. A
+					// client that stops reading at `<proceed` leaves the tail
+					// in the socket, and tls.Client then reads `xmlns=...` as a
+					// TLS record: a healthy endpoint graded pq-intolerant.
+					open := make([]byte, 512)
+					n, _ := br.Read(open)
+					_ = n
+					fmt.Fprint(c, "<?xml version='1.0'?><stream:stream id='1' version='1.0' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams'><stream:features><starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/></stream:features>")
+					req := make([]byte, 256)
+					if _, err := br.Read(req); err != nil {
+						return
+					}
+					fmt.Fprint(c, "<proceed xmlns='urn:ietf:params:xml:ns:xmpp-t")
+					time.Sleep(50 * time.Millisecond)
+					fmt.Fprint(c, "ls'/>")
 				case "xmpp":
 					open := make([]byte, 512)
 					n, _ := br.Read(open)
@@ -1668,5 +1685,25 @@ func TestAPeerThatOnlySpeaksAnotherHybridIsStillPostQuantum(t *testing.T) {
 	browser, _ := clientprofile.ByName("pq-only")
 	if b := (Dialer{Timeout: 5 * time.Second}).Do(context.Background(), tg, browser); b.OK {
 		t.Fatal("this peer offers no X25519MLKEM768; a browser cannot reach it, and the report must keep saying so")
+	}
+}
+
+// Audit. The XMPP reader stopped at the literal `<proceed`, mid-element. When
+// the rest of the element arrives in a later TCP segment those plaintext bytes
+// are still in the socket when the TLS handshake starts, tls.Client reads them
+// as a record header, and the result is KindRecord — abrupt — which grades a
+// perfectly healthy XMPP server `pq-intolerant`.
+func TestXMPPConsumesTheWholeProceedElement(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	cfg := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}
+	tg := starttlsServer(t, "xmpp-split", cfg, false)
+
+	p, _ := clientprofile.ByName("pq-preferred")
+	res := Dialer{Timeout: 5 * time.Second, StartTLS: "xmpp"}.Do(context.Background(), tg, p)
+	if !res.OK {
+		t.Fatalf("handshake failed after a split <proceed/>: %s (%s)", res.Err, res.Kind)
+	}
+	if res.Kind.Abrupt() {
+		t.Fatal("the tail of an XML element is not the peer cutting us off")
 	}
 }

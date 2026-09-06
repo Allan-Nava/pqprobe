@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Allan-Nava/pqprobe/internal/clientprofile"
 	"github.com/Allan-Nava/pqprobe/internal/finding"
 	"github.com/Allan-Nava/pqprobe/internal/probe"
 )
@@ -1169,5 +1170,53 @@ func TestAPeerThatOnlySpeaksAnotherHybridIsNotBroken(t *testing.T) {
 	}
 	if v := find(t, rep, "verdict"); !strings.Contains(v.Hint, "--per-group") {
 		t.Errorf("hint = %q, want it to point at the run that could tell the difference", v.Hint)
+	}
+}
+
+// Audit. Three findings computed a size from a result that never wrote a hello,
+// and 0 is a real number: the sweep read "no size limit found", and the ALPN
+// and ECH pairs reported a *negative* or wildly inflated delta. A handshake
+// that failed before the ClientHello left the machine is not evidence about
+// size — the same rule 0.29.2 applied when *every* attempt wrote nothing.
+func TestASizeIsNeverComputedFromAHelloThatWasNeverSent(t *testing.T) {
+	base := []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true),
+		ok("pq-only", "TLS 1.3", "X25519MLKEM768", true),
+	}
+
+	// A sweep where one step answered and a larger one failed *before* writing:
+	// a refused connection, a flap, a limit on the number of connections.
+	small := ok("size:2048", "TLS 1.3", "X25519MLKEM768", true)
+	small.HelloBytes = 2013
+	dead := fail("size:4096", probe.KindRefused) // HelloBytes 0: nothing went out
+
+	rep := Evaluate("h:443", append(append([]probe.Result{}, base...), small, dead), opts())
+	f := find(t, rep, "size-limit")
+	if strings.Contains(f.Message, "no size limit found") || strings.Contains(f.Hint, "no size limit found") {
+		t.Errorf("a step that never sent its hello was read as proof there is no wall: %q / %q", f.Message, f.Hint)
+	}
+
+	// The ALPN pair, where the second dial failed before writing.
+	bare := ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true)
+	bare.HelloBytes = 1519
+	alpn := fail(clientprofile.ALPNProbeName, probe.KindRefused)
+	rep = Evaluate("h:443", append(append([]probe.Result{}, base...), bare, alpn), opts())
+	if a := find(t, rep, "alpn"); a.Value != nil && *a.Value < 0 {
+		t.Errorf("alpn value = %v: a negative number of bytes is not a measurement", *a.Value)
+	}
+
+	// The ECH pair, where the control never wrote one.
+	echOff := fail(clientprofile.ECHPrefix+"off", probe.KindRefused)
+	echOn := ok(clientprofile.ECHPrefix+"on", "TLS 1.3", "X25519MLKEM768", true)
+	echOn.HelloBytes = 1834
+	echOn.ECHAccepted = true
+	rep = Evaluate("h:443", append(append([]probe.Result{}, base...), echOff, echOn), opts())
+	e := find(t, rep, "ech")
+	if e.Value != nil && *e.Value == 1834 {
+		t.Errorf("ech value = %v: that is the whole hello, not what ECH added — the control never sent one", *e.Value)
+	}
+	if !strings.Contains(e.Message, "accepted") {
+		t.Errorf("message = %q: acceptance is still true and still worth saying", e.Message)
 	}
 }

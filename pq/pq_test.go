@@ -263,3 +263,35 @@ func TestProbeTakesAnAddressFamily(t *testing.T) {
 		t.Fatal("an unknown address family must be an error, not a silently different run")
 	}
 }
+
+// Audit. An embedder that hands over a fleet gets no signal that part of it was
+// never probed: the parse errors were dropped unless *every* target failed. A
+// fleet check that silently drops a node is the one thing this API promises not
+// to do — an unreachable target is a report, never an error.
+func TestProbeReportsATargetItCouldNotParse(t *testing.T) {
+	addr := serve(t, &tls.Config{MinVersion: tls.VersionTLS13})
+
+	reps, err := pq.Probe(context.Background(), []string{addr, "not a host"}, pq.Options{})
+	if err != nil {
+		t.Fatalf("Probe: %v", err)
+	}
+	if len(reps) != 2 {
+		t.Fatalf("got %d reports for two targets: a node that vanishes from a fleet report is worse than one that fails", len(reps))
+	}
+
+	var bad *pq.Report
+	for i := range reps {
+		if strings.Contains(reps[i].Target, "not a host") {
+			bad = &reps[i]
+		}
+	}
+	if bad == nil {
+		t.Fatalf("the unparseable target is not in %+v", reps)
+	}
+	if bad.Class != "unreachable" {
+		t.Errorf("class = %s, want unreachable: nothing was learned about it", bad.Class)
+	}
+	if len(bad.Findings) == 0 || bad.Findings[0].Status != "ERROR" {
+		t.Errorf("findings = %+v, want an ERROR saying why", bad.Findings)
+	}
+}

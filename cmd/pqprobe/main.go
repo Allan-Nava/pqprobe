@@ -976,7 +976,10 @@ func collect(args []string, listFile, invFile string, groups []string, port, sni
 		all, errs = append(all, ts...), append(errs, e...)
 	}
 	for i := range all {
-		if port != "" && all[i].Port == inventory.DefaultPort {
+		// Only where nobody wrote one: --port is the default for targets
+		// written without a port, and replacing an explicit :443 probes an
+		// endpoint the operator did not name.
+		if port != "" && !all[i].PortWritten {
 			all[i].Port = port
 		}
 		if sni != "" {

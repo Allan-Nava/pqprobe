@@ -47,9 +47,9 @@ func Parse(word string) (probe.Target, error) {
 		sni = strings.TrimSpace(word[i+1:])
 		word = strings.TrimSpace(word[:i])
 	}
-	host, port := word, DefaultPort
+	host, port, written := word, DefaultPort, false
 	if h, p, err := net.SplitHostPort(word); err == nil {
-		host, port = h, p
+		host, port, written = h, p, true
 	} else if strings.HasPrefix(word, "[") && strings.HasSuffix(word, "]") {
 		host = strings.Trim(word, "[]")
 	}
@@ -59,7 +59,7 @@ func Parse(word string) (probe.Target, error) {
 	if strings.ContainsAny(host, " \t") {
 		return probe.Target{}, fmt.Errorf("host %q contains whitespace", host)
 	}
-	return probe.Target{Host: host, Port: port, SNI: sni}, nil
+	return probe.Target{Host: host, Port: port, SNI: sni, PortWritten: written}, nil
 }
 
 // ParseAll parses every word, collecting errors rather than stopping at the

@@ -629,6 +629,18 @@ func echFinding(target string, results []probe.Result) (finding.Finding, bool) {
 
 	switch {
 	case on.OK && on.ECHAccepted:
+		if off.HelloBytes == 0 || on.HelloBytes == 0 {
+			// Acceptance is still true and still worth saying; the cost is not,
+			// because half the pair never went out and the "difference" would
+			// be the whole hello.
+			return finding.Finding{
+				Check:   "ech",
+				Target:  target,
+				Status:  finding.OK,
+				Message: "Encrypted Client Hello accepted; what it costs was not measured, because the control hello never went out",
+				Hint:    "the pair is what makes the byte count mean anything, and one half of it did not reach the wire. Re-run to get the number",
+			}, true
+		}
 		diff := on.HelloBytes - off.HelloBytes
 		return finding.Finding{
 			Check:   "ech",
@@ -694,6 +706,18 @@ func alpnFinding(target string, bare, withALPN probe.Result) (finding.Finding, b
 
 	switch {
 	case bare.OK && !withALPN.OK:
+		// Only when both hellos were measured: a dial that failed before
+		// writing one gives a negative "difference", and a report that says
+		// "-1519 bytes of ALPN" is worse than one that says nothing.
+		if withALPN.HelloBytes == 0 || bare.HelloBytes == 0 {
+			return finding.Finding{
+				Check:   "alpn",
+				Target:  target,
+				Status:  finding.WARN,
+				Message: "the same client connects without ALPN and did not with h2,http/1.1, but its hello never went out",
+				Hint:    "nothing was measured on the second dial — no hello left the machine — so this is not the size story it usually is. Re-run: a connection that failed before the handshake is more often a flap than a threshold",
+			}, true
+		}
 		diff := withALPN.HelloBytes - bare.HelloBytes
 		return finding.Finding{
 			Check:   "alpn",
@@ -758,12 +782,20 @@ func sizeFinding(target string, results []probe.Result) (finding.Finding, bool) 
 		return finding.Finding{}, false
 	}
 
-	lastOK, firstBad := 0, 0
+	lastOK, firstBad, unsent := 0, 0, 0
 	for _, r := range results {
 		if r.OK {
 			if r.HelloBytes > lastOK {
 				lastOK = r.HelloBytes
 			}
+			continue
+		}
+		// A step that failed *before* its hello left the machine measures
+		// nothing: 0 is a real byte count here, and reading it as one made a
+		// refused connection mid-sweep look like proof there is no wall. Same
+		// rule as the `wrote` guard above, applied per step instead of per run.
+		if r.HelloBytes == 0 {
+			unsent++
 			continue
 		}
 		if firstBad == 0 || r.HelloBytes < firstBad {
@@ -778,14 +810,32 @@ func sizeFinding(target string, results []probe.Result) (finding.Finding, bool) 
 	const how = "the hello was padded with ALPN entries, which is the only field Go lets a client grow — a peer that inspects ALPN may treat that differently from a hello made large by a key share, so quote the number with the method"
 
 	if firstBad == 0 {
+		hint := "no size limit found in the swept range; " + how
+		status := finding.OK
+		if unsent > 0 {
+			// Some of the sweep never reached the wire, so "no limit" is a
+			// claim about sizes nobody tried.
+			status = finding.WARN
+			hint = fmt.Sprintf("%d step(s) of the sweep never sent their hello, so the sizes above %d B were not tried at all — re-run before reading this as headroom; ",
+				unsent, lastOK) + how
+			return finding.Finding{
+				Check:   "size-limit",
+				Target:  target,
+				Status:  status,
+				Message: fmt.Sprintf("answered a ClientHello of %d B; %d larger step(s) never sent one", lastOK, unsent),
+				Value:   finding.Num(float64(lastOK)),
+				Unit:    "bytes",
+				Hint:    hint,
+			}, true
+		}
 		return finding.Finding{
 			Check:   "size-limit",
 			Target:  target,
-			Status:  finding.OK,
+			Status:  status,
 			Message: fmt.Sprintf("answered a ClientHello of %d B, the largest tried", lastOK),
 			Value:   finding.Num(float64(lastOK)),
 			Unit:    "bytes",
-			Hint:    "no size limit found in the swept range; " + how,
+			Hint:    hint,
 		}, true
 	}
 

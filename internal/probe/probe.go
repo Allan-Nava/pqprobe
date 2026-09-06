@@ -91,6 +91,11 @@ type Target struct {
 	Host string
 	Port string
 	SNI  string
+	// PortWritten records that the target named its own port, so `--port` —
+	// documented as the default "for targets written without one" — cannot
+	// replace it. Without this the two cases are indistinguishable at 443, and
+	// `--port 8443 origin.example:443` probed an endpoint nobody named.
+	PortWritten bool
 }
 
 // Addr is the dial address.
@@ -522,6 +527,15 @@ func startTLSXMPP(br *bufio.Reader, c net.Conn, serverName string) error {
 	}
 	if !strings.Contains(seen, "<proceed") {
 		return errors.New("xmpp: the server answered <failure/> to STARTTLS")
+	}
+	// To the end of the element, not to the start of it. Stopping at `<proceed`
+	// leaves the rest — `xmlns='...'/>` — unread, and when it arrives in a
+	// later TCP segment the TLS client reads it as a record header: kind
+	// `record`, which is abrupt, which grades a healthy XMPP server
+	// pq-intolerant. Found by audit, reproduced by splitting the element across
+	// two writes.
+	if _, err := readUntil(br, ">"); err != nil {
+		return fmt.Errorf("xmpp: reading the end of the <proceed/> element: %w", err)
 	}
 	return nil
 }

@@ -6,6 +6,44 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.44.1] - 2026-09-06
+
+### Fixed
+
+Seven bugs from one audit of `internal/`, `cmd/` and `pq/` (PQ-65), each with a
+failing test in front of the fix.
+
+- **A number derived from a hello that never went out — three times.** A sweep
+  step that failed before writing read as *no size limit found in the swept
+  range*; the ALPN pair reported `Value: -1519` with a hint beginning "-1519
+  bytes of ALPN is the difference"; the ECH pair called the whole hello the cost
+  of ECH. Zero is a real byte count, and using it as a sentinel is how a probe
+  that never reached the wire becomes evidence. 0.29.2 fixed this once for the
+  case where *every* attempt wrote nothing; the mixed case survived it. Each now
+  says what was not measured instead of inventing a number.
+
+- **XMPP stopped reading at `<proceed`, mid-element.** With the rest of the
+  element in a later TCP segment, those plaintext bytes were still in the socket
+  when the TLS handshake began: `tls.Client` read them as a record header, the
+  kind was `record` — which is abrupt — and a healthy XMPP server was graded
+  `pq-intolerant`. The worst of the seven, since not saying that is the tool's
+  one job. Reproduced by splitting the element across two writes.
+
+- **The generated zsh completion overwrote zsh's own `words` array**, which *is*
+  the command line being completed, so the `explain`, `--exit-on` and
+  `--min-severity` branches read the class list instead and could never match.
+
+- **`--port` replaced a port the operator had written.** `--port 8443
+  origin.example:443` probed an endpoint nobody named; the flag is documented as
+  the default "for targets written without one", and `Target.PortWritten` now
+  records which is which.
+
+- **`pq.Probe` dropped unparseable targets** unless every one of them failed, so
+  an embedder's fleet check reported on nine nodes out of ten and looked
+  complete. They arrive as reports with class `unreachable` and an ERROR saying
+  why — the same contract as every other target that cannot be probed. Callers
+  will see rows they did not see before, which is the point.
+
 ## [0.44.0] - 2026-09-06
 
 ### Added

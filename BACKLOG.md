@@ -1013,3 +1013,37 @@ the lab at the failures.
   class *and* the finding. On TLS 1.2 the handshake fails and the class is
   `mtls-required`, which is the leg that had never met a real server.
   <!-- pq: prio=med size=M labels=tests,probe ver=unreleased -->
+
+## M12 — What the audit found <!-- ms: target=v0.44.1 phase=shipped -->
+
+One review of `internal/`, `cmd/` and `pq/` against no diff at all — the tree
+was clean and every milestone shipped — looking for the failures the tests were
+shaped not to see. Seven, and the same mistake three times.
+
+- [x] **PQ-65 — Seven bugs, and one of them graded a healthy endpoint**: the
+  audit's own list, fixed with a failing test in front of each.
+  **A number derived from a hello that never went out**, three times over: a
+  sweep step that failed before writing read as *no size limit found in the
+  swept range*; the ALPN pair reported `Value: -1519` and a hint beginning
+  "-1519 bytes of ALPN is the difference"; the ECH pair called the whole hello
+  the cost of ECH. Zero is a real byte count, and using it as a sentinel is how
+  a probe that never reached the wire turns into evidence. 0.29.2 had already
+  fixed this once, for the case where *every* attempt wrote nothing — the mixed
+  case survived it.
+  **XMPP stopped reading at `<proceed`, mid-element.** With the tail in a later
+  TCP segment those plaintext bytes were still in the socket when TLS started,
+  `tls.Client` read them as a record header, and the kind was `record` — which
+  is abrupt, which grades a healthy XMPP server `pq-intolerant`. Reproduced by
+  splitting the element across two writes, and it is the worst of the seven:
+  the tool's one job is to not say that.
+  **The generated zsh completion overwrote zsh's own `words` array**, which *is*
+  the command line being completed, so every branch that inspected it read the
+  class list instead and none could match.
+  **`--port` replaced an explicitly written `:443`**, so `--port 8443
+  origin.example:443` probed an endpoint nobody named. The parser is the only
+  place that still knows, so `Target.PortWritten` records it.
+  **`pq.Probe` dropped unparseable targets** unless every one of them failed: an
+  embedder's fleet check reported on nine nodes out of ten and looked complete.
+  They arrive as reports with class `unreachable` now, like everything else that
+  cannot be probed.
+  <!-- pq: prio=high size=M labels=probe,verdict,cli,integration ver=unreleased -->

@@ -99,20 +99,25 @@ complete -F _pqprobe pqprobe
 `, cmds, flags, words, strings.Join(completionShells(), " "))
 
 	case "zsh":
+		// The vocabulary array is `vocab`, not `words`: zsh's completion system
+		// owns `words` — it *is* the command line being completed — so a local
+		// of that name left every branch below inspecting the class list
+		// instead, and none of them could match. Found by audit, after the
+		// generated script had shipped.
 		fmt.Fprintf(w, `#compdef pqprobe
 # pqprobe zsh completion — pqprobe completion zsh > "${fpath[1]}/_pqprobe"
 _pqprobe() {
-	local -a cmds flags words
+	local -a cmds flags vocab
 	cmds=(%s)
 	flags=(%s)
-	words=(%s)
+	vocab=(%s)
 	if (( CURRENT == 2 )); then
 		_describe 'command' cmds
 		return
 	fi
 	case "${words[CURRENT-1]}" in
-	explain)                 _values 'class or topic' ${words}; return ;;
-	--exit-on)               _values 'status or class' OK WARN BAD ERROR ${words}; return ;;
+	explain)                 _values 'class or topic' ${vocab}; return ;;
+	--exit-on)               _values 'status or class' OK WARN BAD ERROR ${vocab}; return ;;
 	--min-severity)          _values 'status' OK WARN BAD ERROR; return ;;
 	completion)              _values 'shell' %s; return ;;
 	esac

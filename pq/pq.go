@@ -122,7 +122,7 @@ func Probe(ctx context.Context, targets []string, opt Options) ([]Report, error)
 	// replaces the default one, and an SNI replaces every target's — including
 	// the `1.2.3.4=origin.example` form, which is the whole point of having it.
 	for i := range parsed {
-		if opt.DefaultPort != "" && parsed[i].Port == inventory.DefaultPort {
+		if opt.DefaultPort != "" && !parsed[i].PortWritten {
 			parsed[i].Port = opt.DefaultPort
 		}
 		if opt.SNI != "" {
@@ -174,6 +174,27 @@ func Probe(ctx context.Context, targets []string, opt Options) ([]Report, error)
 	}
 	for range parsed {
 		<-done
+	}
+
+	// A target that could not be parsed is still part of the fleet the caller
+	// handed over, and dropping it silently is the one thing this API promises
+	// not to do: an embedder's check would report on nine nodes out of ten and
+	// look complete. It arrives the way every other unusable target does — a
+	// report with class `unreachable` and an ERROR saying why — rather than as
+	// an error, which would throw away the nine that did run.
+	for _, err := range errs {
+		out = append(out, Report{
+			Target: err.Error(),
+			Class:  string(verdict.Unreachable),
+			Worst:  string(finding.ERROR),
+			Findings: []Finding{{
+				Check:   "target",
+				Target:  err.Error(),
+				Status:  string(finding.ERROR),
+				Message: "this target could not be parsed, so it was never probed: " + err.Error(),
+				Hint:    "accepted forms are host, host:port, https://host/path and any of those followed by =sni",
+			}},
+		})
 	}
 	return out, nil
 }

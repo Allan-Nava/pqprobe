@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**64 items · 64 shipped · 0 open · 11 milestones.**
+**65 items · 65 shipped · 0 open · 12 milestones.**
 
 ## At a glance
 
@@ -23,6 +23,7 @@
 | **M9** — The edges of everyday use | `v0.38.0` | shipped | `##########` 100% | 0 | 3 |
 | **M10** — The hybrids we do not offer, proved against stacks that are not Go | `v0.41.0` | shipped | `##########` 100% | 0 | 3 |
 | **M11** — Reproduce the failures, not only the successes | `v0.44.0` | shipped | `##########` 100% | 0 | 3 |
+| **M12** — What the audit found | `v0.44.1` | shipped | `##########` 100% | 0 | 1 |
 
 ## Next up
 
@@ -173,20 +174,28 @@ Target `v0.44.0` · shipped · 0 open · 3 shipped · `##########` 100%
 | **PQ-63** — The plaintext negotiations, against real daemons | high | L | tests,probe | done, unreleased |
 | **PQ-64** — The other terminators, and the certificate they ask for | med | M | tests,probe | done, unreleased |
 
+### M12 — What the audit found
+
+Target `v0.44.1` · shipped · 0 open · 1 shipped · `##########` 100%
+
+| Item | Priority | Size | Labels | Status |
+|---|---|---|---|---|
+| **PQ-65** — Seven bugs, and one of them graded a healthy endpoint | high | M | probe,verdict,cli,integration | done, unreleased |
+
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `cli` | 11 | 0 |
+| `cli` | 12 | 0 |
 | `delivery` | 7 | 0 |
 | `docs` | 10 | 0 |
-| `integration` | 3 | 0 |
+| `integration` | 4 | 0 |
 | `inventory` | 5 | 0 |
 | `output` | 9 | 0 |
-| `probe` | 26 | 0 |
+| `probe` | 27 | 0 |
 | `profile` | 7 | 0 |
 | `project` | 6 | 0 |
 | `release` | 5 | 0 |
 | `tests` | 9 | 0 |
 | `ux` | 2 | 0 |
-| `verdict` | 8 | 0 |
+| `verdict` | 9 | 0 |

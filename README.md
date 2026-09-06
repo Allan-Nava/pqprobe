@@ -203,8 +203,11 @@ for _, r := range reps {
 ```
 
 An unreachable target is a report with class `unreachable`, never an error: a
-fleet check keeps going and names the node that is down. `pq.Explain(class)`
-gives the meaning, the affected clients and the next action without a run.
+fleet check keeps going and names the node that is down — and so is a target
+that could not be *parsed*, which used to vanish from the result and leave a
+check reporting on nine nodes out of ten while looking complete.
+`pq.Explain(class)` gives the meaning, the affected clients and the next action
+without a run.
 
 ## Output and exit status
 

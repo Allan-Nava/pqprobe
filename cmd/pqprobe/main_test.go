@@ -950,6 +950,30 @@ func TestThePinnedResolverIsStatedInTheReport(t *testing.T) {
 	}
 }
 
+// Audit. zsh's completion system owns a special array called `words` — it is
+// the command line being completed — and the generated function declared a
+// local of that name for the explain vocabulary. Every branch that inspects the
+// command line was therefore reading the class list, and none of them could
+// ever match.
+func TestTheZshCompletionDoesNotOverwriteZshsOwnArray(t *testing.T) {
+	var b strings.Builder
+	if code := completionTo(&b, []string{"zsh"}); code != 0 {
+		t.Fatalf("completion zsh exited %d", code)
+	}
+	out := b.String()
+	// `${words[CURRENT-1]}` is the *correct* use of zsh's array and has to
+	// stay; what must never appear is a declaration or assignment of it.
+	for _, forbidden := range []string{"local -a cmds flags words", "words=(", "${words}"} {
+		if strings.Contains(out, forbidden) {
+			t.Errorf("the zsh completion assigns or reads `words` (%q), which is zsh's own array for the command line", forbidden)
+		}
+	}
+	// It still has to complete the vocabulary it exists for.
+	if !strings.Contains(out, "pq-intolerant") || !strings.Contains(out, "CURRENT") {
+		t.Error("the zsh completion no longer inspects the command line at all")
+	}
+}
+
 // PQ-57. Completions and a man page are generated from the flag set and the
 // same help text the binary prints — never maintained beside them. PQ-40 is the
 // precedent: a flag declared in one place and documented in another drifts
@@ -1015,5 +1039,24 @@ func TestCompletionsAndManPageCoverEveryFlag(t *testing.T) {
 		if !strings.Contains(page, want) {
 			t.Errorf("the man page has no %q", want)
 		}
+	}
+}
+
+// Audit. The other half of the same finding: --port may only fill in a port
+// nobody wrote.
+func TestPortOnlyFillsInAPortNobodyWrote(t *testing.T) {
+	targets, errs := collect([]string{"origin.example", "other.example:443"}, "", "", nil, "8443", "", nil)
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	byHost := map[string]string{}
+	for _, tg := range targets {
+		byHost[tg.Host] = tg.Port
+	}
+	if byHost["origin.example"] != "8443" {
+		t.Errorf("origin.example got port %q, want 8443: that is what --port is for", byHost["origin.example"])
+	}
+	if byHost["other.example"] != "443" {
+		t.Errorf("other.example got port %q: the operator wrote :443 and pqprobe probed something else", byHost["other.example"])
 	}
 }
