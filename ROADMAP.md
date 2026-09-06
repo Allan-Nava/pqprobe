@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**58 items · 57 shipped · 1 open · 9 milestones.**
+**58 items · 58 shipped · 0 open · 9 milestones.**
 
 ## At a glance
 
@@ -20,13 +20,13 @@
 | **M6** — Reach the rest of the fleet | `v0.32.0` | shipped | `##########` 100% | 0 | 5 |
 | **M7** — Encrypted Client Hello | `v0.35.0` | shipped | `##########` 100% | 0 | 3 |
 | **M8** — Reach the ports that are left | `v0.36.0` | shipped | `##########` 100% | 0 | 3 |
-| **M9** — The edges of everyday use | `v0.39.0` | **now** | `#######...` 67% | 1 | 2 |
+| **M9** — The edges of everyday use | `v0.38.0` | shipped | `##########` 100% | 0 | 3 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-57** — Completions and a man page, generated · `med` · size `M` · cli,delivery,docs (M9, target `v0.39.0`)
+_Nothing in flight._
 
 ## Milestones
 
@@ -143,21 +143,21 @@ Target `v0.36.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 ### M9 — The edges of everyday use
 
-Target `v0.39.0` · **now** · 1 open · 2 shipped · `#######...` 67%
+Target `v0.38.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-57** — Completions and a man page, generated | med | M | cli,delivery,docs | open |
 | **PQ-56** — `--exit-on` takes a class as well as a status | high | S | cli,output | done, unreleased |
+| **PQ-57** — Completions and a man page, generated | med | M | cli,delivery,docs | done, unreleased |
 | **PQ-58** — `--dns` governs every lookup pqprobe makes | med | S | probe,inventory,cli | done, unreleased |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `cli` | 11 | 1 |
-| `delivery` | 7 | 1 |
-| `docs` | 9 | 1 |
+| `cli` | 11 | 0 |
+| `delivery` | 7 | 0 |
+| `docs` | 9 | 0 |
 | `integration` | 3 | 0 |
 | `inventory` | 5 | 0 |
 | `output` | 8 | 0 |

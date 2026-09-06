@@ -48,6 +48,10 @@ func main() {
 		os.Exit(cmdProfiles())
 	case "explain":
 		os.Exit(explainTo(os.Stdout, os.Args[2:]))
+	case "completion":
+		os.Exit(completionTo(os.Stdout, os.Args[2:]))
+	case "man":
+		os.Exit(manTo(os.Stdout))
 	case "version", "--version", "-v":
 		os.Exit(versionTo(os.Stdout, os.Args[2:], version))
 	case "help", "-h", "--help":
@@ -355,6 +359,8 @@ usage:
   pqprobe profiles
   pqprobe explain [class]        what a class means, and what to do about it
   pqprobe version [--short]      --short prints the version alone, for embedding
+  pqprobe completion bash|zsh|fish   shell completion, generated from the flags
+  pqprobe man                    the man page, in roff: pqprobe man > pqprobe.1
 
 targets:
   host                     port 443 is assumed

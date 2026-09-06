@@ -949,3 +949,71 @@ func TestThePinnedResolverIsStatedInTheReport(t *testing.T) {
 		t.Fatalf("got %+v, want silence when the machine's own resolver was used", quiet[0].Finding)
 	}
 }
+
+// PQ-57. Completions and a man page are generated from the flag set and the
+// same help text the binary prints — never maintained beside them. PQ-40 is the
+// precedent: a flag declared in one place and documented in another drifts
+// silently, and the two-way test that caught it only covered --help.
+func TestCompletionsAndManPageCoverEveryFlag(t *testing.T) {
+	fs, _ := newProbeFlags()
+	var flags []string
+	fs.VisitAll(func(f *flag.Flag) { flags = append(flags, f.Name) })
+	if len(flags) < 20 {
+		t.Fatalf("only %d flags enumerated; the flag set is not being read", len(flags))
+	}
+
+	for _, shell := range completionShells() {
+		var b strings.Builder
+		if code := completionTo(&b, []string{shell}); code != 0 {
+			t.Fatalf("completion %s exited %d", shell, code)
+		}
+		out := b.String()
+		for _, name := range flags {
+			// fish spells a long option `-l name`; bash and zsh carry the
+			// word as it is typed. The property is the same either way.
+			want := "--" + name
+			if shell == "fish" {
+				want = "-l " + name
+			}
+			if !strings.Contains(out, want) {
+				t.Errorf("%s completion does not offer --%s", shell, name)
+			}
+		}
+		for _, cmd := range []string{"probe", "profiles", "explain", "version"} {
+			if !strings.Contains(out, cmd) {
+				t.Errorf("%s completion does not offer the %s subcommand", shell, cmd)
+			}
+		}
+		// explain takes a vocabulary, and completing it is most of the value.
+		if !strings.Contains(out, "pq-intolerant") || !strings.Contains(out, "ech") {
+			t.Errorf("%s completion does not offer the explain vocabulary", shell)
+		}
+	}
+
+	var b strings.Builder
+	if code := completionTo(&b, []string{"csh"}); code != 2 {
+		t.Errorf("an unknown shell exited %d, want 2", code)
+	}
+	if !strings.Contains(b.String(), "bash") {
+		t.Error("the error does not list the shells that exist")
+	}
+
+	b.Reset()
+	if code := manTo(&b); code != 0 {
+		t.Fatalf("man exited %d", code)
+	}
+	page := b.String()
+	if !strings.HasPrefix(page, ".TH PQPROBE 1") {
+		t.Errorf("the man page does not start with a .TH line: %.40q", page)
+	}
+	for _, name := range flags {
+		if !strings.Contains(page, "--"+name) {
+			t.Errorf("the man page does not document --%s", name)
+		}
+	}
+	for _, want := range []string{"EXIT STATUS", "pqprobe explain"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the man page has no %q", want)
+		}
+	}
+}

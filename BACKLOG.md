@@ -784,7 +784,7 @@ what their group lists look like.
   `address=name` form rather than being sent an empty `to=`.
   <!-- pq: prio=low size=M labels=probe ver=unreleased -->
 
-## M9 — The edges of everyday use <!-- ms: target=v0.39.0 phase=now -->
+## M9 — The edges of everyday use <!-- ms: target=v0.38.0 phase=shipped -->
 
 Nothing here changes what pqprobe knows. These are the three places where the
 tool as *used* — in a pipeline gate, at a shell prompt, against a resolver that
@@ -805,14 +805,24 @@ is not the machine's own — is narrower than what it can say.
   to stop.
   <!-- pq: prio=high size=S labels=cli,output ver=unreleased -->
 
-- [ ] **PQ-57 — Completions and a man page, generated**: `pqprobe completion
+- [x] **PQ-57 — Completions and a man page, generated**: `pqprobe completion
   bash|zsh|fish` and a `pqprobe.1`, both written from the *flag set* and the
   same help text the binary prints, never hand-maintained beside it. PQ-40 is
   the precedent and the reason: a flag documented in one place and declared in
   another drifts silently, and the two-way test that caught it only covers
   `--help`. A gate asserts every declared flag appears in every generated
   artefact, so a new flag cannot ship half-visible.
-  <!-- pq: prio=med size=M labels=cli,delivery,docs -->
+  Shipped as `pqprobe completion bash|zsh|fish` and `pqprobe man`, both written
+  from `newProbeFlags()` and from `usageTo` — nothing is committed, so there is
+  no artefact that can go stale between releases and no new gate script to wire.
+  The test walks the FlagSet against all four outputs, and it corrected its own
+  first assumption immediately: fish spells a long option `-l name`, not
+  `--name`, so "every flag appears" had to be per-shell rather than one
+  substring everywhere. The man page indents the help as a literal block rather
+  than rewording it — a second wording is a second thing to keep true — with the
+  two sequences roff reads as markup escaped. Verified by rendering it with
+  `man` and by sourcing the bash and zsh scripts in their own shells.
+  <!-- pq: prio=med size=M labels=cli,delivery,docs ver=unreleased -->
 
 - [x] **PQ-58 — `--dns` governs every lookup pqprobe makes**: it was introduced
   for the ECH record (PQ-51) and governs only that, so `--per-address` still

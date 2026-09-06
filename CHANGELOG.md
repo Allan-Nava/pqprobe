@@ -6,6 +6,24 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.38.0] - 2026-09-06
+
+### Added
+
+- **`pqprobe completion bash|zsh|fish` and `pqprobe man` (PQ-57).** Both are
+  generated from the flag set and from the same help text the binary prints, and
+  nothing is committed: there is no artefact that can go stale between releases,
+  and no second place a flag has to be remembered. PQ-40 is the precedent — a
+  flag declared in one place and documented in another drifts silently, and the
+  two-way test that caught that only covered `--help`. A test now walks the
+  FlagSet against all four outputs.
+
+  Completing `explain` and `--exit-on` is most of the value: the classes are
+  hyphenated, similar, and read off a report under pressure. `pqprobe man >
+  /usr/local/share/man/man1/pqprobe.1` installs the page; it indents the help as
+  a literal block rather than rewording it, because a second wording is a second
+  thing to keep true. **M9 is complete.**
+
 ## [0.37.0] - 2026-09-06
 
 ### Added

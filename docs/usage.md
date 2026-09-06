@@ -5,11 +5,26 @@ pqprobe probe <target>... [flags]
 pqprobe profiles
 pqprobe explain [class|topic]
 pqprobe version [--short]
+pqprobe completion bash|zsh|fish
+pqprobe man
 ```
 
 `pqprobe version` prints `pqprobe X.Y.Z`, and `pqprobe version --short` prints
 `X.Y.Z` alone — the form that embeds in a generated header or a Docker tag
 without reading `pqprobe pqprobe X.Y.Z`.
+
+`pqprobe completion bash` (or `zsh`, `fish`) prints a completion script, and
+`pqprobe man` prints the man page in roff — both **generated from the flag set**
+and from the same help text the binary prints, so a flag cannot exist in one and
+not the others:
+
+```sh
+eval "$(pqprobe completion bash)"
+pqprobe man > /usr/local/share/man/man1/pqprobe.1
+```
+
+Completing `explain` and `--exit-on` is most of the value: the classes are
+hyphenated, similar, and read off a report under pressure.
 
 `pqprobe explain pq-intolerant` prints what the class means, which real clients
 it affects and what to do next — with **no network call**, so it is runnable
