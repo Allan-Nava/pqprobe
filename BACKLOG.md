@@ -843,7 +843,7 @@ is not the machine's own — is narrower than what it can say.
   rather than quietly falling back.
   <!-- pq: prio=med size=S labels=probe,inventory,cli ver=unreleased -->
 
-## M10 — The hybrids we do not offer, proved against stacks that are not Go <!-- ms: target=v0.41.0 phase=now -->
+## M10 — The hybrids we do not offer, proved against stacks that are not Go <!-- ms: target=v0.41.0 phase=shipped -->
 
 Two halves of one problem, and the first was found by starting the second.
 Every test in this repository stands on a Go listener, so the distinction the
@@ -910,7 +910,7 @@ SecP384r1MLKEM1024  4589 (0x11ed)   the same
   the whole confusion — run `--per-group` before believing it.
   <!-- pq: prio=high size=M labels=verdict,output,docs ver=unreleased -->
 
-- [ ] **PQ-61 — An interop lab, in CI, against stacks that are not Go**:
+- [x] **PQ-61 — An interop lab, in CI, against stacks that are not Go**:
   containers standing up OpenSSL 3.5 `s_server` with each hybrid on its own,
   nginx, HAProxy and a listener that truncates the ClientHello, with pqprobe
   asserting the class each one deserves. Containers live in CI and in a script,
@@ -921,4 +921,18 @@ SecP384r1MLKEM1024  4589 (0x11ed)   the same
   TLS stack*, which means the alert-versus-reset distinction — the one thing the
   tool exists to get right — has never been checked against an implementation
   that does not share our bugs.
-  <!-- pq: prio=high size=XL labels=tests,probe -->
+  Shipped as `scripts/interop.sh` with five cases, all green: OpenSSL 3.5 with
+  hybrid plus classical (`pq-ready`), classical only (`pq-blind`), the P-256
+  hybrid alone (`pq-other-hybrid`, the case that started this milestone), an
+  OpenSSL with TLS 1.3 switched off (`no-tls13`), and nginx with a classical
+  curve list (`pq-blind`). Wired to CI as its own job and to `release.sh`, where
+  it **skips** without Docker — a maintainer's laptop is not a reason to block a
+  release, and CI runs it either way; `gates_test.sh` was extended first and
+  went red until both were wired.
+  The harness itself provided the lesson: POSIX sh has no locals, and `ready()`
+  assigned to a variable called `class`, quietly overwriting the expected class
+  of the case being run. Four assertions compared a result against itself and
+  reported failure while the tool had been right about all four — a reminder
+  that a test harness is code, and that a red result is worth reading before it
+  is believed.
+  <!-- pq: prio=high size=XL labels=tests,probe ver=unreleased -->

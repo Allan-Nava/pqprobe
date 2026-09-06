@@ -96,6 +96,22 @@ jobs:
           go vet ./...
           go test ./...
 
+  interop:
+    runs-on: ubuntu-latest
+    # The lab (PQ-61). Every other test in this repository stands up a listener
+    # from Go's own crypto/tls, so the alert-versus-reset distinction the whole
+    # tool rests on has only been checked against an implementation that shares
+    # our bugs. Here pqprobe is pointed at OpenSSL 3.5 and nginx, and the class
+    # each configuration deserves is asserted. Docker is a CI dependency, never
+    # the binary's: the runner has it, and the script skips without it.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: pqprobe against stacks that are not Go
+        run: sh scripts/interop.sh
+
   docs:
     runs-on: ubuntu-latest
     steps:

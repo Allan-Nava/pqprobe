@@ -6,6 +6,29 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.41.0] - 2026-09-06
+
+### Added
+
+- **An interop lab, against stacks that are not Go (PQ-61).** Every other test
+  here stands up a listener from Go's own `crypto/tls`, which means the
+  alert-versus-reset distinction the whole tool rests on had only ever been
+  checked against an implementation that shares our bugs.
+  `scripts/interop.sh` points pqprobe at real servers and asserts the class each
+  one deserves: OpenSSL 3.5 with hybrid plus classical groups (`pq-ready`),
+  classical only (`pq-blind`), the P-256 hybrid alone (`pq-other-hybrid`), an
+  OpenSSL with TLS 1.3 off (`no-tls13`), and nginx with a classical curve list
+  (`pq-blind`). Five cases, all green.
+
+  It runs as its own CI job and from `release.sh`, where it **skips** without
+  Docker — a maintainer's laptop is not a reason to block a release. Containers
+  are a CI dependency and never the binary's: `go.mod` is still empty, and this
+  is what proves that what ships is right. The lab had already paid for itself
+  before it was written — the first container stood up by hand is what found
+  PQ-59.
+
+  **M10 is complete.**
+
 ## [0.40.0] - 2026-09-06
 
 ### Added

@@ -163,6 +163,10 @@ sh scripts/goreleaser_test.sh >/dev/null && echo "release config tests OK"
 sh scripts/seo_test.sh >/dev/null && echo "SEO tests OK"
 sh scripts/action.sh check >/dev/null && echo "action.yml OK"
 sh scripts/action_test.sh >/dev/null && echo "action tests OK"
+# The interop lab, when this machine can run it: it skips cleanly without
+# Docker, because a maintainer's laptop is not a reason to block a release and
+# CI runs it either way (PQ-61).
+sh scripts/interop.sh >/dev/null && echo "interop lab OK"
 
 [ "${RELEASE_DRY_RUN:-0}" = 1 ] && { say "dry run — nothing was rewritten"; exit 0; }
 
