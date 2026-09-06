@@ -6,6 +6,36 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.39.0] - 2026-09-06
+
+### Added
+
+- **The other two hybrid groups (PQ-59).** Go exposes three — `X25519MLKEM768`,
+  `SecP256r1MLKEM768`, `SecP384r1MLKEM1024` — and pqprobe offered one. That was
+  not a limitation of the language: an OpenSSL 3.5.8 server configured with the
+  P-256 hybrid alone completes a handshake with Go today, and pqprobe called it
+  `tls-broken` — a fully post-quantum endpoint reported as a faulty port. A
+  FIPS-shaped stack is exactly where those groups turn up.
+
+  All three are now in `--per-group`, named in reports, and known to `IsPQ` —
+  which would otherwise have graded a completed `SecP256r1MLKEM768` handshake
+  *classical*, so even an endpoint that connected came out `pq-blind`. The
+  browser profiles are unchanged and deliberately so: Chrome and Firefox send
+  X25519MLKEM768, a peer that speaks only a P-curve hybrid is still unreachable
+  for them, and widening `pq-preferred` to hide that would be the same lie in
+  the other direction. The class such a peer gets is still `tls-broken` — that
+  is PQ-60.
+
+### Changed
+
+- **pqprobe requires Go 1.26** (go.mod, both contrib modules, the Docker image,
+  the CI and release pins). The constants exist only there. Building on 1.25
+  with raw codepoints would have compiled and produced a *different run* — the
+  group advertised and never completed — which is the toolchain-dependent answer
+  this project refuses everywhere else. The names reports print are pinned in
+  `GroupName` rather than taken from Go's `String()`, with a test on the exact
+  three, so a compiler upgrade cannot move what a run says.
+
 ## [0.38.0] - 2026-09-06
 
 ### Added

@@ -10,7 +10,7 @@
   <a href="https://github.com/Allan-Nava/pqprobe/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Allan-Nava/pqprobe/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://allan-nava.github.io/pqprobe/"><img alt="Docs" src="https://img.shields.io/badge/docs-allan--nava.github.io%2Fpqprobe-8b5cf6"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-10b981"></a>
-  <img alt="Go" src="https://img.shields.io/badge/go-1.25%2B-00ADD8">
+  <img alt="Go" src="https://img.shields.io/badge/go-1.26%2B-00ADD8">
   <img alt="Dependencies" src="https://img.shields.io/badge/dependencies-none-10b981">
 </p>
 

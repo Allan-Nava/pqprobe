@@ -371,3 +371,66 @@ func TestECHProbesDifferOnlyInECH(t *testing.T) {
 		t.Errorf("the ECH half carries %v, want the config list it was given", cfgOn.EncryptedClientHelloConfigList)
 	}
 }
+
+// PQ-59. Go exposes three hybrid groups and pqprobe offered one, which is not a
+// limitation of the language: a server configured with SecP256r1MLKEM768 alone
+// completes a handshake with Go today, and pqprobe called it tls-broken.
+func TestEveryHybridGoCanNegotiateIsKnown(t *testing.T) {
+	hybrids := []tls.CurveID{tls.X25519MLKEM768, tls.SecP256r1MLKEM768, tls.SecP384r1MLKEM1024}
+
+	// The names a report prints, pinned here rather than taken from the
+	// toolchain: what a run says must not change when Go's String() does.
+	names := map[tls.CurveID]string{
+		tls.X25519MLKEM768:     "X25519MLKEM768",
+		tls.SecP256r1MLKEM768:  "SecP256r1MLKEM768",
+		tls.SecP384r1MLKEM1024: "SecP384r1MLKEM1024",
+	}
+	for _, id := range hybrids {
+		if !IsPQ(id) {
+			t.Errorf("%s is a hybrid ML-KEM group and IsPQ says otherwise — a handshake on it would be graded classical", GroupName(id))
+		}
+		name := GroupName(id)
+		if name != names[id] {
+			t.Errorf("group %d is printed %q, want %q", id, name, names[id])
+		}
+		back, ok := GroupByName(strings.ToLower(name))
+		if !ok || back != id {
+			t.Errorf("%s does not round-trip through GroupByName (--groups takes the name a report prints)", name)
+		}
+		found := false
+		for _, p := range Probed {
+			if p == id {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s is not in Probed, so --per-group never asks about it", name)
+		}
+	}
+
+	// The classical groups are not hybrids, and nothing above may blur that.
+	for _, id := range []tls.CurveID{tls.X25519, tls.CurveP256, tls.CurveP384, tls.CurveP521} {
+		if IsPQ(id) {
+			t.Errorf("%s is classical", GroupName(id))
+		}
+	}
+}
+
+// What must not change: pq-preferred and pq-only offer what Chrome and Firefox
+// offer. A peer that speaks only another hybrid is still unreachable for them,
+// and widening the browser profiles to hide that would be the same lie in the
+// other direction.
+func TestTheBrowserProfilesStillOfferWhatBrowsersOffer(t *testing.T) {
+	for _, name := range []string{"pq-preferred", "pq-only"} {
+		p, ok := ByName(name)
+		if !ok {
+			t.Fatalf("no %s profile", name)
+		}
+		for _, g := range p.Groups {
+			if IsPQ(g) && g != tls.X25519MLKEM768 {
+				t.Errorf("%s offers %s, which no browser sends: this profile stands for real clients",
+					name, GroupName(g))
+			}
+		}
+	}
+}

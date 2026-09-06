@@ -152,6 +152,14 @@ const GroupPrefix = "group:"
 // pins its groups — a toolchain upgrade must not change what a run proves.
 var Probed = []tls.CurveID{
 	tls.X25519MLKEM768,
+	// The other two hybrids Go can negotiate (PQ-59). They were missing for no
+	// better reason than that browsers do not send them: an OpenSSL 3.5 server
+	// configured with SecP256r1MLKEM768 alone completes a handshake with Go
+	// today, and pqprobe reported it `tls-broken` — a fully post-quantum
+	// endpoint called faulty. A FIPS-shaped stack is exactly where the P-256
+	// and P-384 hybrids turn up.
+	tls.SecP256r1MLKEM768,
+	tls.SecP384r1MLKEM1024,
 	tls.X25519,
 	tls.CurveP256,
 	tls.CurveP384,
@@ -459,6 +467,10 @@ func GroupName(id tls.CurveID) string {
 		return "P-521"
 	case tls.X25519MLKEM768:
 		return "X25519MLKEM768"
+	case tls.SecP256r1MLKEM768:
+		return "SecP256r1MLKEM768"
+	case tls.SecP384r1MLKEM1024:
+		return "SecP384r1MLKEM1024"
 	case 0:
 		return ""
 	default:
@@ -467,4 +479,14 @@ func GroupName(id tls.CurveID) string {
 }
 
 // IsPQ reports whether a negotiated group is a post-quantum hybrid.
-func IsPQ(id tls.CurveID) bool { return id == tls.X25519MLKEM768 }
+// IsPQ reports whether a negotiated group is a hybrid ML-KEM one — all three
+// of them, not only the one browsers send (PQ-59). Naming a single group here
+// meant a completed SecP256r1MLKEM768 handshake was graded *classical*, so an
+// endpoint doing post-quantum key exchange came out `pq-blind`.
+func IsPQ(id tls.CurveID) bool {
+	switch id {
+	case tls.X25519MLKEM768, tls.SecP256r1MLKEM768, tls.SecP384r1MLKEM1024:
+		return true
+	}
+	return false
+}

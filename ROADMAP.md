@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**58 items · 58 shipped · 0 open · 9 milestones.**
+**61 items · 59 shipped · 2 open · 10 milestones.**
 
 ## At a glance
 
@@ -21,12 +21,14 @@
 | **M7** — Encrypted Client Hello | `v0.35.0` | shipped | `##########` 100% | 0 | 3 |
 | **M8** — Reach the ports that are left | `v0.36.0` | shipped | `##########` 100% | 0 | 3 |
 | **M9** — The edges of everyday use | `v0.38.0` | shipped | `##########` 100% | 0 | 3 |
+| **M10** — The hybrids we do not offer, proved against stacks that are not Go | `v0.41.0` | **now** | `###.......` 33% | 2 | 1 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-_Nothing in flight._
+- **PQ-60** — "post-quantum, in a group your clients do not offer" · `high` · size `M` · verdict,output,docs (M10, target `v0.41.0`)
+- **PQ-61** — An interop lab, in CI, against stacks that are not Go · `high` · size `XL` · tests,probe (M10, target `v0.41.0`)
 
 ## Milestones
 
@@ -151,20 +153,30 @@ Target `v0.38.0` · shipped · 0 open · 3 shipped · `##########` 100%
 | **PQ-57** — Completions and a man page, generated | med | M | cli,delivery,docs | done, unreleased |
 | **PQ-58** — `--dns` governs every lookup pqprobe makes | med | S | probe,inventory,cli | done, unreleased |
 
+### M10 — The hybrids we do not offer, proved against stacks that are not Go
+
+Target `v0.41.0` · **now** · 2 open · 1 shipped · `###.......` 33%
+
+| Item | Priority | Size | Labels | Status |
+|---|---|---|---|---|
+| **PQ-60** — "post-quantum, in a group your clients do not offer" | high | M | verdict,output,docs | open |
+| **PQ-61** — An interop lab, in CI, against stacks that are not Go | high | XL | tests,probe | open |
+| **PQ-59** — The other two hybrids exist and we can negotiate them | high | M | profile,probe | done, unreleased |
+
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
+| `docs` | 10 | 1 |
+| `output` | 9 | 1 |
+| `probe` | 23 | 1 |
+| `tests` | 6 | 1 |
+| `verdict` | 8 | 1 |
 | `cli` | 11 | 0 |
 | `delivery` | 7 | 0 |
-| `docs` | 9 | 0 |
 | `integration` | 3 | 0 |
 | `inventory` | 5 | 0 |
-| `output` | 8 | 0 |
-| `probe` | 21 | 0 |
-| `profile` | 6 | 0 |
+| `profile` | 7 | 0 |
 | `project` | 6 | 0 |
 | `release` | 5 | 0 |
-| `tests` | 5 | 0 |
 | `ux` | 2 | 0 |
-| `verdict` | 7 | 0 |

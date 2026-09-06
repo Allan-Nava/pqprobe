@@ -842,3 +842,67 @@ is not the machine's own — is narrower than what it can say.
   resolves the fleet through it, and a dead resolver makes the dial itself fail
   rather than quietly falling back.
   <!-- pq: prio=med size=S labels=probe,inventory,cli ver=unreleased -->
+
+## M10 — The hybrids we do not offer, proved against stacks that are not Go <!-- ms: target=v0.41.0 phase=now -->
+
+Two halves of one problem, and the first was found by starting the second.
+Every test in this repository stands on a Go listener, so the distinction the
+whole tool rests on has never met OpenSSL, nginx or HAProxy — and the first real
+container stood up showed pqprobe reporting a **fully post-quantum endpoint** as
+`tls-broken`, because Go exposes three hybrid groups and pqprobe only ever
+offers one.
+
+```
+X25519MLKEM768      4588 (0x11ec)   the one every profile offers
+SecP256r1MLKEM768   4587 (0x11eb)   never offered, never named, never probed
+SecP384r1MLKEM1024  4589 (0x11ed)   the same
+```
+
+- [x] **PQ-59 — The other two hybrids exist and we can negotiate them**: they go
+  into `Probed` so `--per-group` dials them, into `GroupName` so a report can
+  print them, and into `IsPQ` — which today would call a completed
+  `SecP256r1MLKEM768` handshake *classical*, so even an endpoint that connected
+  would be graded `pq-blind`. Verified against OpenSSL 3.5.8 configured with the
+  P-256 hybrid alone: Go completes that handshake today, so this is a gap in
+  what pqprobe *offers*, not a limitation of the language.
+  What must not change is the browser answer: Chrome and Firefox offer
+  X25519MLKEM768, so `pq-preferred` keeps offering exactly what they do. A peer
+  that speaks only another hybrid is still unreachable *for them*, and a class
+  that pretended otherwise would be the same lie in the other direction.
+  Shipped, and it carried a decision the item had not stated: the constants
+  exist only in **Go 1.26**, so the module now requires it — go.mod, both contrib
+  modules, the Dockerfile, the CI and release pins, the README badge. Building
+  on 1.25 would still have compiled with raw codepoints and produced a *different
+  run*: the group would be advertised and never completed, which is precisely the
+  toolchain-dependent answer this repository refuses everywhere else. The minimum
+  is the version that implements them, not the one that accepts the number.
+  The printed names are pinned in `GroupName` rather than taken from Go's
+  `String()` — a test asserts the exact three, so what a report says cannot move
+  under a compiler upgrade. Verified twice: offline against a listener whose only
+  group is the P-256 hybrid, and against the OpenSSL 3.5.8 container that found
+  this, where `--per-group` now reports `accepted: SecP256r1MLKEM768`.
+  The class is still `tls-broken` there, which is PQ-60's job and deliberately
+  not this one's.
+  <!-- pq: prio=high size=M labels=profile,probe ver=unreleased -->
+
+- [ ] **PQ-60 — "post-quantum, in a group your clients do not offer"**: the
+  sentence the report cannot say today. With PQ-59 the handshakes exist; this is
+  the finding and the hint that turn them into an action — a `hybrid` finding
+  naming which hybrids the peer accepts and which it refuses, an honest class
+  for the peer that takes only the P-256 or P-384 one (today `tls-broken`, which
+  says the port is faulty when it is fully capable and merely FIPS-shaped), and
+  the `explain` vocabulary in the same commit.
+  <!-- pq: prio=high size=M labels=verdict,output,docs -->
+
+- [ ] **PQ-61 — An interop lab, in CI, against stacks that are not Go**:
+  containers standing up OpenSSL 3.5 `s_server` with each hybrid on its own,
+  nginx, HAProxy and a listener that truncates the ClientHello, with pqprobe
+  asserting the class each one deserves. Containers live in CI and in a script,
+  never in `go.mod` and never in the binary — the zero-dependency property is
+  about what ships, and this is what proves what ships is right.
+  It earns its place by having already paid: the first container written found
+  PQ-59. Every offline test in this repository asserts pqprobe against *Go's own
+  TLS stack*, which means the alert-versus-reset distinction — the one thing the
+  tool exists to get right — has never been checked against an implementation
+  that does not share our bugs.
+  <!-- pq: prio=high size=XL labels=tests,probe -->

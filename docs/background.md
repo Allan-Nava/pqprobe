@@ -15,6 +15,13 @@ what is being copied this afternoon.
 combined so the session is secure if *either* survives. Nobody is betting on the
 new mathematics alone, and nobody is betting on the old.
 
+There are two more of them — `SecP256r1MLKEM768` and `SecP384r1MLKEM1024`, the
+same ML-KEM with a NIST curve instead of X25519 — and they matter for one
+reason: a FIPS-shaped stack often has only those. Browsers send X25519MLKEM768,
+so an endpoint that speaks only a P-curve hybrid is post-quantum *and*
+unreachable for them at the same time. pqprobe dials all three (`--per-group`)
+and keeps the browser profiles offering exactly what browsers offer.
+
 The cost is size, and it is the entire reason this tool exists:
 
 | | classical | hybrid |

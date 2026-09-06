@@ -1627,3 +1627,46 @@ func TestAnECHRejectionIsCivil(t *testing.T) {
 		t.Fatal("an ECH rejection is an answer the peer chose to give; abrupt is the pq-intolerant bucket")
 	}
 }
+
+// PQ-59. A server that speaks only the P-256 hybrid is post-quantum, and until
+// this it came out `tls-broken` — the port answered and nothing completed. The
+// condition is planted here rather than described: a listener whose only group
+// is SecP256r1MLKEM768.
+func TestAPeerThatOnlySpeaksAnotherHybridIsStillPostQuantum(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := serveTLS(t, &tls.Config{
+		Certificates:     []tls.Certificate{cert},
+		MinVersion:       tls.VersionTLS13,
+		CurvePreferences: []tls.CurveID{tls.SecP256r1MLKEM768},
+	})
+
+	// The group probe --per-group dials for it has to exist and to connect.
+	var probeFor *clientprofile.Profile
+	for _, p := range clientprofile.GroupProbes() {
+		if len(p.Groups) == 1 && p.Groups[0] == tls.SecP256r1MLKEM768 {
+			probeFor = &p
+			break
+		}
+	}
+	if probeFor == nil {
+		t.Fatal("--per-group has no probe for SecP256r1MLKEM768, so nothing would ever ask")
+	}
+
+	res := Dialer{Timeout: 5 * time.Second}.Do(context.Background(), tg, *probeFor)
+	if !res.OK {
+		t.Fatalf("the handshake failed: %s (%s)", res.Err, res.Kind)
+	}
+	if !res.PQ {
+		t.Fatal("a completed SecP256r1MLKEM768 handshake is post-quantum; grading it classical is how a capable endpoint becomes pq-blind")
+	}
+	if res.Group != "SecP256r1MLKEM768" {
+		t.Fatalf("group = %q, want the name a report prints", res.Group)
+	}
+
+	// And what browsers send still fails here, which is the true half of the
+	// old answer and must not be softened.
+	browser, _ := clientprofile.ByName("pq-only")
+	if b := (Dialer{Timeout: 5 * time.Second}).Do(context.Background(), tg, browser); b.OK {
+		t.Fatal("this peer offers no X25519MLKEM768; a browser cannot reach it, and the report must keep saying so")
+	}
+}

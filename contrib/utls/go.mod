@@ -7,7 +7,7 @@
 // by whoever wants a real fingerprint.
 module github.com/Allan-Nava/pqprobe/contrib/utls
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/Allan-Nava/pqprobe v0.24.0

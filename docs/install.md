@@ -26,8 +26,12 @@ A prerelease tag (`v1.0.0-rc.1`) publishes its archives and **not** its cask:
 go install github.com/Allan-Nava/pqprobe/cmd/pqprobe@latest
 ```
 
-Go 1.25 or newer. The hybrid group `X25519MLKEM768` comes from the standard
-library, which is why the tool has no dependencies at all.
+Go 1.26 or newer — the version whose standard library implements all three
+hybrid groups (`X25519MLKEM768`, `SecP256r1MLKEM768`, `SecP384r1MLKEM1024`).
+They come from the standard library, which is why the tool has no dependencies
+at all, and the minimum is the version that *implements* them rather than the
+one that compiles: a run whose meaning depended on the toolchain would prove
+something different after every upgrade.
 
 ## From source
 

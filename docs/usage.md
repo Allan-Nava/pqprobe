@@ -50,7 +50,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | Flag | Default | What it does |
 |---|---|---|
 | `--profile a,b` | `classic,pq-preferred,pq-only` | client profiles to dial |
-| `--per-group` | — | also dial each key exchange group on its own, and report the accepted set |
+| `--per-group` | — | also dial each key exchange group on its own — all three hybrids included — and report the accepted set |
 | `--per-address` | — | probe every A/AAAA record of each name, by address, still sending the name |
 | `--size-sweep` | — | grow the ClientHello in steps and report the size at which the peer stops answering |
 | `--alpn-check` | — | dial the same client with `h2,http/1.1` too, and report when the ALPN bytes change the answer |
