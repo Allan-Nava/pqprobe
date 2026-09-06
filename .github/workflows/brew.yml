@@ -71,7 +71,7 @@ jobs:
       # ignores the tap and proves nothing.
       HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The config that generates the cask is the only part of it visible from
       # a checkout; the cask itself lives in the tap.
