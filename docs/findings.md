@@ -41,6 +41,12 @@ A failed handshake is a `WARN` on its own, never a `BAD`: whether it matters is
 the verdict's job to say, and a per-profile `BAD` would count the same fact
 twice.
 
+Every machine-facing document — `--json`, both `--findings` shapes, the
+Prometheus textfile — is compared byte for byte against a golden file in the
+repository, so a field cannot be renamed, dropped or reordered without the diff
+saying so. What a consumer parses today is what it parses after the next
+release, unless a release note says otherwise.
+
 ## Classes
 
 `pqprobe explain <class>` — and `explain ech`, for the words that are reported

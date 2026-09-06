@@ -57,6 +57,12 @@ there is a decision, not a gap.
 - **Backlog first**: work exists in `BACKLOG.md` with a `PQ-n` id, and
   `ROADMAP.md` is generated — run `scripts/backlog.sh roadmap` after editing the
   backlog or CI fails. Commits and CHANGELOG entries reference the id.
+- **The machine-facing documents are golden-tested.** `--json`, both
+  `--findings` shapes, the Prometheus textfile and the markdown report are
+  compared byte for byte against `internal/output/testdata/`. A deliberate
+  change is `go test ./internal/output/ -update` **in the same commit**, and the
+  diff is the review: it is a change to somebody else's parser, not to a file of
+  ours.
 - **Align everything**: a new profile, class or flag lands in the same commit as
   its README row, its `--help` text, its tests, the backlog tick and the
   CHANGELOG line.

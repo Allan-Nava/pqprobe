@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**68 items · 68 shipped · 0 open · 13 milestones.**
+**71 items · 69 shipped · 2 open · 14 milestones.**
 
 ## At a glance
 
@@ -25,12 +25,14 @@
 | **M11** — Reproduce the failures, not only the successes | `v0.44.0` | shipped | `##########` 100% | 0 | 3 |
 | **M12** — What the audit found | `v0.44.1` | shipped | `##########` 100% | 0 | 1 |
 | **M13** — Invariants a machine can check | `v0.45.0` | shipped | `##########` 100% | 0 | 3 |
+| **M14** — The contract with machines | `v0.48.0` | **now** | `###.......` 33% | 2 | 1 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-_Nothing in flight._
+- **PQ-70** — Say which contract a document speaks · `high` · size `M` · output,docs,integration (M14, target `v0.48.0`)
+- **PQ-71** — The public API can ask what the CLI can ask · `med` · size `M` · integration (M14, target `v0.48.0`)
 
 ## Milestones
 
@@ -193,20 +195,30 @@ Target `v0.45.0` · shipped · 0 open · 3 shipped · `##########` 100%
 | **PQ-67** — The verdict's invariants, as properties | high | M | tests,verdict | done, unreleased |
 | **PQ-68** — Fuzz the target parser, and pin what it may never do | med | S | tests,inventory | done, unreleased |
 
+### M14 — The contract with machines
+
+Target `v0.48.0` · **now** · 2 open · 1 shipped · `###.......` 33%
+
+| Item | Priority | Size | Labels | Status |
+|---|---|---|---|---|
+| **PQ-70** — Say which contract a document speaks | high | M | output,docs,integration | open |
+| **PQ-71** — The public API can ask what the CLI can ask | med | M | integration | open |
+| **PQ-69** — Golden files for every machine-facing output | high | M | output,tests | done, unreleased |
+
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
+| `integration` | 6 | 2 |
+| `docs` | 11 | 1 |
+| `output` | 11 | 1 |
 | `cli` | 12 | 0 |
 | `delivery` | 7 | 0 |
-| `docs` | 10 | 0 |
-| `integration` | 4 | 0 |
 | `inventory` | 6 | 0 |
-| `output` | 9 | 0 |
 | `probe` | 28 | 0 |
 | `profile` | 7 | 0 |
 | `project` | 6 | 0 |
 | `release` | 5 | 0 |
-| `tests` | 12 | 0 |
+| `tests` | 13 | 0 |
 | `ux` | 2 | 0 |
 | `verdict` | 10 | 0 |

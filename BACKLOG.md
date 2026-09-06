@@ -1112,3 +1112,50 @@ that dies halfway through somebody's fleet.
   same family as the `?q=1` bug, which the table case had fixed only for the URL
   form. All three are usage errors now, naming the word that caused them.
   <!-- pq: prio=med size=S labels=tests,inventory ver=unreleased -->
+
+## M14 — The contract with machines <!-- ms: target=v0.48.0 phase=now -->
+
+M13 pinned the invariants the tool owes *itself*. These are the ones it owes
+everything downstream: checkfleet imports `pq/`, an aggregator deduplicates on
+the finding `id`, a node exporter scrapes the textfile, a CI job reads
+`--findings`. Not one of those shapes is asserted anywhere. Renaming a JSON
+field, dropping a metric label or reordering a nested object passes every gate
+in this repository and breaks a consumer silently — which is the same failure
+mode PQ-65 found inside the tool, one layer out.
+
+- [x] **PQ-69 — Golden files for every machine-facing output**: `--json`,
+  `--findings`, `--findings=wrapped` and the Prometheus textfile, rendered from
+  a fixed set of reports and compared byte for byte. A deliberate change updates
+  the golden file in the same commit and shows up in the diff as what it is: a
+  change to somebody else's parser. The fixture has to cover the shapes that
+  actually vary — a healthy endpoint, an unreachable one, a finding with
+  `value`/`unit`, one with a hint, a class that is not a grade.
+  Shipped, with the markdown report in as well — it is pasted into a pull
+  request by a machine, and its table structure is what a job summary renders.
+  The fixture goes through `verdict.Evaluate` with a fixed clock rather than
+  hand-writing findings, so the golden is a contract over the whole pipeline
+  from results to document, not over a struct literal. Proved by renaming
+  `tool` to `toolname` and watching it go red, because a gate nobody has seen
+  fail is a gate nobody knows works.
+  The rule is in AGENTS.md and CLAUDE.md now: a deliberate change is
+  `-update` **in the same commit**, and the diff is the review.
+  <!-- pq: prio=high size=M labels=output,tests ver=unreleased -->
+
+- [ ] **PQ-70 — Say which contract a document speaks**: the JSON carries the
+  tool version and nothing else a consumer can branch on, and the wrapped
+  findings promise a *stable id* for deduplication without ever stating what it
+  is computed from. A `schema` field with a number that only moves when the
+  shape does, and one page — `docs/schema.md` — saying what each field means,
+  what `id` is a fingerprint of (check plus target, deliberately not the
+  message, or every morning is a new problem), and which parts are allowed to
+  grow. Generated from the types where it can be, so it cannot drift.
+  <!-- pq: prio=high size=M labels=output,docs,integration -->
+
+- [ ] **PQ-71 — The public API can ask what the CLI can ask**: `pq.Options`
+  carries profiles, timeout, ALPN, SOCKS5, concurrency, expiry thresholds and
+  `Net` — and cannot reach a mail server, because `--starttls` never made it
+  across. Nor `--per-group`, `--size-sweep` or ECH. An embedder that wants the
+  answer for port 587 has to shell out to the binary, which is the thing `pq/`
+  exists to avoid. Whatever is added arrives with the same rule the CLI has: an
+  unknown value is an error, never a quietly different run.
+  <!-- pq: prio=med size=M labels=integration -->

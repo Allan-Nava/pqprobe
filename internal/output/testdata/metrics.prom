@@ -1,0 +1,48 @@
+# HELP pqprobe_last_run_timestamp_seconds When pqprobe last completed a run.
+# TYPE pqprobe_last_run_timestamp_seconds gauge
+pqprobe_last_run_timestamp_seconds 1788696000
+# HELP pqprobe_endpoints How many endpoints the run probed.
+# TYPE pqprobe_endpoints gauge
+pqprobe_endpoints 3
+# HELP pqprobe_class The endpoint's class, as a label. Always 1.
+# TYPE pqprobe_class gauge
+pqprobe_class{target="origin.example:443",class="pq-ready"} 1
+pqprobe_class{target="wall.example:443",class="pq-intolerant"} 1
+pqprobe_class{target="gone.example:443",class="unreachable"} 1
+# HELP pqprobe_status Worst finding severity: 0 OK, 1 WARN, 2 BAD, 3 ERROR.
+# TYPE pqprobe_status gauge
+pqprobe_status{target="origin.example:443"} 1
+pqprobe_status{target="wall.example:443"} 2
+pqprobe_status{target="gone.example:443"} 3
+# HELP pqprobe_findings Findings per status.
+# TYPE pqprobe_findings gauge
+pqprobe_findings{target="origin.example:443",status="OK"} 5
+pqprobe_findings{target="origin.example:443",status="WARN"} 2
+pqprobe_findings{target="wall.example:443",status="OK"} 2
+pqprobe_findings{target="wall.example:443",status="WARN"} 4
+pqprobe_findings{target="wall.example:443",status="BAD"} 1
+pqprobe_findings{target="gone.example:443",status="WARN"} 3
+pqprobe_findings{target="gone.example:443",status="ERROR"} 1
+# HELP pqprobe_cert_expiry_days Days until the leaf certificate expires.
+# TYPE pqprobe_cert_expiry_days gauge
+pqprobe_cert_expiry_days{target="origin.example:443"} 12
+pqprobe_cert_expiry_days{target="wall.example:443"} 12
+# HELP pqprobe_handshake_ok Whether that client shape completed a handshake.
+# TYPE pqprobe_handshake_ok gauge
+pqprobe_handshake_ok{target="origin.example:443",profile="classic"} 1
+pqprobe_handshake_ok{target="origin.example:443",profile="pq-preferred"} 1
+pqprobe_handshake_ok{target="origin.example:443",profile="pq-only"} 1
+pqprobe_handshake_ok{target="wall.example:443",profile="classic"} 1
+pqprobe_handshake_ok{target="wall.example:443",profile="pq-preferred"} 0
+pqprobe_handshake_ok{target="wall.example:443",profile="pq-only"} 0
+pqprobe_handshake_ok{target="gone.example:443",profile="classic"} 0
+pqprobe_handshake_ok{target="gone.example:443",profile="pq-preferred"} 0
+pqprobe_handshake_ok{target="gone.example:443",profile="pq-only"} 0
+# HELP pqprobe_hello_bytes Size on the wire of the ClientHello that shape sent.
+# TYPE pqprobe_hello_bytes gauge
+pqprobe_hello_bytes{target="origin.example:443",profile="classic"} 285
+pqprobe_hello_bytes{target="origin.example:443",profile="pq-preferred"} 1507
+pqprobe_hello_bytes{target="origin.example:443",profile="pq-only"} 1439
+pqprobe_hello_bytes{target="wall.example:443",profile="classic"} 285
+pqprobe_hello_bytes{target="wall.example:443",profile="pq-preferred"} 1507
+pqprobe_hello_bytes{target="wall.example:443",profile="pq-only"} 1439

@@ -1,0 +1,326 @@
+{
+  "tool": "pqprobe",
+  "reports": [
+    {
+      "target": "origin.example:443",
+      "class": "pq-ready",
+      "results": [
+        {
+          "profile": "classic",
+          "ok": true,
+          "kind": "ok",
+          "tls_version": "TLS 1.3",
+          "group": "X25519",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "elapsed_ns": 42000000,
+          "chain": [
+            {
+              "bytes": 1200,
+              "subject": "origin.example",
+              "issuer": "Example CA",
+              "not_after": "2026-09-18T12:00:00Z",
+              "not_before": "2026-08-07T12:00:00Z",
+              "dns_names": [
+                "origin.example"
+              ],
+              "is_ca": false
+            }
+          ],
+          "chain_verified": true,
+          "attempts": 1,
+          "hello_bytes": 285,
+          "hello_count": 1,
+          "chain_bytes": 1200,
+          "peer_chain_len": 1
+        },
+        {
+          "profile": "pq-preferred",
+          "ok": true,
+          "kind": "ok",
+          "tls_version": "TLS 1.3",
+          "group": "X25519MLKEM768",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "elapsed_ns": 42000000,
+          "pq": true,
+          "chain": [
+            {
+              "bytes": 1200,
+              "subject": "origin.example",
+              "issuer": "Example CA",
+              "not_after": "2026-09-18T12:00:00Z",
+              "not_before": "2026-08-07T12:00:00Z",
+              "dns_names": [
+                "origin.example"
+              ],
+              "is_ca": false
+            }
+          ],
+          "chain_verified": true,
+          "attempts": 1,
+          "hello_bytes": 1507,
+          "hello_count": 1,
+          "chain_bytes": 1200,
+          "peer_chain_len": 1
+        },
+        {
+          "profile": "pq-only",
+          "ok": true,
+          "kind": "ok",
+          "tls_version": "TLS 1.3",
+          "group": "X25519MLKEM768",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "elapsed_ns": 42000000,
+          "pq": true,
+          "chain": [
+            {
+              "bytes": 1200,
+              "subject": "origin.example",
+              "issuer": "Example CA",
+              "not_after": "2026-09-18T12:00:00Z",
+              "not_before": "2026-08-07T12:00:00Z",
+              "dns_names": [
+                "origin.example"
+              ],
+              "is_ca": false
+            }
+          ],
+          "chain_verified": true,
+          "attempts": 1,
+          "hello_bytes": 1439,
+          "hello_count": 1,
+          "chain_bytes": 1200,
+          "peer_chain_len": 1
+        }
+      ],
+      "findings": [
+        {
+          "check": "chain",
+          "target": "origin.example:443",
+          "status": "WARN",
+          "message": "the peer sent the leaf certificate alone, with no intermediate",
+          "value": 1,
+          "unit": "certs",
+          "hint": "browsers that cached the intermediate will not notice and a fresh client will fail — the most confusing class of TLS bug there is"
+        },
+        {
+          "check": "expiry",
+          "target": "origin.example:443",
+          "status": "WARN",
+          "message": "leaf expires 2026-09-18 (12 days)",
+          "value": 12,
+          "unit": "days"
+        },
+        {
+          "check": "chain-size",
+          "target": "origin.example:443",
+          "status": "OK",
+          "message": "the peer sent 1 certificate(s), 1200 bytes of chain",
+          "value": 1200,
+          "unit": "bytes",
+          "hint": "post-quantum authentication is the next migration and it is a size problem again: an ML-DSA signature is around 3.3 KB where an ECDSA one is 64 bytes, so this chain grows by roughly 4 KB per certificate when it moves. This is the headroom you have today"
+        },
+        {
+          "check": "verdict",
+          "target": "origin.example:443",
+          "status": "OK",
+          "message": "pq-ready — post-quantum key exchange works, including for a client that requires it",
+          "hint": "nothing to do; re-run after any TLS stack or load balancer change"
+        },
+        {
+          "check": "handshake",
+          "target": "origin.example:443/classic",
+          "status": "OK",
+          "message": "TLS 1.3, X25519, TLS_AES_128_GCM_SHA256, hello 285 B",
+          "value": 42,
+          "unit": "ms"
+        },
+        {
+          "check": "handshake",
+          "target": "origin.example:443/pq-only",
+          "status": "OK",
+          "message": "TLS 1.3, X25519MLKEM768, TLS_AES_128_GCM_SHA256, hello 1439 B",
+          "value": 42,
+          "unit": "ms"
+        },
+        {
+          "check": "handshake",
+          "target": "origin.example:443/pq-preferred",
+          "status": "OK",
+          "message": "TLS 1.3, X25519MLKEM768, TLS_AES_128_GCM_SHA256, hello 1507 B",
+          "value": 42,
+          "unit": "ms"
+        }
+      ]
+    },
+    {
+      "target": "wall.example:443",
+      "class": "pq-intolerant",
+      "results": [
+        {
+          "profile": "classic",
+          "ok": true,
+          "kind": "ok",
+          "tls_version": "TLS 1.3",
+          "group": "X25519",
+          "cipher": "TLS_AES_128_GCM_SHA256",
+          "elapsed_ns": 42000000,
+          "chain": [
+            {
+              "bytes": 1200,
+              "subject": "origin.example",
+              "issuer": "Example CA",
+              "not_after": "2026-09-18T12:00:00Z",
+              "not_before": "2026-08-07T12:00:00Z",
+              "dns_names": [
+                "origin.example"
+              ],
+              "is_ca": false
+            }
+          ],
+          "chain_verified": true,
+          "attempts": 1,
+          "hello_bytes": 285,
+          "hello_count": 1,
+          "chain_bytes": 1200,
+          "peer_chain_len": 1
+        },
+        {
+          "profile": "pq-preferred",
+          "ok": false,
+          "kind": "timeout",
+          "error": "context deadline exceeded",
+          "elapsed_ns": 5000000000,
+          "chain_verified": false,
+          "attempts": 2,
+          "reproduced": true,
+          "hello_bytes": 1507
+        },
+        {
+          "profile": "pq-only",
+          "ok": false,
+          "kind": "timeout",
+          "error": "context deadline exceeded",
+          "elapsed_ns": 5000000000,
+          "chain_verified": false,
+          "attempts": 2,
+          "reproduced": true,
+          "hello_bytes": 1439
+        }
+      ],
+      "findings": [
+        {
+          "check": "verdict",
+          "target": "wall.example:443",
+          "status": "BAD",
+          "message": "pq-intolerant — post-quantum-capable clients cannot connect at all, while classical clients can",
+          "hint": "the classical client connected and the post-quantum-capable one was cut off (timeout, reproduced on a second dial): every client that merely *offers* ML-KEM fails here — Chrome and Edge 131+, Firefox 132+, a CDN with post-quantum enabled — while curl and your existing health checks keep passing"
+        },
+        {
+          "check": "chain",
+          "target": "wall.example:443",
+          "status": "WARN",
+          "message": "the peer sent the leaf certificate alone, with no intermediate",
+          "value": 1,
+          "unit": "certs",
+          "hint": "browsers that cached the intermediate will not notice and a fresh client will fail — the most confusing class of TLS bug there is"
+        },
+        {
+          "check": "expiry",
+          "target": "wall.example:443",
+          "status": "WARN",
+          "message": "leaf expires 2026-09-18 (12 days)",
+          "value": 12,
+          "unit": "days"
+        },
+        {
+          "check": "handshake",
+          "target": "wall.example:443/pq-only",
+          "status": "WARN",
+          "message": "no handshake (timeout): context deadline exceeded — twice",
+          "hint": "an abrupt end means the peer never sent a TLS alert: it choked on the ClientHello rather than declining it"
+        },
+        {
+          "check": "handshake",
+          "target": "wall.example:443/pq-preferred",
+          "status": "WARN",
+          "message": "no handshake (timeout): context deadline exceeded — twice",
+          "hint": "an abrupt end means the peer never sent a TLS alert: it choked on the ClientHello rather than declining it"
+        },
+        {
+          "check": "chain-size",
+          "target": "wall.example:443",
+          "status": "OK",
+          "message": "the peer sent 1 certificate(s), 1200 bytes of chain",
+          "value": 1200,
+          "unit": "bytes",
+          "hint": "post-quantum authentication is the next migration and it is a size problem again: an ML-DSA signature is around 3.3 KB where an ECDSA one is 64 bytes, so this chain grows by roughly 4 KB per certificate when it moves. This is the headroom you have today"
+        },
+        {
+          "check": "handshake",
+          "target": "wall.example:443/classic",
+          "status": "OK",
+          "message": "TLS 1.3, X25519, TLS_AES_128_GCM_SHA256, hello 285 B",
+          "value": 42,
+          "unit": "ms"
+        }
+      ]
+    },
+    {
+      "target": "gone.example:443",
+      "class": "unreachable",
+      "results": [
+        {
+          "profile": "classic",
+          "ok": false,
+          "kind": "refused",
+          "error": "connect: connection refused",
+          "chain_verified": false,
+          "attempts": 1
+        },
+        {
+          "profile": "pq-preferred",
+          "ok": false,
+          "kind": "refused",
+          "error": "connect: connection refused",
+          "chain_verified": false,
+          "attempts": 1
+        },
+        {
+          "profile": "pq-only",
+          "ok": false,
+          "kind": "refused",
+          "error": "connect: connection refused",
+          "chain_verified": false,
+          "attempts": 1
+        }
+      ],
+      "findings": [
+        {
+          "check": "verdict",
+          "target": "gone.example:443",
+          "status": "ERROR",
+          "message": "nothing answered; no TLS conclusion available",
+          "hint": "fix reachability first — no statement about post-quantum readiness can be made from a probe that never completed a handshake"
+        },
+        {
+          "check": "handshake",
+          "target": "gone.example:443/classic",
+          "status": "WARN",
+          "message": "no handshake (refused): connect: connection refused"
+        },
+        {
+          "check": "handshake",
+          "target": "gone.example:443/pq-only",
+          "status": "WARN",
+          "message": "no handshake (refused): connect: connection refused"
+        },
+        {
+          "check": "handshake",
+          "target": "gone.example:443/pq-preferred",
+          "status": "WARN",
+          "message": "no handshake (refused): connect: connection refused"
+        }
+      ]
+    }
+  ]
+}

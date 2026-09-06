@@ -6,6 +6,29 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.46.0] - 2026-09-06
+
+### Added
+
+- **Golden files for every machine-facing document (PQ-69).** `--json`, both
+  `--findings` shapes, the Prometheus textfile and the markdown report are now
+  compared byte for byte against `internal/output/testdata/`. None of those
+  shapes was asserted anywhere: renaming a field, dropping a metric label or
+  reordering a nested object passed every gate in this repository and broke a
+  consumer in silence — the same failure mode the audit found inside the tool,
+  one layer out.
+
+  The fixture runs through `verdict.Evaluate` with a fixed clock rather than
+  hand-written findings, so the golden is a contract over the whole pipeline
+  from results to document. It covers the shapes that vary: a healthy endpoint,
+  one cut off mid-hello, one nothing answered, findings with `value`/`unit`,
+  findings with a hint, and a class that is not a grade.
+
+  A deliberate change is `go test ./internal/output/ -update` in the same
+  commit, and the diff is the review. Proved by renaming `tool` to `toolname`
+  and watching it go red, because a gate nobody has seen fail is a gate nobody
+  knows works.
+
 ## [0.45.0] - 2026-09-06
 
 ### Added
