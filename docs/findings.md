@@ -21,6 +21,7 @@ not an endpoint that passed, and an operator has to see it first.
 |---|---|---|
 | `handshake` | `host:port/profile` | one attempt: negotiated version, group, cipher, ALPN, the **measured ClientHello size** and elapsed ms — or how it failed |
 | `verdict` | `host:port` | the class, with the affected clients named in the hint |
+| `hybrid` | `host:port` | with `--per-group`: the peer negotiates hybrid ML-KEM in a group no browser sends |
 | `groups` | `host:port` | with `--per-group`: which groups the peer accepted alone, and how it refused the others |
 | `expiry` | `host:port` | days to leaf expiry (`--expiry-warn`, `--expiry-bad`) |
 | `chain` | `host:port` | chain does not verify, or the peer sent the leaf alone |
@@ -57,6 +58,7 @@ clients, next action, without touching the network.
 | `no-tls` | ERROR | the plaintext upgrade was refused, so there was no handshake to grade — not a grade |
 | `mtls-required` | ERROR | the peer wants a client certificate and no handshake survived it — not a grade |
 | `unreachable` | ERROR | nothing answered |
+| `pq-other-hybrid` | BAD | post-quantum works, but only in a hybrid group no browser sends (`SecP256r1MLKEM768`, `SecP384r1MLKEM1024`) — a FIPS-shaped stack |
 | `tls-broken` | ERROR | the port answered and no profile completed a handshake |
 
 ## The per-group map

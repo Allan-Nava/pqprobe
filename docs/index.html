@@ -412,7 +412,8 @@ footer a:hover { color:var(--link-hover); }
           <tr><td><code>no-tls</code></td><td><span class="c-err">ERROR</span></td><td>would not upgrade to TLS (<code>--starttls</code>)</td><td>not a grade — it refused TLS, not post-quantum clients</td></tr>
           <tr><td><code>mtls-required</code></td><td><span class="c-err">ERROR</span></td><td>requested a client certificate, and no handshake survived it</td><td>not a grade — it refused the prober, not post-quantum clients</td></tr>
           <tr><td><code>unreachable</code></td><td><span class="c-err">ERROR</span></td><td>answered nothing</td><td>not a grade — fix reachability first</td></tr>
-          <tr><td><code>tls-broken</code></td><td><span class="c-err">ERROR</span></td><td>the port answered and no profile completed a handshake</td><td>not a post-quantum finding at all</td></tr>
+          <tr><td><code>pq-other-hybrid</code></td><td><span class="c-bad">BAD</span></td><td>negotiates hybrid ML-KEM, but only in <code>SecP256r1MLKEM768</code> or <code>SecP384r1MLKEM1024</code></td><td>not broken — a FIPS-shaped stack no browser can reach; add X25519MLKEM768</td></tr>
+          <tr><td><code>tls-broken</code></td><td><span class="c-err">ERROR</span></td><td>the port answered and no profile completed a handshake</td><td>not a post-quantum finding at all — run <code>--per-group</code> before believing it</td></tr>
         </tbody>
       </table>
     </div>

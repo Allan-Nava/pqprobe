@@ -885,14 +885,30 @@ SecP384r1MLKEM1024  4589 (0x11ed)   the same
   not this one's.
   <!-- pq: prio=high size=M labels=profile,probe ver=unreleased -->
 
-- [ ] **PQ-60 — "post-quantum, in a group your clients do not offer"**: the
+- [x] **PQ-60 — "post-quantum, in a group your clients do not offer"**: the
   sentence the report cannot say today. With PQ-59 the handshakes exist; this is
   the finding and the hint that turn them into an action — a `hybrid` finding
   naming which hybrids the peer accepts and which it refuses, an honest class
   for the peer that takes only the P-256 or P-384 one (today `tls-broken`, which
   says the port is faulty when it is fully capable and merely FIPS-shaped), and
   the `explain` vocabulary in the same commit.
-  <!-- pq: prio=high size=M labels=verdict,output,docs -->
+  Shipped as the `hybrid` finding and the class `pq-other-hybrid` (BAD). The
+  rule the item needed and did not have: the single-group probes may **soften**
+  `tls-broken` and may never create a grade. No real client dials one group at a
+  time — grading on that is how a peer gets called intolerant for declining
+  P-521 — but they are evidence that a peer is not broken, and turning "the port
+  is faulty" into "it is configured for somebody else" is the one thing they are
+  allowed to do.
+  Two shapes, both verified against real OpenSSL 3.5.8 containers: with only the
+  P-256 hybrid the class moves from `tls-broken` to `pq-other-hybrid`, and with
+  the realistic FIPS list (hybrid plus classical NIST curves) the class stays
+  `pq-blind` — browsers do get a handshake — while the finding says the work is
+  a group policy rather than switching post-quantum on, because it is already on.
+  The verdict finding for the new class is BAD rather than the branch's usual
+  ERROR: something *was* concluded, and ERROR is the bucket for endpoints that
+  never answered. `tls-broken` also gained the pointer that would have prevented
+  the whole confusion — run `--per-group` before believing it.
+  <!-- pq: prio=high size=M labels=verdict,output,docs ver=unreleased -->
 
 - [ ] **PQ-61 — An interop lab, in CI, against stacks that are not Go**:
   containers standing up OpenSSL 3.5 `s_server` with each hybrid on its own,

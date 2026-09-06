@@ -6,6 +6,36 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.40.0] - 2026-09-06
+
+### Added
+
+- **The class `pq-other-hybrid` and the `hybrid` finding (PQ-60).** The sentence
+  the report could not say: *post-quantum key exchange works here, but only in a
+  group no browser sends*. An endpoint doing hybrid ML-KEM on
+  `SecP256r1MLKEM768` — what a FIPS-shaped stack has — was reported
+  `tls-broken`, which says the port is faulty when it is merely configured for
+  somebody else.
+
+  The rule that makes this safe: the single-group probes may **soften**
+  `tls-broken` and may never create a grade. No real client dials one group at a
+  time, and grading on that is how a peer gets called intolerant for declining
+  P-521 — but they are evidence that a peer is not broken. The new class is BAD
+  rather than ERROR: something was concluded, and ERROR is the bucket for
+  endpoints that never answered.
+
+  Both shapes verified against real OpenSSL 3.5.8: with only the P-256 hybrid
+  the class moves to `pq-other-hybrid`; with the realistic FIPS list (that
+  hybrid plus classical NIST curves) it stays `pq-blind` — browsers do get a
+  handshake — while the `hybrid` finding says the work is a group policy rather
+  than switching post-quantum on, because it is already on.
+
+### Changed
+
+- **`tls-broken` now points at the run that can tell the difference.** Its hint
+  says to try `--per-group` before believing it: a peer that speaks only a
+  P-curve hybrid looks exactly like a broken port and is not one.
+
 ## [0.39.0] - 2026-09-06
 
 ### Added

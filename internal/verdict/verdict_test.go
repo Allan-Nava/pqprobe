@@ -832,7 +832,7 @@ func TestACustomGroupSetIsVisibleButDoesNotGrade(t *testing.T) {
 func TestEveryClassCanBeExplained(t *testing.T) {
 	all := []Class{
 		PQReady, PQCapable, PQBlind, PQIntolerant, PQRefusing,
-		NoTLS13, NoTLS, MTLSRequired, Unreachable, TLSBroken,
+		NoTLS13, NoTLS, MTLSRequired, Unreachable, TLSBroken, PQOtherHybrid,
 	}
 	if len(Classes()) != len(all) {
 		t.Fatalf("Classes() has %d entries and this test knows %d — one of them is out of date",
@@ -1102,5 +1102,72 @@ func TestExplainCoversTheTopicsThatAreNotClasses(t *testing.T) {
 		if seen[string(c)] {
 			t.Errorf("%s is both a class and a topic; one of the two lists is wrong", c)
 		}
+	}
+}
+
+// PQ-60. A peer that speaks only a P-curve hybrid is post-quantum and was
+// reported `tls-broken` — the port answered and nothing completed, which reads
+// as a faulty endpoint. The group probes are the evidence that it is not.
+func TestAPeerThatOnlySpeaksAnotherHybridIsNotBroken(t *testing.T) {
+	client := []probe.Result{
+		fail("classic", probe.KindAlert),
+		fail("pq-preferred", probe.KindAlert),
+		fail("pq-only", probe.KindAlert),
+	}
+	groups := []probe.Result{
+		ok("group:SecP256r1MLKEM768", "TLS 1.3", "SecP256r1MLKEM768", true),
+		fail("group:X25519MLKEM768", probe.KindAlert),
+		fail("group:X25519", probe.KindAlert),
+	}
+
+	rep := Evaluate("h:443", append(append([]probe.Result{}, client...), groups...), opts())
+	if rep.Class != PQOtherHybrid {
+		t.Fatalf("class = %s, want %s: a post-quantum endpoint reported as a faulty port is the worst thing this tool can say", rep.Class, PQOtherHybrid)
+	}
+	if v := find(t, rep, "verdict"); v.Status != finding.BAD {
+		t.Errorf("verdict status = %s, want BAD: something *was* concluded here, and ERROR is the bucket for endpoints that never answered", v.Status)
+	}
+	f := find(t, rep, "hybrid")
+	if !strings.Contains(f.Message, "SecP256r1MLKEM768") {
+		t.Errorf("message = %q, want the group it does accept", f.Message)
+	}
+	if !strings.Contains(f.Hint, "X25519MLKEM768") {
+		t.Errorf("hint = %q, want the group browsers send, since that is who cannot reach it", f.Hint)
+	}
+	if _, ok := Explain(PQOtherHybrid); !ok {
+		t.Error("the class has no explanation, and a class nobody can look up is one nobody acts on")
+	}
+
+	// The realistic FIPS shape: classical works, browsers fall back, and the
+	// class stays pq-blind — but the report must stop implying there is no
+	// post-quantum here at all.
+	mixed := []probe.Result{
+		ok("classic", "TLS 1.3", "P-256", false),
+		ok("pq-preferred", "TLS 1.3", "P-256", false),
+		fail("pq-only", probe.KindAlert),
+		ok("group:SecP256r1MLKEM768", "TLS 1.3", "SecP256r1MLKEM768", true),
+		fail("group:X25519MLKEM768", probe.KindAlert),
+	}
+	rep = Evaluate("h:443", mixed, opts())
+	if rep.Class != PQBlind {
+		t.Fatalf("class = %s, want pq-blind: browsers still get a classical handshake here", rep.Class)
+	}
+	f = find(t, rep, "hybrid")
+	if f.Status != finding.WARN {
+		t.Errorf("status = %s, want WARN: the migration here is a group policy, not switching post-quantum on", f.Status)
+	}
+
+	// Nothing hybrid was asked, nothing hybrid is said.
+	rep = Evaluate("h:443", client, opts())
+	if rep.Class != TLSBroken {
+		t.Fatalf("class = %s, want tls-broken when no group probe ran: it cannot be known", rep.Class)
+	}
+	for _, f := range rep.Finding {
+		if f.Check == "hybrid" {
+			t.Fatal("no group probe ran; a hybrid finding would be a claim nobody measured")
+		}
+	}
+	if v := find(t, rep, "verdict"); !strings.Contains(v.Hint, "--per-group") {
+		t.Errorf("hint = %q, want it to point at the run that could tell the difference", v.Hint)
 	}
 }

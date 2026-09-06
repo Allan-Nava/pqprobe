@@ -61,6 +61,8 @@ shapes, and reads the *shape of the refusal*:
 | sends a **TLS alert** to a hybrid hello | `pq-refusing` | it parsed and declined: a policy or pinned group list |
 | **resets, times out or vanishes** | `pq-intolerant` | it choked on the hello: an outage waiting for a CDN default |
 | serves TLS 1.2 and nothing newer | `no-tls13` | post-quantum key exchange is a 1.3 feature; a ceiling, not a setting |
+| does post-quantum **in a group no browser sends** | `pq-other-hybrid` | not broken — a FIPS-shaped stack: `--per-group` names the hybrid it took |
+| does post-quantum **in a group no browser sends** | `pq-other-hybrid` | not broken — a FIPS-shaped stack; `--per-group` names the hybrid it took |
 | will not **upgrade to TLS** | `no-tls` | not a grade — it refused TLS, not post-quantum clients (`--starttls`) |
 | wants a **client certificate** | `mtls-required` | not a grade — it refused the prober, not post-quantum clients |
 | answers nothing | `unreachable` | not a grade — fix reachability first |

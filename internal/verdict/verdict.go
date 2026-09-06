@@ -60,6 +60,13 @@ const (
 	MTLSRequired Class = "mtls-required"
 	// TLSBroken: something answered and no profile completed a handshake.
 	TLSBroken Class = "tls-broken"
+	// PQOtherHybrid: no ordinary client profile completed a handshake, and a
+	// single-group probe shows the peer doing hybrid ML-KEM in a group no
+	// browser sends — SecP256r1MLKEM768 or SecP384r1MLKEM1024, which is what a
+	// FIPS-shaped stack has. It is post-quantum and unreachable for real
+	// clients at the same time, and calling it `tls-broken` said the port was
+	// faulty when it is merely configured for somebody else (PQ-60).
+	PQOtherHybrid Class = "pq-other-hybrid"
 )
 
 // Classes is every class, in the order a reader should meet them: the good news
@@ -68,7 +75,7 @@ const (
 func Classes() []Class {
 	return []Class{
 		PQReady, PQCapable, PQBlind, PQIntolerant, PQRefusing,
-		NoTLS13, NoTLS, MTLSRequired, Unreachable, TLSBroken,
+		NoTLS13, NoTLS, MTLSRequired, Unreachable, TLSBroken, PQOtherHybrid,
 	}
 }
 
@@ -147,7 +154,10 @@ func Explain(c Class) (Explanation, bool) {
 		e.Action = "not a grade: fix reachability first. If this came from --per-address, check the route from this host before blaming the node — an IPv6 address probed without IPv6 egress fails exactly like this"
 	case TLSBroken:
 		e.Affected = "not a grade — the port answered and no client shape completed a handshake, so no capability conclusion is available"
-		e.Action = "not a grade: something is listening and it is not serving TLS the way any of these clients speak it. Look at the port and the terminator before reading anything about post-quantum support"
+		e.Action = "not a grade: something is listening and it is not serving TLS the way any of these clients speak it. Look at the port and the terminator before reading anything about post-quantum support. Run --per-group before concluding anything: a peer that speaks only a P-curve hybrid looks exactly like this and is not broken at all"
+	case PQOtherHybrid:
+		e.Affected = "every ordinary client: browsers send X25519MLKEM768, and the classical shapes were refused too. Only a client configured for this endpoint's hybrid group reaches it"
+		e.Action = "this is a group policy, not a fault. The peer does hybrid ML-KEM in a group no browser sends — SecP256r1MLKEM768 or SecP384r1MLKEM1024, which is what a FIPS-shaped stack has. Either add X25519MLKEM768 to the endpoint, or accept that only clients you configure will reach it; the `groups` finding says exactly which one it took"
 	default:
 		return Explanation{}, false
 	}
@@ -202,6 +212,8 @@ func Describe(c Class) string {
 		return "the peer requires a client certificate, so no capability conclusion is available"
 	case TLSBroken:
 		return "the port answered but no client profile completed a handshake"
+	case PQOtherHybrid:
+		return "post-quantum key exchange works here, but only in a hybrid group no browser sends"
 	}
 	return string(c)
 }
@@ -251,6 +263,13 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 	if f, ok := groupsFinding(target, groups); ok {
 		rep.Finding = append(rep.Finding, f)
 	}
+	// Said wherever the probes saw it, not only where it changes the class: an
+	// endpoint whose browsers fall back to a classical handshake is graded
+	// pq-blind correctly, and "there is no post-quantum here" would still be the
+	// wrong thing to read into it (PQ-60).
+	if g, ok := otherHybrid(groups); ok && anyOK(client) {
+		rep.Finding = append(rep.Finding, hybridFinding(target, g, true))
+	}
 	if f, ok := clientAuthFinding(target, client); ok {
 		rep.Finding = append(rep.Finding, f)
 	}
@@ -292,7 +311,26 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 		if allKinds(client, probe.KindDNS, probe.KindRefused, probe.KindUnroutable) {
 			rep.Class = Unreachable
 		}
+		// The single-group probes are the one thing allowed to move this class,
+		// and only in this direction: they are evidence that the peer is not
+		// broken. They may never *create* a grade — no real client dials one
+		// group at a time, and grading on that would call a peer intolerant for
+		// declining P-521 (PQ-22, PQ-60).
+		if rep.Class == TLSBroken {
+			if g, ok := otherHybrid(groups); ok {
+				rep.Class = PQOtherHybrid
+				rep.Finding = append(rep.Finding, hybridFinding(target, g, false))
+			}
+		}
 		hint := "fix reachability first — no statement about post-quantum readiness can be made from a probe that never completed a handshake"
+		if rep.Class == TLSBroken && len(groups) == 0 {
+			// The one run that can tell "faulty" from "configured for somebody
+			// else" apart, and it costs nothing to name it here (PQ-60).
+			hint += ". Before concluding it is broken, run --per-group: a peer that speaks only a P-curve hybrid — what a FIPS-shaped stack has — looks exactly like this"
+		}
+		if rep.Class == PQOtherHybrid {
+			hint = "not a fault: the peer negotiates hybrid ML-KEM in a group no browser sends, so every ordinary client is refused while post-quantum key exchange works. See the `hybrid` finding for the group it took"
+		}
 		if allKinds(client, probe.KindUnroutable) {
 			// The prober's own connectivity, not the endpoint's: usually an AAAA
 			// record reached from a host with no IPv6 egress.
@@ -306,10 +344,18 @@ func Evaluate(target string, results []probe.Result, opt Options) Report {
 			// working, it just will not talk to a client without a certificate.
 			hint = "the peer requested a client certificate and pqprobe has none — it holds no key material by design. Probe this leg from somewhere that has a certificate, or probe the front door instead; nothing here says anything about post-quantum support"
 		}
+		// ERROR is what this branch means — nothing was concluded — with one
+		// exception it now has: pq-other-hybrid *is* a conclusion, and grading
+		// it ERROR would put a working endpoint in the bucket for the ones that
+		// never answered (PQ-60).
+		status := finding.ERROR
+		if rep.Class == PQOtherHybrid {
+			status = StatusOf(rep.Class)
+		}
 		rep.Finding = append(rep.Finding, finding.Finding{
 			Check:   "verdict",
 			Target:  target,
-			Status:  finding.ERROR,
+			Status:  status,
 			Message: Describe(rep.Class),
 			Hint:    hint,
 		})
@@ -817,6 +863,49 @@ func clientAuthFinding(target string, results []probe.Result) (finding.Finding, 
 	return f, true
 }
 
+// otherHybrid returns the hybrid group the peer accepted that browsers do not
+// send, if the single-group probes found one (PQ-60).
+//
+// X25519MLKEM768 is what Chrome and Firefox offer; the other two are the same
+// ML-KEM with a NIST curve, which is what a FIPS-shaped stack has. A peer that
+// takes one of those is doing post-quantum key exchange — the fact the report
+// could not state before, because nothing in the client profiles can see it.
+func otherHybrid(groups []probe.Result) (string, bool) {
+	for _, r := range groups {
+		if !r.OK || !r.PQ {
+			continue
+		}
+		name := strings.TrimPrefix(r.Profile, clientprofile.GroupPrefix)
+		if name != "X25519MLKEM768" {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+// hybridFinding says which hybrid the peer took and who that leaves out.
+//
+// browsersToo is set when the ordinary profiles connected: there the class is
+// already right — a browser gets a classical handshake — and what is missing is
+// only that the migration here is a *group policy* rather than switching
+// post-quantum on at all.
+func hybridFinding(target, group string, browsersToo bool) finding.Finding {
+	status := finding.WARN
+	msg := fmt.Sprintf("hybrid ML-KEM works here, in %s — a group no browser sends", group)
+	hint := fmt.Sprintf("Chrome and Firefox offer X25519MLKEM768 and nothing else post-quantum, so they fall back to a classical handshake with this endpoint. The work here is adding X25519MLKEM768 to the group list, not enabling post-quantum key exchange: it is already on. %s is what a FIPS-shaped stack has", group)
+	if !browsersToo {
+		msg = fmt.Sprintf("post-quantum key exchange works, but only in %s — a group no browser sends", group)
+		hint = fmt.Sprintf("nothing here is broken: the peer negotiates hybrid ML-KEM in %s and refused every shape an ordinary client sends, X25519MLKEM768 included. Either add X25519MLKEM768 to the endpoint, or accept that only clients configured for this group reach it", group)
+	}
+	return finding.Finding{
+		Check:   "hybrid",
+		Target:  target,
+		Status:  status,
+		Message: msg,
+		Hint:    hint,
+	}
+}
+
 // groupsFinding is the per-group capability map: which key exchange groups the
 // peer accepted when each was offered alone, and how it refused the others.
 //
@@ -931,7 +1020,7 @@ func StatusOf(c Class) finding.Status {
 	switch c {
 	case PQBlind, PQCapable, NoTLS13:
 		return finding.WARN
-	case PQIntolerant, PQRefusing:
+	case PQIntolerant, PQRefusing, PQOtherHybrid:
 		return finding.BAD
 	case Unreachable, TLSBroken, MTLSRequired, NoTLS:
 		return finding.ERROR
