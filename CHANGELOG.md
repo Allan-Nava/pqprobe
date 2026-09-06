@@ -6,6 +6,35 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.42.0] - 2026-09-06
+
+### Added
+
+- **The wall, reproduced against a real server and a real packet filter
+  (PQ-62).** The class pqprobe exists for had only ever been asserted against a
+  Go listener with a size limit planted by hand. The lab now runs an OpenSSL 3.5
+  behind `iptables -m length --length 1000:65535 -j DROP`, which is what a
+  middlebox unable to carry the second segment of a large ClientHello does to a
+  connection: the classical hello (~285 B) crosses, the hybrid one (~1.5 KB)
+  never arrives, and pqprobe reports `pq-intolerant` with a timeout reproduced
+  on the second dial — a wall, not a flap.
+
+  A second case runs `--size-sweep` against the same filter and asserts the
+  report *finds* it, so the number the tool quotes is measured against a
+  threshold whose value is known. The case table grew a column for assertions
+  beyond the class.
+
+### Fixed
+
+- **Two faults in the lab harness, neither in pqprobe.** `openssl s_server`
+  serves one connection at a time and exits on a client that completes a
+  handshake and closes without reading its `-www` response, so every case after
+  the first looked like a dead port; it runs in a restart loop now. And
+  readiness was asked from *outside* the container, where `docker run -p`
+  publishes the port before the server exists — "ready" answered within a second
+  and five servers came back `tls-broken` at once, which is never what five
+  different servers do. Readiness is now asked inside the container.
+
 ## [0.41.0] - 2026-09-06
 
 ### Added

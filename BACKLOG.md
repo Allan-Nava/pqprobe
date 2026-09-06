@@ -936,3 +936,54 @@ SecP384r1MLKEM1024  4589 (0x11ed)   the same
   that a test harness is code, and that a red result is worth reading before it
   is believed.
   <!-- pq: prio=high size=XL labels=tests,probe ver=unreleased -->
+
+## M11 — Reproduce the failures, not only the successes <!-- ms: target=v0.44.0 phase=now -->
+
+The lab from PQ-61 proves the answers pqprobe gives when a handshake *works*.
+The classes it exists for are the other ones — the wall, the refused upgrade,
+the endpoint that wants a certificate — and every one of them is still asserted
+against a Go listener with the condition planted by hand. This milestone points
+the lab at the failures.
+
+- [x] **PQ-62 — The wall, against a real server and a real packet filter**: an
+  OpenSSL 3.5 behind `iptables -m length --length 1000:65535 -j DROP`, which is
+  what a middlebox that cannot carry the second segment of a large ClientHello
+  actually does to a connection. The classical hello (285 B) crosses, the hybrid
+  one (1.5 KB) never arrives, and the class has to be `pq-intolerant` with the
+  failure recorded as a timeout — reproduced on the second dial, since a wall is
+  not a flap. `--size-sweep` in the same case brackets where the drop begins, so
+  the number the report quotes is measured against a filter whose threshold is
+  known.
+  Proved by hand before the item was written: it lands exactly there.
+  Shipped as two lab cases — the class, and the sweep that has to *find* the
+  wall rather than merely be graded next to it — and the case table grew a fifth
+  column for that second kind of assertion.
+  The lab itself needed two fixes that had nothing to do with pqprobe and
+  everything to do with honest testing. `openssl s_server` serves one connection
+  at a time **and exits** on a client that completes a handshake and closes
+  without reading its `-www` response, so every case after the first looked like
+  a dead port; it runs in a restart loop now. And readiness was being asked from
+  outside the container, where `docker run -p` publishes the port immediately —
+  so "ready" answered within a second, while the image was still installing
+  OpenSSL, and five servers came back `tls-broken` at once. Which is never what
+  five different servers do: a result that uniform is a fault in the harness, and
+  reading it that way is what found both bugs.
+  <!-- pq: prio=high size=M labels=tests,probe ver=unreleased -->
+
+- [ ] **PQ-63 — The plaintext negotiations, against real daemons**: Postfix,
+  Dovecot, OpenLDAP, MySQL and Postgres in the lab, because every `--starttls`
+  protocol was written from an RFC and asserted against an in-process Go fake
+  that agrees with our reading of it by construction. FTP already caught this
+  the expensive way — a real server's banner turned a healthy endpoint into a
+  refusal, and only running it against one found it. A daemon with TLS switched
+  off is in the table too: `no-tls`, never a post-quantum verdict.
+  <!-- pq: prio=high size=L labels=tests,probe -->
+
+- [ ] **PQ-64 — The other terminators, and the certificate they ask for**:
+  HAProxy and Envoy, which sit in front of more origins than nginx does, plus an
+  OpenSSL with `-Verify` so `mtls-required` is asserted against a server that
+  really does demand a client certificate. Today that class rests on
+  `GetClientCertificate` firing in a Go handshake, and the TLS 1.2 leg of it —
+  where the alert is indistinguishable from "no mutually supported group" — has
+  never met a real implementation.
+  <!-- pq: prio=med size=M labels=tests,probe -->
