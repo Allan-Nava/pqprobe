@@ -1551,7 +1551,7 @@ func TestHasEgressIsLocalCheapAndStable(t *testing.T) {
 // — version 0xfe0d, an X25519 HPKE key, one cipher suite — exactly as a DNS
 // HTTPS record would carry it. Building it is also what makes ECH assertable
 // offline, which is the bar every profile in this repository has had to clear.
-func echConfig(t *testing.T) ([]byte, tls.EncryptedClientHelloKey) {
+func echConfig(t testing.TB) ([]byte, tls.EncryptedClientHelloKey) {
 	t.Helper()
 	key, err := ecdh.X25519().GenerateKey(rand.Reader)
 	if err != nil {

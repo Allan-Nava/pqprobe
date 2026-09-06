@@ -17,7 +17,7 @@ import (
 // for the same reason the ECHConfigList is in probe_test.go: it is the contract
 // with something that is not us, and a fixture that agrees with our own parser
 // by construction would assert nothing.
-func dnsAnswer(t *testing.T, query, list []byte, truncated bool) []byte {
+func dnsAnswer(t testing.TB, query, list []byte, truncated bool) []byte {
 	t.Helper()
 	if len(query) < 12 {
 		t.Fatal("query is not a DNS message")

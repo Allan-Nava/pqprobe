@@ -28,7 +28,7 @@ for f in "$root"/scripts/*_test.sh; do
 done
 
 printf '\nevery gate script is wired too:\n'
-for n in docs.sh seo.sh action.sh repo-meta.sh goreleaser.sh version.sh render-assets.sh interop.sh; do
+for n in docs.sh seo.sh action.sh repo-meta.sh goreleaser.sh version.sh render-assets.sh interop.sh fuzz.sh; do
 	[ -f "$root/scripts/$n" ] || { notok "scripts/$n is missing"; continue; }
 	grep -q "$n" "$ci" || notok "$n is never run by CI"
 	grep -q "$n" "$rel" || notok "$n is never run by scripts/release.sh"

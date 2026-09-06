@@ -167,6 +167,10 @@ sh scripts/action_test.sh >/dev/null && echo "action tests OK"
 # Docker, because a maintainer's laptop is not a reason to block a release and
 # CI runs it either way (PQ-61).
 sh scripts/interop.sh >/dev/null && echo "interop lab OK"
+# A short pass over the fuzz targets. Ten seconds each is not a fuzzing campaign
+# — CI runs longer, and the seed corpus runs in every `go test` — but it is
+# enough to catch a parser that a change has just made reachable (PQ-66).
+FUZZTIME=${RELEASE_FUZZTIME:-10s} sh scripts/fuzz.sh >/dev/null && echo "fuzz targets OK"
 
 [ "${RELEASE_DRY_RUN:-0}" = 1 ] && { say "dry run — nothing was rewritten"; exit 0; }
 

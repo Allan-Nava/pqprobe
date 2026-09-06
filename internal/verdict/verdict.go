@@ -629,7 +629,12 @@ func echFinding(target string, results []probe.Result) (finding.Finding, bool) {
 
 	switch {
 	case on.OK && on.ECHAccepted:
-		if off.HelloBytes == 0 || on.HelloBytes == 0 {
+		// The difference has to be a *positive* number of bytes, not merely a
+		// non-zero one: ECH cannot make a hello smaller, so anything else means
+		// the pair did not measure what it was for. The first version of this
+		// guard tested only for zero, and the property test found `-1 bytes`
+		// within a minute (PQ-67) — in a fix written the same day.
+		if off.HelloBytes <= 0 || on.HelloBytes <= off.HelloBytes {
 			// Acceptance is still true and still worth saying; the cost is not,
 			// because half the pair never went out and the "difference" would
 			// be the whole hello.
@@ -709,7 +714,7 @@ func alpnFinding(target string, bare, withALPN probe.Result) (finding.Finding, b
 		// Only when both hellos were measured: a dial that failed before
 		// writing one gives a negative "difference", and a report that says
 		// "-1519 bytes of ALPN" is worse than one that says nothing.
-		if withALPN.HelloBytes == 0 || bare.HelloBytes == 0 {
+		if withALPN.HelloBytes <= 0 || bare.HelloBytes <= 0 || withALPN.HelloBytes < bare.HelloBytes {
 			return finding.Finding{
 				Check:   "alpn",
 				Target:  target,

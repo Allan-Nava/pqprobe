@@ -1048,7 +1048,7 @@ shaped not to see. Seven, and the same mistake three times.
   cannot be probed.
   <!-- pq: prio=high size=M labels=probe,verdict,cli,integration ver=unreleased -->
 
-## M13 — Invariants a machine can check <!-- ms: target=v0.47.0 phase=now -->
+## M13 — Invariants a machine can check <!-- ms: target=v0.45.0 phase=shipped -->
 
 The audit (PQ-65) found seven bugs in code that every gate called green, and
 they had one shape: an invariant this repository states in prose, checked by a
@@ -1065,15 +1065,21 @@ these parsers read bytes **an endpoint chose** — a DNS answer, an LDAP respons
 a MySQL greeting. A panic there is not a wrong answer, it is a monitoring tool
 that dies halfway through somebody's fleet.
 
-- [ ] **PQ-66 — Fuzz the parsers that read what a peer sent**: the HTTPS/SVCB
+- [x] **PQ-66 — Fuzz the parsers that read what a peer sent**: the HTTPS/SVCB
   answer walker with its compression pointers, the BER reader, the MySQL
   greeting, the XMPP element reader. No panic, no unbounded read, no hang, and
   a seed corpus taken from the real captures already in the tests — the
   Cloudflare ECH record, slapd's response, MySQL 8.4's greeting. Wired into CI
   with a short run per parser, because a fuzz target nobody runs is a file.
-  <!-- pq: prio=high size=M labels=tests,probe -->
+  Shipped: five targets and `scripts/fuzz.sh`, which **discovers** them rather
+  than listing them — a target added without a line somewhere would otherwise
+  never run and nothing would say so. CI gives each 40s, `release.sh` 10s, and
+  the seed corpus runs in every `go test`. About 15 million executions found no
+  crash in these five, which is the answer the item was owed: the bounds checks
+  hold.
+  <!-- pq: prio=high size=M labels=tests,probe ver=unreleased -->
 
-- [ ] **PQ-67 — The verdict's invariants, as properties**: for *any* set of
+- [x] **PQ-67 — The verdict's invariants, as properties**: for *any* set of
   results — generated, not chosen — the class is one of `Classes()`, a
   post-quantum grade never appears without a working baseline, no finding
   carries a negative byte count or a number derived from an unsent hello, every
@@ -1081,12 +1087,28 @@ that dies halfway through somebody's fleet.
   every class the evaluator can produce has an explanation. Every one of those
   sentences is already written in prose somewhere in this repository; three of
   them were false last week and no gate said so.
-  <!-- pq: prio=high size=M labels=tests,verdict -->
+  Shipped, and it earned itself back in under a minute: it found `ech` reporting
+  **-1 bytes** — inside the guard added the same day by PQ-65, which tested for
+  a zero hello and not for a *negative difference*. ECH cannot make a hello
+  smaller, so the pair is reported only when the difference is positive; the
+  same correction went into the ALPN pair. The failing input is committed under
+  `testdata/fuzz`, so it is a plain test case from now on and needs no fuzzer to
+  reproduce. Twenty-three million executions later, clean.
+  <!-- pq: prio=high size=M labels=tests,verdict ver=unreleased -->
 
-- [ ] **PQ-68 — Fuzz the target parser, and pin what it may never do**: the
+- [x] **PQ-68 — Fuzz the target parser, and pin what it may never do**: the
   `?q=1` bug lives here — a query string contains an `=`, and reading it as a
   server name is a silently wrong probe. Fuzz `Parse` for panics, and assert the
   properties a target must satisfy however it was written: a port nobody wrote
   is never marked as written (PQ-65), an SNI is never taken from a path or a
   query, and a parsed target's address round-trips through `String`.
-  <!-- pq: prio=med size=S labels=tests,inventory -->
+  Shipped, and three more bugs with it — one on its own seed list, two from the
+  fuzzer.
+  `origin.example:` split cleanly into a host and an **empty port**, so the run
+  dialled `origin.example:` and failed with an error about an address rather
+  than about the line somebody typed. `]:` became the host `]:` and the address
+  `[]:]:443`, which nothing can dial and no message explained. And
+  `origin.example=#0000` put `#0000` into the ClientHello as a server name: the
+  same family as the `?q=1` bug, which the table case had fixed only for the URL
+  form. All three are usage errors now, naming the word that caused them.
+  <!-- pq: prio=med size=S labels=tests,inventory ver=unreleased -->

@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**68 items · 65 shipped · 3 open · 13 milestones.**
+**68 items · 68 shipped · 0 open · 13 milestones.**
 
 ## At a glance
 
@@ -24,15 +24,13 @@
 | **M10** — The hybrids we do not offer, proved against stacks that are not Go | `v0.41.0` | shipped | `##########` 100% | 0 | 3 |
 | **M11** — Reproduce the failures, not only the successes | `v0.44.0` | shipped | `##########` 100% | 0 | 3 |
 | **M12** — What the audit found | `v0.44.1` | shipped | `##########` 100% | 0 | 1 |
-| **M13** — Invariants a machine can check | `v0.47.0` | **now** | `..........` 0% | 3 | 0 |
+| **M13** — Invariants a machine can check | `v0.45.0` | shipped | `##########` 100% | 0 | 3 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-66** — Fuzz the parsers that read what a peer sent · `high` · size `M` · tests,probe (M13, target `v0.47.0`)
-- **PQ-67** — The verdict's invariants, as properties · `high` · size `M` · tests,verdict (M13, target `v0.47.0`)
-- **PQ-68** — Fuzz the target parser, and pin what it may never do · `med` · size `S` · tests,inventory (M13, target `v0.47.0`)
+_Nothing in flight._
 
 ## Milestones
 
@@ -187,28 +185,28 @@ Target `v0.44.1` · shipped · 0 open · 1 shipped · `##########` 100%
 
 ### M13 — Invariants a machine can check
 
-Target `v0.47.0` · **now** · 3 open · 0 shipped · `..........` 0%
+Target `v0.45.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-66** — Fuzz the parsers that read what a peer sent | high | M | tests,probe | open |
-| **PQ-67** — The verdict's invariants, as properties | high | M | tests,verdict | open |
-| **PQ-68** — Fuzz the target parser, and pin what it may never do | med | S | tests,inventory | open |
+| **PQ-66** — Fuzz the parsers that read what a peer sent | high | M | tests,probe | done, unreleased |
+| **PQ-67** — The verdict's invariants, as properties | high | M | tests,verdict | done, unreleased |
+| **PQ-68** — Fuzz the target parser, and pin what it may never do | med | S | tests,inventory | done, unreleased |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `tests` | 12 | 3 |
-| `inventory` | 6 | 1 |
-| `probe` | 28 | 1 |
-| `verdict` | 10 | 1 |
 | `cli` | 12 | 0 |
 | `delivery` | 7 | 0 |
 | `docs` | 10 | 0 |
 | `integration` | 4 | 0 |
+| `inventory` | 6 | 0 |
 | `output` | 9 | 0 |
+| `probe` | 28 | 0 |
 | `profile` | 7 | 0 |
 | `project` | 6 | 0 |
 | `release` | 5 | 0 |
+| `tests` | 12 | 0 |
 | `ux` | 2 | 0 |
+| `verdict` | 10 | 0 |

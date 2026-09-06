@@ -47,6 +47,13 @@ func Parse(word string) (probe.Target, error) {
 		sni = strings.TrimSpace(word[i+1:])
 		word = strings.TrimSpace(word[:i])
 	}
+	// A server name is a name: `origin.example=#0000` was accepted and `#0000`
+	// went into the ClientHello. The URL form is stripped before this, so
+	// anything still carrying a path, a query or a fragment is not one — the
+	// same family as the `?q=1` bug, found by the property test (PQ-68).
+	if strings.ContainsAny(sni, "/?# \t") {
+		return probe.Target{}, fmt.Errorf("%q is not a server name", sni)
+	}
 	host, port, written := word, DefaultPort, false
 	if h, p, err := net.SplitHostPort(word); err == nil {
 		host, port, written = h, p, true
@@ -56,8 +63,22 @@ func Parse(word string) (probe.Target, error) {
 	if host == "" {
 		return probe.Target{}, fmt.Errorf("no host in %q", word)
 	}
+	// A trailing colon splits cleanly and leaves the port empty, so the target
+	// dialled `origin.example:` and failed with an error about an address
+	// rather than about the line somebody typed. Found by the property test
+	// (PQ-68) on its own seed corpus.
+	if port == "" {
+		return probe.Target{}, fmt.Errorf("no port after the colon in %q", word)
+	}
 	if strings.ContainsAny(host, " \t") {
 		return probe.Target{}, fmt.Errorf("host %q contains whitespace", host)
+	}
+	// A host still carrying a bracket or a colon is not one: `]:` parsed to the
+	// host `]:` and produced the address `[]:]:443`, which nothing can dial and
+	// no error explained. A colon is allowed only where the host really is an
+	// IPv6 literal. Found by the property test (PQ-68).
+	if strings.ContainsAny(host, "[]") || (strings.Contains(host, ":") && net.ParseIP(host) == nil) {
+		return probe.Target{}, fmt.Errorf("%q is not a host: an address with colons has to be an IPv6 literal, written [::1] or [::1]:443", host)
 	}
 	return probe.Target{Host: host, Port: port, SNI: sni, PortWritten: written}, nil
 }

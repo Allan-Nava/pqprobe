@@ -96,6 +96,29 @@ jobs:
           go vet ./...
           go test ./...
 
+  fuzz:
+    runs-on: ubuntu-latest
+    # PQ-66. The seed corpus runs in the `test` job like any other test; this is
+    # the other half — new inputs, bounded, against the parsers that read what
+    # an endpoint sent. A crash lands in internal/probe/testdata/fuzz and
+    # becomes a permanent test case.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Fuzz the parsers that read what a peer sent
+        env:
+          FUZZTIME: 40s
+        run: sh scripts/fuzz.sh
+      - name: Any crash found is a test from now on
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashers
+          path: internal/probe/testdata/fuzz/
+          if-no-files-found: ignore
+
   interop:
     runs-on: ubuntu-latest
     # The lab (PQ-61). Every other test in this repository stands up a listener

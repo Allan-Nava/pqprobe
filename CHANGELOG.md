@@ -6,6 +6,52 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.45.0] - 2026-09-06
+
+### Added
+
+- **Fuzzing and property tests, wired into CI and every release (PQ-66, PQ-67,
+  PQ-68).** The audit found seven bugs in code every gate called green, and they
+  had one shape: an invariant stated in prose, checked by a test written by
+  whoever wrote the code. A fuzzer does not share the author's assumptions, and
+  Go has one in the standard library, so this costs no dependency.
+
+  Seven targets. Five drive the parsers that read bytes an *endpoint* chose — a
+  DNS answer with its compression pointers, an LDAP response, a MySQL greeting,
+  an XMPP element — where a panic is not a wrong answer but a monitoring tool
+  that dies halfway through somebody's fleet. One asserts the verdict's
+  invariants over *generated* result sets: the class is one `explain` knows, no
+  post-quantum grade without a working baseline, no negative byte counts, every
+  number carries a unit, findings sorted worst-first. One does the same for the
+  target parser.
+
+  `scripts/fuzz.sh` discovers the targets rather than listing them — a target
+  added without a line somewhere would never run and nothing would say so. CI
+  gives each 40s, `release.sh` 10s, and the seed corpus runs in every
+  `go test`.
+
+### Fixed
+
+Four more bugs, all found by the new tests within minutes of writing them.
+
+- **`ech` could report a negative size.** The guard added the same day by PQ-65
+  tested for a hello of zero bytes, not for a negative *difference*. ECH cannot
+  make a hello smaller, so the pair is reported only when the difference is
+  positive; the ALPN pair got the same correction. The failing input is
+  committed under `testdata/fuzz` and is a plain test case from now on.
+
+- **`origin.example:` parsed to an empty port**, so the run dialled
+  `origin.example:` and failed with an error about an address rather than about
+  the line somebody typed.
+
+- **`]:` parsed to the host `]:`**, producing the address `[]:]:443` — which
+  nothing can dial and no message explained. A colon in a host is now allowed
+  only where the host really is an IPv6 literal.
+
+- **`origin.example=#0000` sent `#0000` as a server name.** The same family as
+  the `?q=1` bug, which had been fixed for the URL form only. A server name
+  carrying a path, a query or a fragment is a usage error naming the word.
+
 ## [0.44.1] - 2026-09-06
 
 ### Fixed
