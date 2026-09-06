@@ -29,6 +29,8 @@ nginx_img=${INTEROP_NGINX_IMAGE:-nginx:alpine}
 dovecot_img=${INTEROP_DOVECOT_IMAGE:-alpine:3.19}
 mysql_img=${INTEROP_MYSQL_IMAGE:-mysql:8}
 postgres_img=${INTEROP_POSTGRES_IMAGE:-postgres:17-alpine}
+haproxy_img=${INTEROP_HAPROXY_IMAGE:-haproxy:alpine}
+envoy_img=${INTEROP_ENVOY_IMAGE:-envoyproxy/envoy:v1.31-latest}
 
 # Written out here because a heredoc inside `docker run sh -c` would be quoted
 # three times over. Neither daemon runs with less than this.
@@ -62,6 +64,10 @@ openldap-starttls|openldap|any-tls|--starttls ldap|
 mysql-starttls|mysql|any-tls|--starttls mysql|
 postgres-starttls|postgres|any-tls|--starttls postgres|
 postgres-tls-switched-off|postgres-nossl|no-tls|--starttls postgres|
+haproxy-terminator|haproxy|any-tls||
+envoy-terminator|envoy|any-tls||
+openssl-mtls-tls13|mtls|pq-ready||"check": "client-auth"
+openssl-mtls-tls12|mtls-tls12|mtls-required||
 '
 
 if [ "${1:-}" = "--list" ]; then
@@ -91,6 +97,40 @@ go build -o "$tmp/pqprobe" ./cmd/pqprobe
 
 # A self-signed certificate is all these servers need: pqprobe never verifies
 # during the handshake, and the chain is graded separately.
+# The same certificate under /tmp, for images whose root filesystem the
+# unprivileged user cannot write to — HAProxy's and Envoy's.
+cert_tmp_cmd='openssl req -x509 -newkey rsa:2048 -keyout /tmp/k.pem -out /tmp/c.pem -days 3 -nodes -subj /CN=interop >/dev/null 2>&1'
+
+haproxy_conf='global\n  daemon\ndefaults\n  mode http\n  timeout connect 5s\n  timeout client 30s\n  timeout server 30s\nfrontend f\n  bind :443 ssl crt /tmp/both.pem\n  http-request return status 200\n'
+
+envoy_conf='static_resources:
+  listeners:
+  - address: {socket_address: {address: 0.0.0.0, port_value: 8443}}
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: lab
+          route_config:
+            virtual_hosts:
+            - name: lab
+              domains: ["*"]
+              routes: [{match: {prefix: "/"}, direct_response: {status: 200, body: {inline_string: "ok"}}}]
+          http_filters:
+          - name: envoy.filters.http.router
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+          common_tls_context:
+            tls_certificates:
+            - certificate_chain: {filename: /tmp/c.pem}
+              private_key: {filename: /tmp/k.pem}
+'
+
 cert_cmd='openssl req -x509 -newkey rsa:2048 -keyout /k.pem -out /c.pem -days 3 -nodes -subj /CN=interop >/dev/null 2>&1'
 
 # In a loop, deliberately: `openssl s_server` serves one connection at a time and
@@ -110,7 +150,9 @@ start() { # start <kind> <groups>
 	docker rm -f "$name" >/dev/null 2>&1 || :
 	inner_port=4433
 	case "$1" in
-	nginx) inner_port=443 ;;
+	nginx|haproxy) inner_port=443 ;;
+	envoy) inner_port=8443 ;;
+	mtls|mtls-tls12) inner_port=4433 ;;
 	postfix) inner_port=25 ;;
 	dovecot) inner_port=143 ;;
 	openldap) inner_port=389 ;;
@@ -138,6 +180,36 @@ start() { # start <kind> <groups>
 	nginx)
 		docker run -d --rm --name "$name" -p "$port:443" "$nginx_img" sh -c \
 			"apk add --no-cache openssl >/dev/null 2>&1; $cert_cmd; printf 'events{}\nhttp{server{listen 443 ssl;ssl_certificate /c.pem;ssl_certificate_key /k.pem;ssl_protocols TLSv1.2 TLSv1.3;ssl_ecdh_curve X25519:prime256v1;return 200 \"ok\";}}\n' > /etc/nginx/nginx.conf; nginx -g 'daemon off;'" >/dev/null
+		;;
+	mtls)
+		# PQ-26's claim, against a server that really does demand a client
+		# certificate: on TLS 1.3 the objection arrives after the client is
+		# finished, so the handshake *completes* and the class stays a grade —
+		# what the report owes the reader is the client-auth finding, not a
+		# worse class.
+		docker run -d --rm --name "$name" -p "$port:4433" "$img" sh -c \
+			"apk add --no-cache openssl >/dev/null 2>&1; $cert_cmd; $(serve '-Verify 1 -CAfile /c.pem')" >/dev/null
+		;;
+	mtls-tls12)
+		# The other leg, and the one that had never met a real implementation:
+		# on TLS 1.2 the handshake fails, and the alert is indistinguishable
+		# from "no mutually supported group" by its text — which is why the
+		# certificate request is recorded during the handshake instead.
+		docker run -d --rm --name "$name" -p "$port:4433" "$img" sh -c \
+			"apk add --no-cache openssl >/dev/null 2>&1; $cert_cmd; $(serve '-Verify 1 -CAfile /c.pem -no_tls1_3')" >/dev/null
+		;;
+	haproxy)
+		docker run -d --rm --name "$name" --user root -p "$port:443" --entrypoint sh "$haproxy_img" -c \
+			"apk add --no-cache openssl >/dev/null 2>&1; $cert_tmp_cmd; cat /tmp/c.pem /tmp/k.pem > /tmp/both.pem; printf '$haproxy_conf' > /tmp/h.cfg; haproxy -f /tmp/h.cfg -db" >/dev/null
+		;;
+	envoy)
+		# A third TLS implementation: Envoy is BoringSSL, which is neither Go's
+		# stack nor OpenSSL, and the alert-versus-reset distinction has to hold
+		# there too or it is a property of one library rather than of TLS.
+		printf '%s' "$envoy_conf" > "$tmp/envoy.yaml"
+		docker run -d --rm --name "$name" -p "$port:8443" -v "$tmp/envoy.yaml:/etc/envoy.yaml" \
+			--user root --entrypoint sh "$envoy_img" -c \
+			"apt-get update >/dev/null 2>&1; apt-get install -y openssl >/dev/null 2>&1; $cert_tmp_cmd; envoy -c /etc/envoy.yaml" >/dev/null
 		;;
 	postfix)
 		docker run -d --rm --name "$name" -p "$port:25" "$img" sh -c \

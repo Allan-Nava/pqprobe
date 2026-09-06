@@ -6,6 +6,26 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.44.0] - 2026-09-06
+
+### Added
+
+- **HAProxy, Envoy and both mTLS legs in the lab (PQ-64).** Seventeen cases now,
+  all green. The most valuable part is not the one the item named: Envoy is
+  **BoringSSL**, so the alert-versus-reset distinction — the one thing this tool
+  exists to get right — now holds across three independent TLS implementations
+  rather than Go's plus OpenSSL. If it were a property of a library instead of a
+  property of TLS, this is where it would have shown.
+
+  Both mutual-TLS legs are asserted against a server that really does demand a
+  client certificate. On TLS 1.3 the class stays `pq-ready` and what the report
+  owes the reader is the `client-auth` finding — exactly what PQ-26 claimed and
+  could only demonstrate against Go until now — so the case asserts the class
+  *and* the finding. On TLS 1.2 the handshake fails and the class is
+  `mtls-required`, the leg that had never met a real implementation.
+
+  **M11 is complete.**
+
 ## [0.43.0] - 2026-09-06
 
 ### Added

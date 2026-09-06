@@ -937,7 +937,7 @@ SecP384r1MLKEM1024  4589 (0x11ed)   the same
   is believed.
   <!-- pq: prio=high size=XL labels=tests,probe ver=unreleased -->
 
-## M11 — Reproduce the failures, not only the successes <!-- ms: target=v0.44.0 phase=now -->
+## M11 — Reproduce the failures, not only the successes <!-- ms: target=v0.44.0 phase=shipped -->
 
 The lab from PQ-61 proves the answers pqprobe gives when a handshake *works*.
 The classes it exists for are the other ones — the wall, the refused upgrade,
@@ -995,11 +995,21 @@ the lab at the failures.
   format is not what this lab is for, and the IMAP on the wire is the same.
   <!-- pq: prio=high size=L labels=tests,probe ver=unreleased -->
 
-- [ ] **PQ-64 — The other terminators, and the certificate they ask for**:
+- [x] **PQ-64 — The other terminators, and the certificate they ask for**:
   HAProxy and Envoy, which sit in front of more origins than nginx does, plus an
   OpenSSL with `-Verify` so `mtls-required` is asserted against a server that
   really does demand a client certificate. Today that class rests on
   `GetClientCertificate` firing in a Go handshake, and the TLS 1.2 leg of it —
   where the alert is indistinguishable from "no mutually supported group" — has
   never met a real implementation.
-  <!-- pq: prio=med size=M labels=tests,probe -->
+  Shipped, and the most valuable part was not the one the item named: Envoy is
+  **BoringSSL**, so the alert-versus-reset distinction now holds across three
+  independent TLS implementations rather than one plus OpenSSL. If it were a
+  property of a library instead of a property of TLS, this is where it would
+  have shown.
+  Both mTLS legs are asserted. On TLS 1.3 the class stays `pq-ready` and the
+  report owes the reader the `client-auth` finding — exactly what PQ-26 claimed
+  and could only demonstrate against Go until now — so the case asserts the
+  class *and* the finding. On TLS 1.2 the handshake fails and the class is
+  `mtls-required`, which is the leg that had never met a real server.
+  <!-- pq: prio=med size=M labels=tests,probe ver=unreleased -->
