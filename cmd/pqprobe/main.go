@@ -268,6 +268,27 @@ func egressFindings(reps []verdict.Report, pinned string, has func(network strin
 	}
 }
 
+// resolverFindings says which resolver answered, once, when it was not the
+// machine's own (PQ-58).
+//
+// A run resolved somewhere else probed something else — different addresses,
+// possibly a different ECH config — and two runs of the same fleet that
+// disagree for that reason have to say so, or the disagreement looks like the
+// endpoints moving.
+func resolverFindings(at string, reps []verdict.Report) {
+	if at == "" || len(reps) == 0 {
+		return
+	}
+	reps[0].Finding = append(reps[0].Finding, finding.Finding{
+		Check:   "resolver",
+		Target:  reps[0].Target,
+		Status:  finding.OK,
+		Message: fmt.Sprintf("every name in this run was resolved by %s (--dns)", at),
+		Hint:    "addresses, and any ECH config, came from that resolver rather than this machine's — which is the point from inside a network, and the reason two runs can disagree without anything having moved",
+	})
+	finding.SortWorstFirst(reps[0].Finding)
+}
+
 // netFindings states the address family the run was pinned to, once per report
 // (PQ-46).
 //
@@ -377,8 +398,10 @@ flags:
                            parameter of its HTTPS DNS record — one lookup per
                            name. An endpoint that publishes none keeps the
                            ordinary profiles and says so, which is not a failure
-  --dns HOST:PORT          resolver to ask for that record (default: the system
-                           resolvers from /etc/resolv.conf)
+  --dns HOST:PORT          resolver for every lookup this run makes — target
+                           names, --per-address records and the ECH record —
+                           because a run resolved somewhere else probed
+                           something else (default: this machine's own)
   --ech-config BASE64      also dial the same client offering Encrypted Client
                            Hello with this ECHConfigList — the ech= value of
                            the endpoint's HTTPS DNS record. Dialled as a pair,
@@ -417,13 +440,16 @@ flags:
                            deduplicates on. Note the =, not a space: the flag
                            still works bare, so a space would be read as a target
   --min-severity S         hide findings below S (OK|WARN|BAD|ERROR)
-  --exit-on S              exit 1 when any finding reaches S (default: never)
+  --exit-on S|class        exit 1 when any finding reaches status S — or when
+                           any endpoint lands in exactly that class, which is
+                           what a pipeline usually means: --exit-on BAD also
+                           fires on an expiring certificate (default: never)
   --expiry-warn N          certificate expiry WARN threshold in days (default 21)
   --expiry-bad N           certificate expiry BAD threshold in days (default 7)
 
 exit status:
   0  the probe ran (findings are output, not an error)
-  1  --exit-on threshold reached
+  1  --exit-on matched: the status threshold, or the named class
   2  usage error, or no target could be parsed
 
 pqprobe opens TLS connections and sends no application data: no request, no
@@ -611,7 +637,7 @@ func newProbeFlags() (*flag.FlagSet, *probeFlags) {
 	o.network = fs.String("net", "", "pin the address family: tcp4 or tcp6")
 	o.echConfig = fs.String("ech-config", "", "also dial with Encrypted Client Hello, using this base64 ECHConfigList")
 	o.echLookup = fs.Bool("ech", false, "also dial with Encrypted Client Hello, taking each config from DNS")
-	o.dns = fs.String("dns", "", "resolver for --ech, as host:port (default: the system resolvers)")
+	o.dns = fs.String("dns", "", "resolver for every lookup, as host:port (default: this machine's)")
 	o.timeout = fs.Duration("timeout", 10*time.Second, "per-handshake timeout")
 	o.confirm = fs.Bool("confirm", true, "re-dial an abrupt failure once before believing it")
 	o.concurrency = fs.Int("concurrency", 8, "endpoints in flight")
@@ -622,7 +648,7 @@ func newProbeFlags() (*flag.FlagSet, *probeFlags) {
 	o.asJSON = fs.Bool("json", false, "full JSON report")
 	fs.Var(o.findings, "findings", "findings as JSON: flat or wrapped")
 	o.minSev = fs.String("min-severity", "", "hide findings below this status")
-	o.exitOn = fs.String("exit-on", "", "exit 1 when a finding reaches this status")
+	o.exitOn = fs.String("exit-on", "", "exit 1 on this status or worse, or on this exact class")
 	o.expWarn = fs.Int("expiry-warn", 21, "certificate expiry WARN days")
 	o.expBad = fs.Int("expiry-bad", 7, "certificate expiry BAD days")
 	return fs, o
@@ -693,7 +719,7 @@ func cmdProbe(args []string) int {
 		fmt.Fprintln(os.Stderr, "pqprobe:", err)
 		return 2
 	}
-	if err := validStatus(*exitOn); err != nil {
+	if err := validExitOn(*exitOn); err != nil {
 		fmt.Fprintln(os.Stderr, "pqprobe:", err)
 		return 2
 	}
@@ -755,7 +781,11 @@ func cmdProbe(args []string) int {
 			"pqprobe: --per-address resolves names on this host, which is the opposite of what --socks5 is for; the addresses it finds may not be the ones the proxy would reach")
 	}
 	if *perAddress {
-		expanded, errs := probe.ExpandAddresses(context.Background(), net.DefaultResolver, targets, *network)
+		resolver := probe.Resolver(net.DefaultResolver)
+		if r := probe.ResolverAt(*dns); r != nil {
+			resolver = r
+		}
+		expanded, errs := probe.ExpandAddresses(context.Background(), resolver, targets, *network)
 		for _, err := range errs {
 			fmt.Fprintln(os.Stderr, "pqprobe:", err)
 		}
@@ -766,7 +796,8 @@ func cmdProbe(args []string) int {
 		}
 	}
 
-	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn), Confirm: *confirm, Socks5: *socks5, StartTLS: *starttls, Net: *network}
+	dialer := probe.Dialer{Timeout: *timeout, ALPN: splitList(*alpn), Confirm: *confirm, Socks5: *socks5,
+		StartTLS: *starttls, Net: *network, Resolver: probe.ResolverAt(*dns)}
 	opt := verdict.DefaultOptions()
 	opt.ExpiryWarnDays, opt.ExpiryBadDays = *expWarn, *expBad
 	opt.Now = time.Now()
@@ -784,6 +815,7 @@ func cmdProbe(args []string) int {
 		addressFindings(names, reps)
 	}
 	netFindings(*network, reps)
+	resolverFindings(*dns, reps)
 	egressFindings(reps, *network, probe.HasEgress)
 
 	// The baseline is read *after* the probe: a run that produced findings must
@@ -831,12 +863,8 @@ func cmdProbe(args []string) int {
 
 	// Exit 0 whenever the probe ran. A monitoring wrapper that treats a WARN as
 	// a broken check learns to ignore the check, so the threshold is opt-in.
-	if *exitOn != "" {
-		for _, r := range reps {
-			if finding.AtLeast(r.Worst(), finding.Status(*exitOn)) {
-				return 1
-			}
-		}
+	if shouldExit(reps, *exitOn) {
+		return 1
 	}
 	return 0
 }
@@ -1048,6 +1076,55 @@ func splitList(s string) []string {
 		}
 	}
 	return out
+}
+
+// validExitOn accepts either vocabulary --exit-on speaks (PQ-56).
+//
+// A severity threshold answers "fail on anything this bad or worse", which is
+// what a fleet gate usually wants. A class answers "fail on *this*", which is
+// what a pipeline that cares about one finding wants — `--exit-on BAD` also
+// fires on a certificate about to expire and on whatever BAD ships next, and a
+// gate that fires for reasons its author did not choose gets switched off.
+func validExitOn(s string) error {
+	if s == "" {
+		return nil
+	}
+	if validStatus(s) == nil {
+		return nil
+	}
+	if _, ok := verdict.Explain(verdict.Class(s)); ok {
+		return nil
+	}
+	classes := make([]string, 0, len(verdict.Classes()))
+	for _, c := range verdict.Classes() {
+		classes = append(classes, string(c))
+	}
+	return fmt.Errorf("bad --exit-on %q: want a status (OK, WARN, BAD, ERROR) or a class (%s)",
+		s, strings.Join(classes, ", "))
+}
+
+// shouldExit reports whether --exit-on is satisfied by this run. A status is a
+// threshold — at or above; a class is exact, because classes are not a scale
+// and pretending they were would make `--exit-on pq-blind` fire on something
+// worse and call it the same thing.
+func shouldExit(reps []verdict.Report, exitOn string) bool {
+	if exitOn == "" {
+		return false
+	}
+	if validStatus(exitOn) == nil {
+		for _, r := range reps {
+			if finding.AtLeast(r.Worst(), finding.Status(exitOn)) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, r := range reps {
+		if string(r.Class) == exitOn {
+			return true
+		}
+	}
+	return false
 }
 
 func validStatus(s string) error {

@@ -219,7 +219,7 @@ gives the meaning, the affected clients and the next action without a run.
 | Exit | Meaning |
 |---|---|
 | `0` | the probe ran — findings are output, not an error |
-| `1` | `--exit-on S` was given and something reached `S` |
+| `1` | `--exit-on` was given and matched: a status threshold reached, or an endpoint in exactly the named class |
 | `2` | usage error, or no target could be parsed |
 
 Exit 0 on a WARN is deliberate: a check that fails the pipeline on every

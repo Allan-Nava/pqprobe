@@ -783,3 +783,52 @@ what their group lists look like.
   negotiation. A target with no name to open a stream to is told to use the
   `address=name` form rather than being sent an empty `to=`.
   <!-- pq: prio=low size=M labels=probe ver=unreleased -->
+
+## M9 — The edges of everyday use <!-- ms: target=v0.39.0 phase=now -->
+
+Nothing here changes what pqprobe knows. These are the three places where the
+tool as *used* — in a pipeline gate, at a shell prompt, against a resolver that
+is not the machine's own — is narrower than what it can say.
+
+- [x] **PQ-56 — `--exit-on` takes a class as well as a status**: today it takes
+  a severity, so "fail the pipeline when an endpoint is `pq-intolerant`" has to
+  be spelled as `--exit-on BAD` — which also fires on `pq-refusing`, on a
+  certificate about to expire, and on anything BAD that ships later. A gate that
+  fires for reasons its author did not choose is a gate somebody switches off.
+  The two vocabularies are already distinguishable on sight and `explain`
+  already answers for both, so one flag can take either; a word that is neither
+  is a usage error listing both, exactly as `explain` does.
+  Shipped. One decision the item had left open: a status is a *threshold* — at
+  or above, as it always was — and a class is **exact**. Classes are not a
+  scale, and letting `--exit-on pq-blind` fire on something worse would report
+  two different findings under one name, which is the thing the flag was meant
+  to stop.
+  <!-- pq: prio=high size=S labels=cli,output ver=unreleased -->
+
+- [ ] **PQ-57 — Completions and a man page, generated**: `pqprobe completion
+  bash|zsh|fish` and a `pqprobe.1`, both written from the *flag set* and the
+  same help text the binary prints, never hand-maintained beside it. PQ-40 is
+  the precedent and the reason: a flag documented in one place and declared in
+  another drifts silently, and the two-way test that caught it only covers
+  `--help`. A gate asserts every declared flag appears in every generated
+  artefact, so a new flag cannot ship half-visible.
+  <!-- pq: prio=med size=M labels=cli,delivery,docs -->
+
+- [x] **PQ-58 — `--dns` governs every lookup pqprobe makes**: it was introduced
+  for the ECH record (PQ-51) and governs only that, so `--per-address` still
+  resolves through the machine's own resolver — a run that asked one resolver
+  about ECH and another about addresses, and said nothing about the split. From
+  inside a network where the interesting answer is the *internal* one, that is
+  not a preference, it is a wrong answer. One resolver setting, used everywhere
+  pqprobe asks a question, and stated in the report where it changes what was
+  probed.
+  Shipped: `probe.ResolverAt` — Go's own resolver rather than the system one,
+  because the cgo path asks whatever the host is configured with and would
+  ignore the flag — passed to `ExpandAddresses` *and* to the dialler through
+  `net.Dialer.Resolver`, which is the half the item had not noticed: a target
+  named rather than addressed is resolved by the dial, and without that field
+  the flag would have governed everything except the connection it was set for.
+  One `resolver` finding says which one answered. Verified: `--dns 1.1.1.1:53`
+  resolves the fleet through it, and a dead resolver makes the dial itself fail
+  rather than quietly falling back.
+  <!-- pq: prio=med size=S labels=probe,inventory,cli ver=unreleased -->

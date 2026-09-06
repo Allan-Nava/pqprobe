@@ -6,6 +6,34 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.37.0] - 2026-09-06
+
+### Added
+
+- **`--exit-on` takes a class as well as a status (PQ-56).** "Fail the pipeline
+  when an endpoint is `pq-intolerant`" had to be spelled `--exit-on BAD`, which
+  also fires on `pq-refusing`, on a certificate about to expire, and on whatever
+  BAD ships next — and a gate that fires for reasons its author did not choose
+  is a gate somebody switches off. A status is still a threshold, at or above; a
+  class is **exact**, because classes are not a scale. A word that is neither
+  is a usage error listing both vocabularies, the way `explain` does.
+
+### Changed
+
+- **`--dns` governs every lookup the run makes (PQ-58).** It arrived with the
+  ECH record and governed only that, so `--per-address` and the dial itself
+  still went through the machine's own resolver — a run asking one resolver
+  about ECH and another about addresses, reporting on two networks at once and
+  saying nothing about the split. From inside a network, where the interesting
+  answer is the internal one, that is not a preference but a wrong answer.
+
+  It now reaches the address expansion *and* the dialler (`net.Dialer.Resolver`,
+  which is the half that would have been missed: a target named rather than
+  addressed is resolved by the dial). The resolver is Go's own rather than the
+  system's, since the cgo path would ignore the flag, and one `resolver` finding
+  says which one answered — two runs of the same fleet can disagree for this
+  reason, and the report has to carry it.
+
 ## [0.36.0] - 2026-09-05
 
 ### Added

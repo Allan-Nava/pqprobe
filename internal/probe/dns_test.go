@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Allan-Nava/pqprobe/internal/clientprofile"
 )
 
 // dnsAnswer builds a response carrying one HTTPS record whose `ech=` parameter
@@ -175,4 +177,43 @@ func TestLookupECHConfigIsBounded(t *testing.T) {
 	if d := time.Since(start); d > 3*time.Second {
 		t.Fatalf("took %s: a DNS query has to be bounded by the caller's deadline", d)
 	}
+}
+
+// PQ-58. --dns was introduced for the ECH record and governed only that, so a
+// run could ask one resolver about ECH and another about addresses without
+// saying so. From inside a network where the interesting answer is the internal
+// one, that is not a preference — it is a wrong answer.
+func TestResolverAtIsUsedForEveryLookup(t *testing.T) {
+	if ResolverAt("") != nil {
+		t.Fatal("no --dns means the machine's own resolver, which is a nil *net.Resolver")
+	}
+	r := ResolverAt("127.0.0.1:1")
+	if r == nil || !r.PreferGo {
+		t.Fatal("a pinned resolver has to be Go's own: the cgo one asks whatever the system is configured with")
+	}
+
+	// Nothing is listening there, so the lookup must fail rather than quietly
+	// falling back to the resolver the flag exists to replace.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if _, err := r.LookupIPAddr(ctx, "localhost.test.invalid"); err == nil {
+		t.Fatal("the lookup succeeded with nothing at the pinned resolver: something else answered it")
+	}
+
+	// And the dialler carries it, or a target named rather than addressed would
+	// still be resolved by the machine.
+	d := Dialer{Timeout: time.Second, Resolver: r}
+	res := d.Do(ctx, Target{Host: "origin.test.invalid", Port: "443"}, classicProfile(t))
+	if res.OK {
+		t.Fatal("that name cannot resolve anywhere")
+	}
+}
+
+func classicProfile(t *testing.T) clientprofile.Profile {
+	t.Helper()
+	p, ok := clientprofile.ByName("classic")
+	if !ok {
+		t.Fatal("no classic profile")
+	}
+	return p
 }

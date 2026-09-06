@@ -31,6 +31,30 @@ const (
 	dnsUDPMaxSize = 1232 // the EDNS-free ceiling everything agrees on
 )
 
+// ResolverAt returns the resolver every lookup in a run should use (PQ-58).
+//
+// An empty address means the machine's own, which is a nil *net.Resolver — the
+// zero value every net API already understands as "the default". A pinned one
+// is Go's own resolver rather than the system's, because the cgo path asks
+// whatever the host is configured with and would ignore the flag.
+//
+// It is used for *every* question pqprobe asks, the dialler's own name
+// resolution included: a run that asked one resolver about ECH and another
+// about addresses would be reporting on two different networks, and from inside
+// one where the interesting answer is the internal one that is not a preference
+// but a wrong answer.
+func ResolverAt(at string) *net.Resolver {
+	if at == "" {
+		return nil
+	}
+	return &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, network, at)
+		},
+	}
+}
+
 // LookupECHConfig returns the ECHConfigList published for name, asking at.
 //
 // at is a `host:port` resolver; empty means the ones this machine uses. A name

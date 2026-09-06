@@ -27,6 +27,7 @@ not an endpoint that passed, and an operator has to see it first.
 | `chain-size` | `host:port` | what the chain costs on the wire, and the headroom it leaves for post-quantum certificates |
 | `client-auth` | `host:port` | the peer requested a client certificate: this endpoint is mutual TLS |
 | `ech` | `host:port` | with `--ech-config`: whether the peer accepted Encrypted Client Hello, and what it costs on the wire |
+| `resolver` | `host:port` | with `--dns`: which resolver answered every lookup in this run |
 | `egress` | `host:port` | this prober has no route for an address family, said once for the whole run rather than per endpoint |
 | `net` | `host:port` | with `--net`: the address family this run was pinned to, so its silence about the other one cannot be read as an answer |
 | `addresses` | the name | with `--per-address`: how many addresses the name has, and which one answers differently |

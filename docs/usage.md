@@ -48,7 +48,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--alpn a,b` | none | ALPN protocols to offer |
 | `--starttls PROTO` | — | upgrade to TLS through the protocol's own negotiation first: `smtp`, `imap`, `postgres`, `mysql`, `ftp`, `nntp`, `ldap`, `xmpp` |
 | `--ech` | — | also dial with Encrypted Client Hello, taking each config from the endpoint's HTTPS DNS record |
-| `--dns HOST:PORT` | system | resolver to ask for that record |
+| `--dns HOST:PORT` | this machine's | resolver for **every** lookup: target names, `--per-address` records, the ECH record |
 | `--ech-config BASE64` | — | the same, with a config you pass instead of one from DNS |
 | `--net tcp4\|tcp6` | both | pin the address family every connection uses; the family is stated in the report |
 | `--socks5 HOST:PORT` | — | reach every endpoint through a no-auth SOCKS5 proxy |
@@ -63,7 +63,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--findings` | — | flat findings array |
 | `--findings=wrapped` | — | the wrapped object a fleet aggregator consumes, with a stable id per finding (note the `=`) |
 | `--min-severity S` | — | hide findings below `S` |
-| `--exit-on S` | never | exit 1 when a finding reaches `S` |
+| `--exit-on S\|class` | never | exit 1 when a finding reaches `S` — or when an endpoint lands in exactly that class |
 | `--expiry-warn N` | `21` | certificate expiry WARN threshold, days |
 | `--expiry-bad N` | `7` | certificate expiry BAD threshold, days |
 
@@ -72,7 +72,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | Code | Meaning |
 |---|---|
 | `0` | the probe ran — findings are output, not an error |
-| `1` | `--exit-on` threshold reached |
+| `1` | `--exit-on` matched: the status threshold, or the named class |
 | `2` | usage error, or no target could be parsed |
 
 Exit 0 on a WARN is deliberate. A check that fails the pipeline on every
@@ -213,8 +213,13 @@ nothing about it — which is why `--ech` reads it from the endpoint's own HTTPS
 record (type 65, the `ech=` parameter), one lookup per **name** rather than per
 address, so a fleet behind one CDN asks once. Go's resolver exposes no arbitrary
 record type, so the query is written into pqprobe: no dependency, and still a
-DNS question rather than a request. `--dns HOST:PORT` picks the resolver;
-without it, the ones in `/etc/resolv.conf`. A truncated answer is retried over
+DNS question rather than a request. `--dns HOST:PORT` picks the resolver — and it picks it for **everything** the
+run looks up, target names and `--per-address` records included, because a run
+that asked one resolver about ECH and another about addresses would be reporting
+on two networks at once. From inside a network, where the interesting answer is
+the internal one, that is not a preference but a wrong answer. The report says
+which resolver answered, once. Without the flag: the ones in
+`/etc/resolv.conf`. A truncated answer is retried over
 TCP, because a record carrying an ECH config passes 512 bytes easily and half a
 record parsed as a whole one is a config that fails inside the handshake.
 

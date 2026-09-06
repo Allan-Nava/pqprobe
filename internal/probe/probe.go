@@ -1004,6 +1004,10 @@ type Dialer struct {
 	// answers on whichever address the resolver felt like handing over, and two
 	// runs can disagree with nothing having changed on the endpoint.
 	Net string
+	// Resolver is the resolver used to turn a target name into an address; nil
+	// means the machine's own. It is set from --dns, so that one flag governs
+	// every question a run asks (PQ-58).
+	Resolver *net.Resolver
 	// Confirm re-dials an abrupt failure once before it is believed. See
 	// DoConfirmed.
 	Confirm bool
@@ -1096,7 +1100,7 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 			return res
 		}
 	} else {
-		raw, err = (&net.Dialer{}).DialContext(ctx, d.network(), t.Addr())
+		raw, err = (&net.Dialer{Resolver: d.Resolver}).DialContext(ctx, d.network(), t.Addr())
 		if err != nil {
 			res.Kind, res.Err = classify(err)
 			res.Elapsed = time.Since(start)

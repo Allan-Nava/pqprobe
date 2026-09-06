@@ -877,3 +877,75 @@ func TestExplainAnswersForTopicsToo(t *testing.T) {
 		t.Errorf("the vocabulary printed on failure is incomplete: %q", b.String())
 	}
 }
+
+// PQ-56. A gate that fires for reasons its author did not choose is a gate
+// somebody switches off. `--exit-on BAD` also fires on a certificate about to
+// expire and on anything BAD that ships later, so the flag has to take the
+// class as well — the one word a pipeline actually means.
+func TestExitOnTakesAClassOrAStatus(t *testing.T) {
+	for _, ok := range []string{"", "BAD", "ERROR", "pq-intolerant", "no-tls13"} {
+		if err := validExitOn(ok); err != nil {
+			t.Errorf("validExitOn(%q) = %v", ok, err)
+		}
+	}
+	err := validExitOn("nonsense")
+	if err == nil {
+		t.Fatal("a word that is neither a status nor a class must be a usage error")
+	}
+	if !strings.Contains(err.Error(), "BAD") || !strings.Contains(err.Error(), "pq-intolerant") {
+		t.Errorf("err = %v, want both vocabularies listed, the way explain does it", err)
+	}
+
+	reps := []verdict.Report{
+		{Target: "a:443", Class: verdict.PQBlind, Finding: []finding.Finding{{Status: finding.WARN}}},
+		{Target: "b:443", Class: verdict.PQIntolerant, Finding: []finding.Finding{{Status: finding.BAD}}},
+	}
+	if !shouldExit(reps, "pq-intolerant") {
+		t.Error("the class is present; the gate has to fire")
+	}
+	if shouldExit(reps, "pq-refusing") {
+		t.Error("that class is not in the run: an exact class, not a severity in disguise")
+	}
+	// The severity path is unchanged, and still means "at or above".
+	if !shouldExit(reps, "WARN") || !shouldExit(reps, "BAD") {
+		t.Error("a status threshold still fires on anything at or above it")
+	}
+	if shouldExit(reps, "ERROR") {
+		t.Error("nothing here reached ERROR")
+	}
+	if shouldExit(reps, "") {
+		t.Error("no threshold means exit 0 whenever the probe ran")
+	}
+}
+
+// PQ-58. One resolver setting, used everywhere, and said in the report: a run
+// resolved somewhere else probed something else, and the report has to carry
+// that or two runs of the same fleet disagree with no visible reason.
+func TestThePinnedResolverIsStatedInTheReport(t *testing.T) {
+	reps := []verdict.Report{{Target: "a:443"}, {Target: "b:443"}}
+	resolverFindings("10.0.0.53:53", reps)
+
+	n := 0
+	for _, r := range reps {
+		for _, f := range r.Finding {
+			if f.Check == "resolver" {
+				n++
+				if f.Status != finding.OK {
+					t.Errorf("status = %s, want OK: the operator asked for this", f.Status)
+				}
+				if !strings.Contains(f.Message, "10.0.0.53:53") {
+					t.Errorf("message = %q, want the resolver named", f.Message)
+				}
+			}
+		}
+	}
+	if n != 1 {
+		t.Fatalf("got %d `resolver` findings, want one for the run", n)
+	}
+
+	quiet := []verdict.Report{{Target: "a:443"}}
+	resolverFindings("", quiet)
+	if len(quiet[0].Finding) != 0 {
+		t.Fatalf("got %+v, want silence when the machine's own resolver was used", quiet[0].Finding)
+	}
+}
