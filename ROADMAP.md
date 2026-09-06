@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**64 items · 62 shipped · 2 open · 11 milestones.**
+**64 items · 63 shipped · 1 open · 11 milestones.**
 
 ## At a glance
 
@@ -22,13 +22,12 @@
 | **M8** — Reach the ports that are left | `v0.36.0` | shipped | `##########` 100% | 0 | 3 |
 | **M9** — The edges of everyday use | `v0.38.0` | shipped | `##########` 100% | 0 | 3 |
 | **M10** — The hybrids we do not offer, proved against stacks that are not Go | `v0.41.0` | shipped | `##########` 100% | 0 | 3 |
-| **M11** — Reproduce the failures, not only the successes | `v0.44.0` | **now** | `###.......` 33% | 2 | 1 |
+| **M11** — Reproduce the failures, not only the successes | `v0.44.0` | **now** | `#######...` 67% | 1 | 2 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-63** — The plaintext negotiations, against real daemons · `high` · size `L` · tests,probe (M11, target `v0.44.0`)
 - **PQ-64** — The other terminators, and the certificate they ask for · `med` · size `M` · tests,probe (M11, target `v0.44.0`)
 
 ## Milestones
@@ -166,20 +165,20 @@ Target `v0.41.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 ### M11 — Reproduce the failures, not only the successes
 
-Target `v0.44.0` · **now** · 2 open · 1 shipped · `###.......` 33%
+Target `v0.44.0` · **now** · 1 open · 2 shipped · `#######...` 67%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-63** — The plaintext negotiations, against real daemons | high | L | tests,probe | open |
 | **PQ-64** — The other terminators, and the certificate they ask for | med | M | tests,probe | open |
 | **PQ-62** — The wall, against a real server and a real packet filter | high | M | tests,probe | done, unreleased |
+| **PQ-63** — The plaintext negotiations, against real daemons | high | L | tests,probe | done, unreleased |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `probe` | 26 | 2 |
-| `tests` | 9 | 2 |
+| `probe` | 26 | 1 |
+| `tests` | 9 | 1 |
 | `cli` | 11 | 0 |
 | `delivery` | 7 | 0 |
 | `docs` | 10 | 0 |

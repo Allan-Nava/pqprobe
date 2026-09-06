@@ -970,14 +970,30 @@ the lab at the failures.
   reading it that way is what found both bugs.
   <!-- pq: prio=high size=M labels=tests,probe ver=unreleased -->
 
-- [ ] **PQ-63 — The plaintext negotiations, against real daemons**: Postfix,
+- [x] **PQ-63 — The plaintext negotiations, against real daemons**: Postfix,
   Dovecot, OpenLDAP, MySQL and Postgres in the lab, because every `--starttls`
   protocol was written from an RFC and asserted against an in-process Go fake
   that agrees with our reading of it by construction. FTP already caught this
   the expensive way — a real server's banner turned a healthy endpoint into a
   refusal, and only running it against one found it. A daemon with TLS switched
   off is in the table too: `no-tls`, never a post-quantum verdict.
-  <!-- pq: prio=high size=L labels=tests,probe -->
+  Shipped: Postfix, Dovecot, OpenLDAP, MySQL and Postgres, plus a Postgres with
+  TLS off asserting `no-tls`. Every negotiation written from an RFC now answers
+  a daemon that was not written from our reading of it — the BER StartTLS
+  request in particular, which until now had only been read by a fake that
+  agreed with it by construction.
+  Third-party daemons are asserted as `any-tls`, a new expectation meaning *the
+  negotiation reached a handshake*: what is under test there is the upgrade, not
+  the group list somebody's image ships with, and pinning that would turn an
+  upstream improvement into a red build. The servers the lab configures itself
+  keep exact classes.
+  Two things the containers taught. Dovecot's greeting is **two lines**, the
+  first a provisional `* OK Waiting for authentication process to respond..` —
+  our reader takes the first `* OK` and the command queues behind it, which
+  works, but no fake would have shown it. And Dovecot 2.4 rewrote its
+  configuration schema entirely, so the case is pinned to 2.3: chasing a config
+  format is not what this lab is for, and the IMAP on the wire is the same.
+  <!-- pq: prio=high size=L labels=tests,probe ver=unreleased -->
 
 - [ ] **PQ-64 — The other terminators, and the certificate they ask for**:
   HAProxy and Envoy, which sit in front of more origins than nginx does, plus an

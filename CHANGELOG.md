@@ -6,6 +6,31 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.43.0] - 2026-09-06
+
+### Added
+
+- **Every `--starttls` protocol, against a real daemon (PQ-63).** Postfix,
+  Dovecot, OpenLDAP, MySQL and Postgres are in the lab, plus a Postgres with TLS
+  switched off asserting `no-tls`. Each negotiation was written from an RFC and,
+  until now, asserted only against an in-process fake that agreed with our
+  reading of it by construction — the BER StartTLS request most of all. FTP had
+  already shown what that costs: a real server's banner turned a healthy
+  endpoint into a refusal, and only running it against one found that.
+
+  Third-party daemons are asserted as `any-tls` — *the negotiation reached a
+  handshake* — because what is under test is the upgrade, not the group list
+  somebody's image ships with; pinning that would turn an upstream improvement
+  into a red build. Servers the lab configures itself keep exact classes.
+
+  Two things the containers taught: Dovecot greets with **two lines**, the first
+  a provisional `* OK Waiting for authentication process to respond..`, and
+  Dovecot 2.4 rewrote its configuration schema — so that case is pinned to 2.3,
+  since chasing a config format is not what the lab is for and the IMAP on the
+  wire is the same. Readiness also had to learn two ways of asking, because the
+  MySQL image ships no `nc`: it said "never answered" about a server whose own
+  log had already printed "ready for connections".
+
 ## [0.42.0] - 2026-09-06
 
 ### Added

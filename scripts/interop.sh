@@ -26,6 +26,14 @@ cd "$root"
 
 img=${INTEROP_IMAGE:-alpine:edge}
 nginx_img=${INTEROP_NGINX_IMAGE:-nginx:alpine}
+dovecot_img=${INTEROP_DOVECOT_IMAGE:-alpine:3.19}
+mysql_img=${INTEROP_MYSQL_IMAGE:-mysql:8}
+postgres_img=${INTEROP_POSTGRES_IMAGE:-postgres:17-alpine}
+
+# Written out here because a heredoc inside `docker run sh -c` would be quoted
+# three times over. Neither daemon runs with less than this.
+dovecot_conf='protocols = imap\nlisten = *\nssl = yes\nssl_cert = </c.pem\nssl_key = </k.pem\nmail_location = maildir:/tmp/mail\ndisable_plaintext_auth = no\npassdb {\ndriver = static\nargs = password=lab\n}\nuserdb {\ndriver = static\nargs = uid=nobody gid=nobody home=/tmp/mail\n}\n'
+slapd_conf='include /etc/openldap/schema/core.schema\nmodulepath /usr/lib/openldap\nmoduleload back_mdb.so\nTLSCertificateFile /c.pem\nTLSCertificateKeyFile /k.pem\ndatabase mdb\nsuffix "dc=lab"\ndirectory /var/lib/openldap/openldap-data\n'
 port=${INTEROP_PORT:-14433}
 
 pass=0
@@ -48,6 +56,12 @@ openssl-tls12-ceiling|openssl-tls12 X25519:P-256|no-tls13||
 openssl-behind-a-wall|wall X25519MLKEM768:X25519:P-256|pq-intolerant||
 openssl-wall-size-sweep|wall X25519MLKEM768:X25519:P-256|pq-intolerant|--size-sweep|"check": "size-limit"
 nginx-classical|nginx|pq-blind||
+postfix-starttls|postfix|any-tls|--starttls smtp|
+dovecot-starttls|dovecot|any-tls|--starttls imap|
+openldap-starttls|openldap|any-tls|--starttls ldap|
+mysql-starttls|mysql|any-tls|--starttls mysql|
+postgres-starttls|postgres|any-tls|--starttls postgres|
+postgres-tls-switched-off|postgres-nossl|no-tls|--starttls postgres|
 '
 
 if [ "${1:-}" = "--list" ]; then
@@ -95,7 +109,14 @@ inner_port=4433
 start() { # start <kind> <groups>
 	docker rm -f "$name" >/dev/null 2>&1 || :
 	inner_port=4433
-	[ "$1" = nginx ] && inner_port=443
+	case "$1" in
+	nginx) inner_port=443 ;;
+	postfix) inner_port=25 ;;
+	dovecot) inner_port=143 ;;
+	openldap) inner_port=389 ;;
+	mysql) inner_port=3306 ;;
+	postgres|postgres-nossl) inner_port=5432 ;;
+	esac
 	case "$1" in
 	openssl)
 		docker run -d --rm --name "$name" -p "$port:4433" "$img" sh -c \
@@ -117,6 +138,36 @@ start() { # start <kind> <groups>
 	nginx)
 		docker run -d --rm --name "$name" -p "$port:443" "$nginx_img" sh -c \
 			"apk add --no-cache openssl >/dev/null 2>&1; $cert_cmd; printf 'events{}\nhttp{server{listen 443 ssl;ssl_certificate /c.pem;ssl_certificate_key /k.pem;ssl_protocols TLSv1.2 TLSv1.3;ssl_ecdh_curve X25519:prime256v1;return 200 \"ok\";}}\n' > /etc/nginx/nginx.conf; nginx -g 'daemon off;'" >/dev/null
+		;;
+	postfix)
+		docker run -d --rm --name "$name" -p "$port:25" "$img" sh -c \
+			"apk add --no-cache postfix openssl >/dev/null 2>&1; $cert_cmd; postconf -e myhostname=lab.example smtpd_tls_cert_file=/c.pem smtpd_tls_key_file=/k.pem smtpd_tls_security_level=may inet_interfaces=all >/dev/null 2>&1; newaliases >/dev/null 2>&1; postfix start-fg" >/dev/null
+		;;
+	dovecot)
+		# Pinned to alpine 3.19 on purpose: Dovecot 2.4 rewrote its
+		# configuration schema, and a lab case is not the place to chase it.
+		# 2.3 speaks the same IMAP either way, which is what is under test —
+		# including the two-line greeting, whose first line is a *provisional*
+		# `* OK Waiting for authentication process to respond..`.
+		docker run -d --rm --name "$name" -p "$port:143" "$dovecot_img" sh -c \
+			"apk add --no-cache dovecot openssl >/dev/null 2>&1; $cert_cmd; printf '$dovecot_conf' > /etc/dovecot/dovecot.conf; dovecot -F" >/dev/null
+		;;
+	openldap)
+		docker run -d --rm --name "$name" -p "$port:389" "$img" sh -c \
+			"apk add --no-cache openldap openldap-back-mdb openssl >/dev/null 2>&1; $cert_cmd; mkdir -p /var/lib/openldap/openldap-data; printf '$slapd_conf' > /slapd.conf; slapd -h ldap://0.0.0.0:389 -f /slapd.conf -d 0" >/dev/null
+		;;
+	mysql)
+		docker run -d --rm --name "$name" -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -p "$port:3306" "$mysql_img" >/dev/null
+		;;
+	postgres)
+		docker run -d --rm --name "$name" -e POSTGRES_HOST_AUTH_METHOD=trust -p "$port:5432" "$postgres_img" sh -c \
+			"apk add --no-cache openssl >/dev/null 2>&1; $cert_cmd; chown postgres /k.pem /c.pem; chmod 600 /k.pem; exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/c.pem -c ssl_key_file=/k.pem" >/dev/null
+		;;
+	postgres-nossl)
+		# The other half of every --starttls protocol: a daemon with TLS off has
+		# refused *TLS*, and grading that as a post-quantum failure would send
+		# somebody hunting a middlebox that does not exist.
+		docker run -d --rm --name "$name" -e POSTGRES_HOST_AUTH_METHOD=trust -p "$port:5432" "$postgres_img" >/dev/null
 		;;
 	*)
 		echo "interop: unknown server kind $1" >&2
@@ -142,7 +193,12 @@ start() { # start <kind> <groups>
 ready() {
 	i=0
 	while [ "$i" -lt 60 ]; do
-		if docker exec "$name" sh -c "nc -z 127.0.0.1 $inner_port" >/dev/null 2>&1; then
+		# Two ways, because the images do not agree on what they ship: busybox
+		# has `nc`, and the MySQL image (Oracle Linux) has none but does have a
+		# bash with /dev/tcp. Asking only the first said "never answered" about
+		# a server whose own log had already printed "ready for connections".
+		if docker exec "$name" sh -c "nc -z 127.0.0.1 $inner_port" >/dev/null 2>&1 ||
+			docker exec "$name" bash -c "exec 3<>/dev/tcp/127.0.0.1/$inner_port" >/dev/null 2>&1; then
 			return 0
 		fi
 		i=$((i + 1))
@@ -167,6 +223,22 @@ echo "$cases" | while IFS='|' read -r case_name server class flags expect; do
 	# shellcheck disable=SC2086
 	"$tmp/pqprobe" probe "127.0.0.1:$port" --timeout 5s --json $flags > "$tmp/report.json" 2>/dev/null || :
 	got=$(sed -n 's/.*"class": *"\([a-z0-9-]*\)".*/\1/p' "$tmp/report.json" | head -1)
+	# `any-tls` is the expectation for a third-party daemon: what is under test
+	# there is the plaintext negotiation reaching a TLS handshake, not the group
+	# list somebody's image ships with — pinning that would turn an upstream
+	# improvement into a red build.
+	if [ "$class" = any-tls ]; then
+		case "$got" in
+		''|unreachable|tls-broken|no-tls|mtls-required)
+			notok "$case_name reached no handshake: $got"
+			;;
+		*)
+			ok "$case_name negotiated TLS ($got)"
+			;;
+		esac
+		docker rm -f "$name" >/dev/null 2>&1 || :
+		continue
+	fi
 	if [ "$got" != "$class" ]; then
 		notok "$case_name is $got, want $class"
 	elif [ -n "$expect" ] && ! grep -q "$expect" "$tmp/report.json"; then
