@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
 
@@ -84,7 +84,7 @@ jobs:
         module: [utls, quic]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
       - name: The nested modules cannot contaminate the root
@@ -104,7 +104,7 @@ jobs:
     # becomes a permanent test case.
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
       - name: Fuzz the parsers that read what a peer sent
@@ -129,7 +129,7 @@ jobs:
     # the binary's: the runner has it, and the script skips without it.
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
       - name: pqprobe against stacks that are not Go
@@ -221,7 +221,7 @@ jobs:
         run: sh scripts/action.sh check
       - name: The action gate itself
         run: sh scripts/action_test.sh
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
       - id: run
@@ -256,7 +256,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "stable"
       - run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
@@ -266,7 +266,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "stable"
       - run: go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -280,7 +280,7 @@ jobs:
         goarch: [amd64, arm64]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
       - env:
