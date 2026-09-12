@@ -46,7 +46,7 @@ jobs:
       HAS_PAT: ${{ secrets.REPO_META_TOKEN != '' && 'true' || 'false' }}
       STRICT: ${{ inputs.strict && 'true' || 'false' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Lint the file
         run: ./scripts/repo-meta.sh lint
