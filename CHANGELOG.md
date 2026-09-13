@@ -6,6 +6,18 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.46.1] - 2026-09-13
+
+### Fixed
+
+- **The `pq-other-hybrid` row appeared twice in the README's class table**, in
+  two wordings that differed by one character. Both landed in the same commit
+  (0.40.0): the edit that inserted the row was applied twice, the second run
+  finding its anchor — the `no-tls` row — still present and still unique. The
+  lesson is not the typo but that nothing compares that table against
+  `verdict.Classes()`, the way the two-way test compares the flag set against
+  `--help`.
+
 ## [0.46.0] - 2026-09-06
 
 ### Added
