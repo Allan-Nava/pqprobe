@@ -14,6 +14,8 @@ that reads well inside the repository.
 - [Usage](usage.md) — flags, output formats, exit status
 - [Client profiles](profiles.md) — what each one proves, and what it does not
 - [Findings](findings.md) — every check, status and class
+- [Document schema](schema.md) — the JSON, wrapped and Prometheus shapes a
+  machine reads, field by field
 - [Background](background.md) — why an endpoint can be up for `curl` and down
   for a CDN
 - [Intent](../INTENT.md) — why the tool exists, and what is deliberately out of

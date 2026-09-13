@@ -1,6 +1,9 @@
 # HELP pqprobe_last_run_timestamp_seconds When pqprobe last completed a run.
 # TYPE pqprobe_last_run_timestamp_seconds gauge
 pqprobe_last_run_timestamp_seconds 1788696000
+# HELP pqprobe_schema_version Which document contract this file speaks; see docs/schema.md.
+# TYPE pqprobe_schema_version gauge
+pqprobe_schema_version 1
 # HELP pqprobe_endpoints How many endpoints the run probed.
 # TYPE pqprobe_endpoints gauge
 pqprobe_endpoints 3

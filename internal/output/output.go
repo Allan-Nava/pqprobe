@@ -80,10 +80,7 @@ func Summary(w io.Writer, reps []verdict.Report) error {
 func JSON(w io.Writer, reps []verdict.Report) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	return enc.Encode(struct {
-		Tool    string           `json:"tool"`
-		Reports []verdict.Report `json:"reports"`
-	}{Tool: "pqprobe", Reports: reps})
+	return enc.Encode(Document{Schema: Schema, Tool: "pqprobe", Reports: reps})
 }
 
 // Findings renders the flat findings array. An empty run emits `[]`, never
@@ -172,18 +169,7 @@ func mdCell(s string) string {
 // change on their own — an id derived from the text would report a new problem
 // every morning.
 func FindingsWrapped(w io.Writer, reps []verdict.Report, min finding.Status) error {
-	type item struct {
-		ID       string   `json:"id"`
-		Severity string   `json:"severity"`
-		Title    string   `json:"title"`
-		Detail   string   `json:"detail,omitempty"`
-		Target   string   `json:"target"`
-		Check    string   `json:"check"`
-		Value    *float64 `json:"value,omitempty"`
-		Unit     string   `json:"unit,omitempty"`
-	}
-
-	items := make([]item, 0, 8)
+	items := make([]WrappedFinding, 0, 8)
 	seen := map[string]int{}
 	worst := finding.OK
 	for _, r := range reps {
@@ -201,7 +187,7 @@ func FindingsWrapped(w io.Writer, reps []verdict.Report, min finding.Status) err
 			if n := seen[id]; n > 1 {
 				id = fmt.Sprintf("%s-%d", id, n)
 			}
-			items = append(items, item{
+			items = append(items, WrappedFinding{
 				ID:       id,
 				Severity: strings.ToLower(string(f.Status)),
 				Title:    f.Message,
@@ -214,12 +200,8 @@ func FindingsWrapped(w io.Writer, reps []verdict.Report, min finding.Status) err
 		}
 	}
 
-	doc := struct {
-		Check    string `json:"check"`
-		Status   string `json:"status"`
-		Summary  string `json:"summary"`
-		Findings []item `json:"findings"`
-	}{
+	doc := WrappedDocument{
+		Schema:   Schema,
 		Check:    "pqprobe",
 		Status:   strings.ToLower(string(worst)),
 		Summary:  wrappedSummary(reps),
@@ -276,6 +258,9 @@ func Textfile(path string, reps []verdict.Report, now time.Time) error {
 	fmt.Fprintf(&b, "# HELP pqprobe_last_run_timestamp_seconds When pqprobe last completed a run.\n")
 	fmt.Fprintf(&b, "# TYPE pqprobe_last_run_timestamp_seconds gauge\n")
 	fmt.Fprintf(&b, "pqprobe_last_run_timestamp_seconds %d\n", now.Unix())
+	fmt.Fprintf(&b, "# HELP pqprobe_schema_version Which document contract this file speaks; see docs/schema.md.\n")
+	fmt.Fprintf(&b, "# TYPE pqprobe_schema_version gauge\n")
+	fmt.Fprintf(&b, "pqprobe_schema_version %d\n", Schema)
 	fmt.Fprintf(&b, "# HELP pqprobe_endpoints How many endpoints the run probed.\n")
 	fmt.Fprintf(&b, "# TYPE pqprobe_endpoints gauge\n")
 	fmt.Fprintf(&b, "pqprobe_endpoints %d\n", len(reps))
@@ -420,13 +405,19 @@ func promStatus(s finding.Status) int {
 // would compare against nothing and report "no changes" for ever — which is
 // the most expensive kind of quiet.
 func LoadReports(r io.Reader) ([]verdict.Report, error) {
-	var doc struct {
-		Tool    string           `json:"tool"`
-		Reports []verdict.Report `json:"reports"`
-	}
+	var doc Document
 	dec := json.NewDecoder(r)
 	if err := dec.Decode(&doc); err != nil {
 		return nil, fmt.Errorf("not a pqprobe --json document: %w", err)
+	}
+	// A document with no `schema` predates the field (PQ-70) and is read as the
+	// schema of this build: every baseline written before the number existed is
+	// still a baseline, and refusing those would turn an upgrade into a lost
+	// history. A *newer* one is refused, because the fields it would be read
+	// for may mean something else.
+	if doc.Schema > Schema {
+		return nil, fmt.Errorf("this document speaks schema %d, and this pqprobe only knows %d — it was written by a newer pqprobe",
+			doc.Schema, Schema)
 	}
 	if doc.Tool != "pqprobe" {
 		return nil, fmt.Errorf("not a pqprobe --json document (tool = %q)", doc.Tool)

@@ -220,6 +220,12 @@ without a run.
 | `--textfile F` | Prometheus textfile-collector metrics, written atomically (a side output, not a renderer) |
 | `--min-severity S` | hide findings below `S`; the endpoint header stays |
 
+Every document with an envelope to carry it says which contract it speaks —
+`"schema": 1` in `--json` and `--findings=wrapped`, `pqprobe_schema_version` in
+the textfile — and [docs/schema.md](docs/schema.md) says what every field means,
+generated from the types that render them. The number moves when the shape
+moves, never for a new class, check or field.
+
 | Exit | Meaning |
 |---|---|
 | `0` | the probe ran — findings are output, not an error |

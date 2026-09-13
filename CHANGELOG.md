@@ -6,6 +6,41 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.47.0] - unreleased
+
+### Added
+
+- **Every machine-facing document says which contract it speaks (PQ-70).**
+  `--json` and `--findings=wrapped` carry `"schema": 1`, and the Prometheus
+  textfile carries `pqprobe_schema_version`. Until now the only thing in a
+  pqprobe document a parser could branch on was the string `pqprobe`, so a
+  consumer had no way to tell a document it understands from one written by a
+  build that moved a field — it could only fail at the field, in production, at
+  the point where the answer was needed.
+
+  The number moves when the **shape** moves: a field renamed or removed, an
+  object nested differently, an array that becomes an object. It does not move
+  for a new field, a new class, a new check or a new metric family — a number
+  that moved every release is a number nobody pins. The flat `--findings` array
+  has nowhere to carry it, and the page says so rather than leaving somebody to
+  wonder: its contract is the finding object, and it moves with the same number.
+
+- **`docs/schema.md`, generated from the types that render the documents.**
+  Every field, its JSON type, whether it is always present, and what it means —
+  including what the wrapped `id` is a fingerprint of (the first six bytes of
+  `sha256(check|target)`, deliberately not the message, which carries days and
+  byte counts that change on their own) and which parts of a document are
+  allowed to grow. A reflection walk builds the tables, so a field added,
+  renamed or removed changes the page in the same commit; a field with nothing
+  said about what it means is a failing test rather than an empty cell.
+
+### Changed
+
+- **`--baseline` refuses a document from a newer schema** instead of half-reading
+  it: the fields it would be read for may mean something else. A document with
+  no `schema` at all is still read — every baseline on disk today has no number,
+  and an upgrade that lost a history would be worse than no gate.
+
 ## [0.46.1] - 2026-09-13
 
 ### Fixed

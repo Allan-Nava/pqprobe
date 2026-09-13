@@ -374,6 +374,14 @@ is a number. An empty run emits `[]`, never `null`.
 }
 ```
 
+Every document that has an envelope to carry it — `--json`, `--findings=wrapped`
+and the Prometheus textfile — says which contract it speaks: `"schema": 1`, and
+`pqprobe_schema_version 1` in the metrics. The number moves when the shape moves
+and not when the tool learns to say something new, so a parser can pin it.
+[docs/schema.md](schema.md) is the field-by-field page, generated from the types
+that render the documents. A `--baseline` written by a **newer** pqprobe is
+refused rather than half-read.
+
 The **id** is the reason it exists: it fingerprints the same problem on the same
 target across runs, so an aggregator can tell a finding it has already seen from
 a new one. It is built from the check and the target and deliberately **not**

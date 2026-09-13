@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**71 items · 69 shipped · 2 open · 14 milestones.**
+**71 items · 70 shipped · 1 open · 14 milestones.**
 
 ## At a glance
 
@@ -25,13 +25,12 @@
 | **M11** — Reproduce the failures, not only the successes | `v0.44.0` | shipped | `##########` 100% | 0 | 3 |
 | **M12** — What the audit found | `v0.44.1` | shipped | `##########` 100% | 0 | 1 |
 | **M13** — Invariants a machine can check | `v0.45.0` | shipped | `##########` 100% | 0 | 3 |
-| **M14** — The contract with machines | `v0.48.0` | **now** | `###.......` 33% | 2 | 1 |
+| **M14** — The contract with machines | `v0.48.0` | **now** | `#######...` 67% | 1 | 2 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-70** — Say which contract a document speaks · `high` · size `M` · output,docs,integration (M14, target `v0.48.0`)
 - **PQ-71** — The public API can ask what the CLI can ask · `med` · size `M` · integration (M14, target `v0.48.0`)
 
 ## Milestones
@@ -197,24 +196,24 @@ Target `v0.45.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 ### M14 — The contract with machines
 
-Target `v0.48.0` · **now** · 2 open · 1 shipped · `###.......` 33%
+Target `v0.48.0` · **now** · 1 open · 2 shipped · `#######...` 67%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-70** — Say which contract a document speaks | high | M | output,docs,integration | open |
 | **PQ-71** — The public API can ask what the CLI can ask | med | M | integration | open |
 | **PQ-69** — Golden files for every machine-facing output | high | M | output,tests | done, unreleased |
+| **PQ-70** — Say which contract a document speaks | high | M | output,docs,integration | done, unreleased |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `integration` | 6 | 2 |
-| `docs` | 11 | 1 |
-| `output` | 11 | 1 |
+| `integration` | 6 | 1 |
 | `cli` | 12 | 0 |
 | `delivery` | 7 | 0 |
+| `docs` | 11 | 0 |
 | `inventory` | 6 | 0 |
+| `output` | 11 | 0 |
 | `probe` | 28 | 0 |
 | `profile` | 7 | 0 |
 | `project` | 6 | 0 |

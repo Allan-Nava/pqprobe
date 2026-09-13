@@ -438,7 +438,8 @@ flags:
                            transitions: what changed, not what was already broken
   --markdown               a table and collapsible detail, for a pull request
                            comment or a CI job summary
-  --json                   full report, every profile result included
+  --json                   full report, every profile result included, carrying
+                           "schema": the document contract number (docs/schema.md)
   --findings[=SHAPE]       findings as JSON: flat (the default) or wrapped.
                            --findings=wrapped emits {check,status,summary,
                            findings:[{id,severity,title,detail}]} with a stable
