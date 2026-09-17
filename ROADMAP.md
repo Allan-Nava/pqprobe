@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**71 items · 70 shipped · 1 open · 14 milestones.**
+**76 items · 70 shipped · 6 open · 15 milestones.**
 
 ## At a glance
 
@@ -26,12 +26,18 @@
 | **M12** — What the audit found | `v0.44.1` | shipped | `##########` 100% | 0 | 1 |
 | **M13** — Invariants a machine can check | `v0.45.0` | shipped | `##########` 100% | 0 | 3 |
 | **M14** — The contract with machines | `v0.48.0` | **now** | `#######...` 67% | 1 | 2 |
+| **M15** — The next migration is the certificate | `v0.50.0` | next | `..........` 0% | 5 | 0 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
+- **PQ-72** — What this chain becomes, as a number · `high` · size `M` · verdict,output (M15, target `v0.50.0`)
+- **PQ-73** — What signs this chain today · `high` · size `S` · probe,output (M15, target `v0.50.0`)
 - **PQ-71** — The public API can ask what the CLI can ask · `med` · size `M` · integration (M14, target `v0.48.0`)
+- **PQ-74** — The headroom threshold, and what it is conditional on · `med` · size `M` · verdict,cli (M15, target `v0.50.0`)
+- **PQ-75** — Say the arithmetic once, where it can be checked · `med` · size `S` · docs,output (M15, target `v0.50.0`)
+- **PQ-76** — The profile we cannot ship yet, written down so nobody   re-proposes it · `low` · size `S` · profile,project (M15, target `v0.50.0`)
 
 ## Milestones
 
@@ -204,20 +210,32 @@ Target `v0.48.0` · **now** · 1 open · 2 shipped · `#######...` 67%
 | **PQ-69** — Golden files for every machine-facing output | high | M | output,tests | done, unreleased |
 | **PQ-70** — Say which contract a document speaks | high | M | output,docs,integration | done, unreleased |
 
+### M15 — The next migration is the certificate
+
+Target `v0.50.0` · next · 5 open · 0 shipped · `..........` 0%
+
+| Item | Priority | Size | Labels | Status |
+|---|---|---|---|---|
+| **PQ-72** — What this chain becomes, as a number | high | M | verdict,output | open |
+| **PQ-73** — What signs this chain today | high | S | probe,output | open |
+| **PQ-74** — The headroom threshold, and what it is conditional on | med | M | verdict,cli | open |
+| **PQ-75** — Say the arithmetic once, where it can be checked | med | S | docs,output | open |
+| **PQ-76** — The profile we cannot ship yet, written down so nobody   re-proposes it | low | S | profile,project | open |
+
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
+| `output` | 14 | 3 |
+| `verdict` | 12 | 2 |
+| `cli` | 13 | 1 |
+| `docs` | 12 | 1 |
 | `integration` | 6 | 1 |
-| `cli` | 12 | 0 |
+| `probe` | 29 | 1 |
+| `profile` | 8 | 1 |
+| `project` | 7 | 1 |
 | `delivery` | 7 | 0 |
-| `docs` | 11 | 0 |
 | `inventory` | 6 | 0 |
-| `output` | 11 | 0 |
-| `probe` | 28 | 0 |
-| `profile` | 7 | 0 |
-| `project` | 6 | 0 |
 | `release` | 5 | 0 |
 | `tests` | 13 | 0 |
 | `ux` | 2 | 0 |
-| `verdict` | 10 | 0 |

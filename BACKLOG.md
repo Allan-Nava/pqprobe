@@ -1169,3 +1169,78 @@ mode PQ-65 found inside the tool, one layer out.
   exists to avoid. Whatever is added arrives with the same rule the CLI has: an
   unknown value is an error, never a quietly different run.
   <!-- pq: prio=med size=M labels=integration -->
+
+## M15 — The next migration is the certificate <!-- ms: target=v0.50.0 phase=next -->
+
+The key exchange migration is the one happening now, and pqprobe was built for
+it. The next one is **authentication**, and it fails in exactly the same shape
+for exactly the same reason: an ML-DSA-44 signature is 2420 bytes and its public
+key 1312 where ECDSA P-256 spends 64 and 65, so a three-certificate chain that
+costs 4 KB today costs something closer to 15 once it is signed
+post-quantum — and the server's flight, not the ClientHello, becomes the thing
+that does not fit.
+
+The same middleboxes, the same initial congestion window, the same silence. The
+difference is that this time the numbers are already in hand: the chain arrived
+in the handshake, `ChainBytes` and `PeerChainLen` are recorded, and nothing has
+to be sent to work out what it becomes.
+
+This milestone is deliberately **measurement, not grading**. A projection is not
+a probe, and a finding that graded an endpoint on a migration nobody has started
+would be a finding people learn to ignore. What earns its place is the number an
+operator needs before the decision, said once, per endpoint, with its unit.
+
+- [ ] **PQ-72 — What this chain becomes, as a number**: today the chain-size
+  finding carries the bytes on the wire and a *hint* saying post-quantum
+  authentication will cost more. A hint is prose, and a machine consumer cannot
+  threshold on it. Project the chain under ML-DSA-44 and ML-DSA-65 from what the
+  peer sent — per certificate, because a leaf and two intermediates do not all
+  move together, and a cross-signed chain moves twice — and carry the result as
+  `Value`/`Unit` on its own finding. The arithmetic is stated in the finding and
+  in the docs, never hidden in a constant: a projection whose assumptions are
+  not visible is a number nobody trusts twice.
+  <!-- pq: prio=high size=M labels=verdict,output -->
+
+- [ ] **PQ-73 — What signs this chain today**: the certificates are already
+  parsed and `probe.Cert` records the subject, the issuer, the dates and the
+  bytes — but not what signed it or with what key. A migration is planned
+  against that inventory: how many endpoints are RSA-2048, how many ECDSA
+  P-256, how many still SHA-1-adjacent, and which ones are cross-signed. Record
+  `SignatureAlgorithm`, `PublicKeyAlgorithm` and the key size per certificate,
+  and say it in one finding per endpoint. This stays on the right side of the
+  boundary with checkfleet: not lifecycle, not renewal, not issuer policy — what
+  the peer sent, which is in hand, and which decides what the chain costs when
+  the signature changes. <!-- pq: prio=high size=S labels=probe,output -->
+
+- [ ] **PQ-74 — The headroom threshold, and what it is conditional on**: a
+  projected chain that crosses roughly 14 KB no longer fits the ten-segment
+  initial congestion window most stacks still ship, which is the point where a
+  handshake stops costing one round trip and starts costing two — or stops
+  working, on a path that already dislikes large flights. A WARN when the
+  projection crosses it, worded as the conditional it is: *if* this chain moves
+  to ML-DSA-65 *and* nothing else changes. `--cert-headroom-warn` to move the
+  line, because 14 KB is a default and not a law, and an operator who knows
+  their path knows better. Grading stays out of the class: this must never turn
+  a `pq-ready` endpoint into a failure over a migration that has not started.
+  <!-- pq: prio=med size=M labels=verdict,cli -->
+
+- [ ] **PQ-75 — Say the arithmetic once, where it can be checked**: one page —
+  `docs/certificates.md` — with the sizes the projection uses, where they come
+  from (FIPS 204 parameter sets, not a blog post), what a cross-signed chain
+  does to the total, and why the server flight is the half of the handshake this
+  milestone is about while `--size-sweep` is about the other. The numbers live
+  in one table that the code reads from, or the page and the constant drift
+  apart the way the schema page would have without a generator.
+  <!-- pq: prio=med size=S labels=docs,output -->
+
+- [ ] **PQ-76 — The profile we cannot ship yet, written down so nobody
+  re-proposes it**: the obvious item here is a `pq-auth-only` profile — a client
+  that offers only post-quantum signature algorithms, the authentication twin of
+  `pq-only`. It is not shippable. Go's `crypto/tls` exposes no way for a client
+  to pin `signature_algorithms`, the way `CurvePreferences` pins the groups, and
+  `crypto/x509` has no ML-DSA at all as of Go 1.27 — so the profile would prove
+  nothing, and a profile that falls back to the toolchain's defaults is exactly
+  the trap the first principle in INTENT.md exists to prevent. The trigger is
+  explicit: when the standard library gains both, this becomes a profile, a
+  class and a red test in that order. Until then this item stays open as the
+  decision, not as the gap. <!-- pq: prio=low size=S labels=profile,project -->
