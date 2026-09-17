@@ -19,9 +19,9 @@ pqprobe_status{target="wall.example:443"} 2
 pqprobe_status{target="gone.example:443"} 3
 # HELP pqprobe_findings Findings per status.
 # TYPE pqprobe_findings gauge
-pqprobe_findings{target="origin.example:443",status="OK"} 5
+pqprobe_findings{target="origin.example:443",status="OK"} 6
 pqprobe_findings{target="origin.example:443",status="WARN"} 2
-pqprobe_findings{target="wall.example:443",status="OK"} 2
+pqprobe_findings{target="wall.example:443",status="OK"} 3
 pqprobe_findings{target="wall.example:443",status="WARN"} 4
 pqprobe_findings{target="wall.example:443",status="BAD"} 1
 pqprobe_findings{target="gone.example:443",status="WARN"} 3

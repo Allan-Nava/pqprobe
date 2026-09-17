@@ -85,7 +85,10 @@ in the other direction:
 A certificate carries both, so each one in a chain gains roughly 4 KB. A typical
 chain today is two or three certificates and two to four kilobytes — pqprobe
 reports it on every run as `chain-size` — and the same chain lands somewhere past
-10 KB after the migration. That is larger than the largest handshake message
+10 KB after the migration. You do not have to take the rule of thumb on trust:
+`chain-projection` does the arithmetic for the chain in front of you, per
+certificate, by replacing each key and signature with the FIPS 204 sizes and
+changing nothing else. That is larger than the largest handshake message
 many stacks accept without special handling, and it travels in the *server's*
 direction, so the middleboxes that will object are a different set from the ones
 that object today.

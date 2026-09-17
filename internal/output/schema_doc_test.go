@@ -72,6 +72,8 @@ var fieldMeaning = map[string]string{
 	"Cert.not_before": "when the certificate becomes valid, RFC 3339",
 	"Cert.dns_names":  "the names the certificate is valid for",
 	"Cert.is_ca":      "whether this certificate is a CA",
+	"Cert.key_bytes":  "what this certificate's subjectPublicKeyInfo weighs in the DER the peer sent — one of the two inputs to the post-quantum projection",
+	"Cert.sig_bytes":  "what this certificate's signature weighs in that same DER — the other input: an ML-DSA certificate is this certificate with those two fields replaced",
 
 	// finding.Finding.
 	"Finding.check":   "which statement this is — see [Findings](findings.md) for the list",

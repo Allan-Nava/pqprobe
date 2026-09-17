@@ -24,7 +24,9 @@
               "dns_names": [
                 "origin.example"
               ],
-              "is_ca": false
+              "is_ca": false,
+              "key_bytes": 91,
+              "sig_bytes": 71
             }
           ],
           "chain_verified": true,
@@ -53,7 +55,9 @@
               "dns_names": [
                 "origin.example"
               ],
-              "is_ca": false
+              "is_ca": false,
+              "key_bytes": 91,
+              "sig_bytes": 71
             }
           ],
           "chain_verified": true,
@@ -82,7 +86,9 @@
               "dns_names": [
                 "origin.example"
               ],
-              "is_ca": false
+              "is_ca": false,
+              "key_bytes": 91,
+              "sig_bytes": 71
             }
           ],
           "chain_verified": true,
@@ -110,6 +116,15 @@
           "message": "leaf expires 2026-09-18 (12 days)",
           "value": 12,
           "unit": "days"
+        },
+        {
+          "check": "chain-projection",
+          "target": "origin.example:443",
+          "status": "OK",
+          "message": "signed with ML-DSA-44 this chain would be 4770 bytes, with ML-DSA-65 6299 (1200 today, ×5.2)",
+          "value": 6299,
+          "unit": "bytes",
+          "hint": "per certificate under ML-DSA-65: origin.example 1200 → 6299 B. The projection replaces each certificate's public key and signature with the FIPS 204 sizes and changes nothing else, so it is what this chain weighs if all of it moves; value is the ML-DSA-65 total"
         },
         {
           "check": "chain-size",
@@ -175,7 +190,9 @@
               "dns_names": [
                 "origin.example"
               ],
-              "is_ca": false
+              "is_ca": false,
+              "key_bytes": 91,
+              "sig_bytes": 71
             }
           ],
           "chain_verified": true,
@@ -246,6 +263,15 @@
           "status": "WARN",
           "message": "no handshake (timeout): context deadline exceeded — twice",
           "hint": "an abrupt end means the peer never sent a TLS alert: it choked on the ClientHello rather than declining it"
+        },
+        {
+          "check": "chain-projection",
+          "target": "wall.example:443",
+          "status": "OK",
+          "message": "signed with ML-DSA-44 this chain would be 4770 bytes, with ML-DSA-65 6299 (1200 today, ×5.2)",
+          "value": 6299,
+          "unit": "bytes",
+          "hint": "per certificate under ML-DSA-65: origin.example 1200 → 6299 B. The projection replaces each certificate's public key and signature with the FIPS 204 sizes and changes nothing else, so it is what this chain weighs if all of it moves; value is the ML-DSA-65 total"
         },
         {
           "check": "chain-size",

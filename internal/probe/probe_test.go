@@ -1707,3 +1707,40 @@ func TestXMPPConsumesTheWholeProceedElement(t *testing.T) {
 		t.Fatal("the tail of an XML element is not the peer cutting us off")
 	}
 }
+
+// PQ-72. The projection of what a chain costs once it is signed post-quantum
+// is arithmetic over two numbers per certificate: what the current signature
+// weighs and what the current public key weighs. Both are in the DER the peer
+// sent and neither was recorded, so the projection had to be done by hand from
+// a parameter table — which is how a number ends up in a ticket with nobody
+// able to say where it came from.
+//
+// They are recorded from the certificate as it arrived, never re-encoded: the
+// bytes that have to travel are the ones on the wire.
+func TestTheCertificateRecordsWhatItsKeyAndSignatureWeigh(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := serveTLS(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13})
+
+	res := dial(t, tg, "classic")
+	if !res.OK {
+		t.Fatalf("handshake failed: %s (%s)", res.Err, res.Kind)
+	}
+	if len(res.Chain) == 0 {
+		t.Fatal("no certificate was recorded")
+	}
+
+	leaf := res.Chain[0]
+	if leaf.KeyBytes <= 0 {
+		t.Errorf("KeyBytes = %d, want the subjectPublicKeyInfo's size", leaf.KeyBytes)
+	}
+	if leaf.SigBytes <= 0 {
+		t.Errorf("SigBytes = %d, want the signature's size", leaf.SigBytes)
+	}
+	// Both are parts of the certificate, so neither can be larger than it, and
+	// together they are a fraction of it rather than most of it — an RSA-2048
+	// key is 270 bytes of a certificate around a kilobyte.
+	if leaf.KeyBytes+leaf.SigBytes >= leaf.Bytes {
+		t.Errorf("KeyBytes+SigBytes = %d, which is not a part of a %d-byte certificate",
+			leaf.KeyBytes+leaf.SigBytes, leaf.Bytes)
+	}
+}

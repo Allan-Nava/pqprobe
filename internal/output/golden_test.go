@@ -42,6 +42,12 @@ func goldenRun(t *testing.T) []verdict.Report {
 		NotAfter:  at.Add(12 * 24 * time.Hour), // inside the WARN window
 		DNSNames:  []string{"origin.example"},
 		Bytes:     1200,
+		// The two inputs to the post-quantum chain projection (PQ-72): an
+		// ECDSA P-256 key and signature, as they measure in DER. Without them
+		// the fixture would exercise the silent path and the projection would
+		// be a document nobody's golden covers.
+		KeyBytes: 91,
+		SigBytes: 71,
 	}}
 
 	ok := func(profile, group string, pq bool, hello int) probe.Result {

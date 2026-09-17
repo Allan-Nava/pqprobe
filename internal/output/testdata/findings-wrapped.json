@@ -24,6 +24,16 @@
       "unit": "days"
     },
     {
+      "id": "17e712b88ab4",
+      "severity": "ok",
+      "title": "signed with ML-DSA-44 this chain would be 4770 bytes, with ML-DSA-65 6299 (1200 today, ×5.2)",
+      "detail": "per certificate under ML-DSA-65: origin.example 1200 → 6299 B. The projection replaces each certificate's public key and signature with the FIPS 204 sizes and changes nothing else, so it is what this chain weighs if all of it moves; value is the ML-DSA-65 total",
+      "target": "origin.example:443",
+      "check": "chain-projection",
+      "value": 6299,
+      "unit": "bytes"
+    },
+    {
       "id": "736b9758f0c6",
       "severity": "ok",
       "title": "the peer sent 1 certificate(s), 1200 bytes of chain",
@@ -110,6 +120,16 @@
       "detail": "an abrupt end means the peer never sent a TLS alert: it choked on the ClientHello rather than declining it",
       "target": "wall.example:443/pq-preferred",
       "check": "handshake"
+    },
+    {
+      "id": "4d49704b04c0",
+      "severity": "ok",
+      "title": "signed with ML-DSA-44 this chain would be 4770 bytes, with ML-DSA-65 6299 (1200 today, ×5.2)",
+      "detail": "per certificate under ML-DSA-65: origin.example 1200 → 6299 B. The projection replaces each certificate's public key and signature with the FIPS 204 sizes and changes nothing else, so it is what this chain weighs if all of it moves; value is the ML-DSA-65 total",
+      "target": "wall.example:443",
+      "check": "chain-projection",
+      "value": 6299,
+      "unit": "bytes"
     },
     {
       "id": "8f4438776eb1",

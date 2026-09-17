@@ -1151,6 +1151,14 @@ func chainFindings(target string, results []probe.Result, opt Options) []finding
 		})
 	}
 
+	// What that chain becomes once it is signed post-quantum (PQ-72). A
+	// number rather than the prose in the hint above, because a consumer
+	// cannot threshold on prose — and silent when the sizes it is computed
+	// from were never recorded.
+	if f, ok := chainProjection(target, src); ok {
+		out = append(out, f)
+	}
+
 	if !src.ChainVerified {
 		out = append(out, finding.Finding{
 			Check: "chain", Target: target, Status: finding.WARN,

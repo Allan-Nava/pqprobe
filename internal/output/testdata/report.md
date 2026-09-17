@@ -27,6 +27,8 @@
   - an abrupt end means the peer never sent a TLS alert: it choked on the ClientHello rather than declining it
 - **WARN** `handshake/pq-preferred` — no handshake (timeout): context deadline exceeded — twice
   - an abrupt end means the peer never sent a TLS alert: it choked on the ClientHello rather than declining it
+- **OK** `chain-projection` — signed with ML-DSA-44 this chain would be 4770 bytes, with ML-DSA-65 6299 (1200 today, ×5.2)
+  - per certificate under ML-DSA-65: origin.example 1200 → 6299 B. The projection replaces each certificate's public key and signature with the FIPS 204 sizes and changes nothing else, so it is what this chain weighs if all of it moves; value is the ML-DSA-65 total
 - **OK** `chain-size` — the peer sent 1 certificate(s), 1200 bytes of chain
   - post-quantum authentication is the next migration and it is a size problem again: an ML-DSA signature is around 3.3 KB where an ECDSA one is 64 bytes, so this chain grows by roughly 4 KB per certificate when it moves. This is the headroom you have today
 - **OK** `handshake/classic` — TLS 1.3, X25519, TLS_AES_128_GCM_SHA256, hello 285 B
@@ -38,6 +40,8 @@
 - **WARN** `chain` — the peer sent the leaf certificate alone, with no intermediate
   - browsers that cached the intermediate will not notice and a fresh client will fail — the most confusing class of TLS bug there is
 - **WARN** `expiry` — leaf expires 2026-09-18 (12 days)
+- **OK** `chain-projection` — signed with ML-DSA-44 this chain would be 4770 bytes, with ML-DSA-65 6299 (1200 today, ×5.2)
+  - per certificate under ML-DSA-65: origin.example 1200 → 6299 B. The projection replaces each certificate's public key and signature with the FIPS 204 sizes and changes nothing else, so it is what this chain weighs if all of it moves; value is the ML-DSA-65 total
 - **OK** `chain-size` — the peer sent 1 certificate(s), 1200 bytes of chain
   - post-quantum authentication is the next migration and it is a size problem again: an ML-DSA signature is around 3.3 KB where an ECDSA one is 64 bytes, so this chain grows by roughly 4 KB per certificate when it moves. This is the headroom you have today
 - **OK** `verdict` — pq-ready — post-quantum key exchange works, including for a client that requires it

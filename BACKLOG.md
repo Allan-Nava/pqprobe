@@ -1190,7 +1190,7 @@ a probe, and a finding that graded an endpoint on a migration nobody has started
 would be a finding people learn to ignore. What earns its place is the number an
 operator needs before the decision, said once, per endpoint, with its unit.
 
-- [ ] **PQ-72 — What this chain becomes, as a number**: today the chain-size
+- [x] **PQ-72 — What this chain becomes, as a number**: today the chain-size
   finding carries the bytes on the wire and a *hint* saying post-quantum
   authentication will cost more. A hint is prose, and a machine consumer cannot
   threshold on it. Project the chain under ML-DSA-44 and ML-DSA-65 from what the
@@ -1199,7 +1199,18 @@ operator needs before the decision, said once, per endpoint, with its unit.
   `Value`/`Unit` on its own finding. The arithmetic is stated in the finding and
   in the docs, never hidden in a constant: a projection whose assumptions are
   not visible is a number nobody trusts twice.
-  <!-- pq: prio=high size=M labels=verdict,output -->
+  Shipped as the `chain-projection` finding: ML-DSA-44 and ML-DSA-65 in the
+  message, the ML-DSA-65 total as `Value`/`Unit`, and the per-certificate
+  breakdown in the hint — one fat intermediate is a different problem from
+  three ordinary certificates. `probe.Cert` now records `KeyBytes` and
+  `SigBytes` from the DER the peer sent, which are the two numbers the
+  arithmetic consumes; a report missing them produces **no** projection rather
+  than one computed from zeros, which would claim the chain grows by the full
+  ML-DSA weight with nothing coming out — wrong by kilobytes, in the alarming
+  direction, on a document that reads like a measurement. No grading: an
+  endpoint that works today does not acquire a warning over a migration nobody
+  has started. That is PQ-74's, with a flag to move the line.
+  <!-- pq: prio=high size=M labels=verdict,output ver=unreleased -->
 
 - [ ] **PQ-73 — What signs this chain today**: the certificates are already
   parsed and `probe.Cert` records the subject, the issuer, the dates and the

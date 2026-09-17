@@ -131,6 +131,14 @@ type Cert struct {
 	NotBefore time.Time `json:"not_before"`
 	DNSNames  []string  `json:"dns_names,omitempty"`
 	IsCA      bool      `json:"is_ca"`
+	// KeyBytes and SigBytes are what this certificate's subjectPublicKeyInfo
+	// and signature weigh in the DER the peer sent (PQ-72). They are the two
+	// numbers a post-quantum projection needs: an ML-DSA certificate is the
+	// same certificate with those two fields replaced, and without them the
+	// projection has to assume what comes *out*, which is how a number ends up
+	// in a ticket with nobody able to say where it came from.
+	KeyBytes int `json:"key_bytes,omitempty"`
+	SigBytes int `json:"sig_bytes,omitempty"`
 }
 
 // Result is one (target, profile) handshake attempt.
@@ -1217,6 +1225,10 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 			DNSNames:  c.DNSNames,
 			IsCA:      c.IsCA,
 			Bytes:     len(c.Raw),
+			// RawSubjectPublicKeyInfo and Signature as they arrived, not a
+			// re-encoding: the projection is about bytes on the wire.
+			KeyBytes: len(c.RawSubjectPublicKeyInfo),
+			SigBytes: len(c.Signature),
 		})
 	}
 	res.ChainVerified, res.ChainError = verifyChain(st.PeerCertificates, t.ServerName(), d.now())

@@ -6,6 +6,39 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.48.0] - unreleased
+
+### Added
+
+- **`chain-projection`: what this chain weighs once it is signed post-quantum
+  (PQ-72).** Key exchange is the migration happening now; authentication is the
+  next one, and it fails in the same shape for the same reason — an ML-DSA-65
+  signature is 3309 bytes and its public key 1952, where ECDSA P-256 spends 64
+  and 65. Until now the tool said what the chain costs *today* and left the rest
+  to a hint in prose, which no consumer can threshold on and no operator can
+  paste into a capacity decision.
+
+  The projection is arithmetic over numbers already in hand: a post-quantum
+  certificate is the same certificate with its subjectPublicKeyInfo and its
+  signature replaced, and both arrived in the handshake. So `probe.Cert` now
+  records `key_bytes` and `sig_bytes` from the DER the peer sent, and the
+  finding carries the ML-DSA-65 total as `value`/`unit`, both parameter sets in
+  the message, and the per-certificate breakdown in the hint — one fat
+  intermediate is a different problem from three ordinary certificates.
+
+  What it deliberately does not do is grade. A projection is not a probe, and an
+  endpoint that works today must not acquire a warning over a migration nobody
+  has started; the threshold and the flag that moves it are PQ-74. What it also
+  does not do is guess: a result missing those sizes produces no projection
+  rather than one computed from zeros, which would claim the chain grows by the
+  full ML-DSA weight with nothing coming out — wrong by kilobytes, in the
+  alarming direction, on a document that reads like a measurement.
+
+  The assumptions travel with the number, in the finding and in
+  [docs/background.md](docs/background.md): the FIPS 204 sizes, nothing else
+  changed, every certificate moving. A projection whose assumptions are not
+  visible is a number nobody trusts twice.
+
 ## [0.47.0] - unreleased
 
 ### Added

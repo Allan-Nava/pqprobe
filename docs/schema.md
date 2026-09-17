@@ -88,6 +88,8 @@ $ pqprobe probe origin.example.com --json
 | `not_before` | string (RFC 3339) | always | when the certificate becomes valid, RFC 3339 |
 | `dns_names` | array of string | when set | the names the certificate is valid for |
 | `is_ca` | boolean | always | whether this certificate is a CA |
+| `key_bytes` | number | when set | what this certificate's subjectPublicKeyInfo weighs in the DER the peer sent — one of the two inputs to the post-quantum projection |
+| `sig_bytes` | number | when set | what this certificate's signature weighs in that same DER — the other input: an ML-DSA certificate is this certificate with those two fields replaced |
 
 ### `Finding`
 
