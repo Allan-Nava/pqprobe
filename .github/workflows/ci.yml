@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "1.27"
 
       - name: gofmt
         run: |
@@ -86,7 +86,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "1.27"
       - name: The nested modules cannot contaminate the root
         run: sh scripts/contrib_test.sh
       - name: Build and test contrib/${{ matrix.module }}
@@ -106,7 +106,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "1.27"
       - name: Fuzz the parsers that read what a peer sent
         env:
           FUZZTIME: 40s
@@ -131,7 +131,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "1.27"
       - name: pqprobe against stacks that are not Go
         run: sh scripts/interop.sh
 
@@ -223,7 +223,7 @@ jobs:
         run: sh scripts/action_test.sh
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "1.27"
       - id: run
         uses: ./
         with:
@@ -282,7 +282,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "1.27"
       - env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
