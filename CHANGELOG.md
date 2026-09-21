@@ -6,6 +6,27 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.49.2] - 2026-09-21
+
+### Fixed
+
+- **The fuzz gate could not tell a finding from a flake (PQ-77).**
+  `FuzzLDAPResponse` came back `context deadline exceeded` on a loaded CI runner
+  after 1.1M executions, with **no** failing input saved — and passed locally at
+  5.1M executions on the same commit. That is the fuzzing coordinator missing
+  its own shutdown deadline, not a parser that hangs, and it failed the whole
+  gate as though a bug had been found.
+
+  The distinction Go already makes is the one to read: a real finding is written
+  to `<package>/testdata/fuzz/<target>/`, becomes a permanent seed, and
+  reproduces under a plain `go test` without the fuzzer. So the gate now retries
+  **once**, and only when nothing was saved. Retrying a gate is a way to hide a
+  real bug, which is why the rule is that narrow and why
+  `scripts/fuzz_test.sh` exists to keep it there: it drives `fuzz.sh` with a
+  fake `go` and asserts that a deadline is retried, that the same deadline twice
+  still fails, and that a saved input fails immediately rather than costing
+  another minute first.
+
 ## [0.49.1] - 2026-09-21
 
 ### Fixed
@@ -1672,6 +1693,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.49.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.49.2
 [0.49.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.49.1
 [0.29.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.2
 [0.29.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.1

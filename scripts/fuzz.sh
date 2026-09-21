@@ -28,7 +28,10 @@ fuzztime=${FUZZTIME:-10s}
 # Discovered rather than listed, and across every package: a target added
 # without a line here would never be fuzzed, and nothing would say so. The
 # output is `<package> <target>` pairs, because `go test` fuzzes one at a time.
-targets=$(grep -roE --include='*_test.go' --exclude-dir=contrib \
+# FUZZ_TARGETS overrides the discovery, for scripts/fuzz_test.sh: the real
+# targets take minutes and cannot be made to fail on demand.
+targets=${FUZZ_TARGETS:-}
+[ -n "$targets" ] || targets=$(grep -roE --include='*_test.go' --exclude-dir=contrib \
 	'^func Fuzz[A-Za-z0-9_]+' "$root"/internal "$root"/cmd "$root"/pq 2>/dev/null |
 	sed -E "s|^$root/||" | sed -E 's|/[^/]*_test\.go:func | |' | sort -u)
 
@@ -43,24 +46,53 @@ if [ "${1:-}" = "--list" ]; then
 fi
 
 fail=0
-echo "$targets" | while read -r pkg t; do
-	[ -n "$t" ] || continue
+
+# one <pkg> <target> — runs the target once, leaving its output in $log.
+one() {
+	go test "./$1/" -run "^$2\$" -fuzz "^$2\$" -fuzztime "$fuzztime" >"$log" 2>&1
+}
+
+# A failure is a finding when Go saved the input that caused it: that file is
+# the bug, it becomes a permanent seed, and the next plain `go test` reproduces
+# it without the fuzzer. A failure with **no** saved input is the fuzzing
+# coordinator missing its own deadline — seen on a loaded CI runner at 1.1M
+# executions on a commit that passed locally at 5.1M. Retrying a gate is a way
+# to hide a real bug, so this is deliberately narrow: one retry, only when
+# nothing was saved, and the second occurrence fails like any other (PQ-77).
+saved_an_input() {
+	grep -q 'Failing input written to' "$log"
+}
+
+echo "$targets" > "$root/.fuzz-targets.$$"
+while read -r pkg t; do
+	[ -n "${t:-}" ] || continue
 	printf '  %-22s %-28s %s ' "$pkg" "$t" "$fuzztime"
-	if go test "./$pkg/" -run "^$t\$" -fuzz "^$t\$" -fuzztime "$fuzztime" >"$root/.fuzz.$$" 2>&1; then
+	log="$root/.fuzz.$$"
+	if one "$pkg" "$t"; then
 		echo "ok"
-	else
+	elif saved_an_input; then
 		echo "FAIL"
-		tail -25 "$root/.fuzz.$$"
-		rm -f "$root/.fuzz.$$"
-		exit 1
+		tail -25 "$log"
+		fail=1
+		break
+	else
+		printf 'retrying (no failing input was saved — that is a deadline, not a finding) '
+		if one "$pkg" "$t"; then
+			echo "ok"
+		else
+			echo "FAIL"
+			tail -25 "$log"
+			fail=1
+			break
+		fi
 	fi
-	rm -f "$root/.fuzz.$$"
-done || fail=1
+done < "$root/.fuzz-targets.$$"
+rm -f "$root/.fuzz-targets.$$" "$root/.fuzz.$$"
 
 # A crash is written to <package>/testdata/fuzz/<target>/ and becomes a
 # permanent seed, so the next plain `go test` reproduces it without the fuzzer.
 [ "$fail" -eq 0 ] || {
 	echo
-	echo "a failing input was saved under <package>/testdata/fuzz — commit it: it is now a test"
+	echo "if a failing input was saved under <package>/testdata/fuzz, commit it: it is now a test"
 	exit 1
 }

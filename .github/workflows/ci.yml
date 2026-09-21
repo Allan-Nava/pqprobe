@@ -186,6 +186,10 @@ jobs:
       # it exists to refuse.
       - name: The pre-push hook refuses a direct push to main
         run: sh scripts/hooks_test.sh
+      # The fuzz gate has to tell a finding from a flake: it retries only when
+      # Go saved no failing input, and never twice.
+      - name: The fuzz gate's own retry rule
+        run: sh scripts/fuzz_test.sh
       # A stale formula is worse than a missing one: `brew install` reads
       # whatever it says, so one left at the previous version installs the old
       # binary and looks like it worked.

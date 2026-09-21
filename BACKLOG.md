@@ -1298,6 +1298,11 @@ supposed to prevent.
   undated and 28 items lost their shipping version. `release_state` now requires
   a real date, the dating step takes both forms, and `version.sh check` refuses
   an undated section.
+  And a third, in the gate that was meant to be the strictest: the fuzz run
+  failed on a deadline with no failing input saved — a flake on a loaded runner,
+  indistinguishable in the output from a real finding. `fuzz.sh` now retries
+  once, only when Go saved nothing, with `scripts/fuzz_test.sh` keeping the rule
+  that narrow.
   <!-- pq: prio=high size=M labels=project,release,tests ver=0.49.0 -->
 
 - [ ] **PQ-78 — The compatibility promise, written where it can be checked**:
