@@ -6,7 +6,103 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
-## [0.48.0] - unreleased
+## [0.49.2] - 2026-09-21
+
+### Fixed
+
+- **The fuzz gate could not tell a finding from a flake (PQ-77).**
+  `FuzzLDAPResponse` came back `context deadline exceeded` on a loaded CI runner
+  after 1.1M executions, with **no** failing input saved — and passed locally at
+  5.1M executions on the same commit. That is the fuzzing coordinator missing
+  its own shutdown deadline, not a parser that hangs, and it failed the whole
+  gate as though a bug had been found.
+
+  The distinction Go already makes is the one to read: a real finding is written
+  to `<package>/testdata/fuzz/<target>/`, becomes a permanent seed, and
+  reproduces under a plain `go test` without the fuzzer. So the gate now retries
+  **once**, and only when nothing was saved. Retrying a gate is a way to hide a
+  real bug, which is why the rule is that narrow and why
+  `scripts/fuzz_test.sh` exists to keep it there: it drives `fuzz.sh` with a
+  fake `go` and asserts that a deadline is retried, that the same deadline twice
+  still fails, and that a saved input fails immediately rather than costing
+  another minute first.
+
+## [0.49.1] - 2026-09-21
+
+### Fixed
+
+- **The `action` job could never pass on a pull request.** It exercises the
+  composite action with `uses: ./` and `version: ${{ github.sha }}` — and on a
+  `pull_request` event that is the synthetic merge commit, which exists only as
+  refs/pull/N/merge and which the Go module proxy cannot fetch: `invalid
+  version: unknown revision`. Green for two years of pushes straight to main,
+  red on the very first pull request under the new practice. Now the head sha
+  with a push fallback, and `scripts/action.sh` refuses the bare `github.sha`
+  form so it cannot come back.
+
+- **Three releases shipped saying `unreleased`, and a dozen backlog items kept
+  `ver=unreleased` after they went out.** `release.sh` dates the section written
+  as `## [Unreleased]`; a section written as `## [X.Y.Z] - unreleased` names the
+  version, so `release_state` read it as *already prepared* and skipped the
+  preparation entirely — both the date **and** the rewrite of `ver=unreleased`
+  in the backlog, which is the same step. Nothing announced it, because nothing
+  looked past the version number: 0.47.0, 0.48.0 and 0.49.0 all went out
+  undated, and the backlog lost the shipping version of 28 items.
+
+  `release_state` now requires an actual date before calling a section prepared,
+  the dating step accepts both forms, and `version.sh check` — the gate that
+  runs in CI on every tag — fails on a section that names a version without a
+  date. The three sections are dated from their tags, and the 28 items carry the
+  release that first described them in the CHANGELOG.
+
+  Both of these are the same shape as the failure that started the practice
+  change: not a wrong answer, but a path nobody had exercised.
+
+## [0.49.0] - 2026-09-21
+
+### Changed
+
+- **`main` is no longer pushed directly (PQ-77).** Everything lands through a
+  pull request whose CI went green. Not because a direct push is dangerous in
+  itself, but because the gates that matter run *there*: the race detector, the
+  fuzz pass, the interop lab, the golden documents, the two-way flags check. A
+  push straight to main is a release whose gates ran only on the machine that
+  was in a hurry.
+
+  A GitHub ruleset on `main` is the enforcement — no direct push, no force, no
+  deletion, and the core checks required before a merge. It is the half that
+  works regardless of which machine the push comes from.
+
+### Added
+
+- **`scripts/hooks/pre-push`, and `scripts/hooks.sh` to install it.** The local
+  half: it refuses a push to `main` offline, before the network does, and says
+  what to do instead rather than only saying no. `PQPROBE_ALLOW_MAIN_PUSH=1` is
+  the way past it, deliberately explicit and loud — a hook nobody can get past
+  on the one day it matters is a hook that gets deleted rather than overridden,
+  and a deleted hook protects nothing on every other day.
+
+  The hook is **copied** into `.git/hooks` rather than pointed at with
+  `core.hooksPath`: setting that would take `.git/hooks` out of service, and
+  this repository already has hooks living there that nothing in it installed.
+  Protecting a branch by breaking somebody else's tooling is not a trade worth
+  making.
+
+- **`scripts/hooks_test.sh`**, which drives the hook the way git drives it — two
+  arguments, the refs on stdin — against a throwaway repository: a test that
+  proved the hook works by *not pushing* would pass with the hook deleted. It
+  asserts the refusal, the feature branch that must keep working, a deletion of
+  main, the override, a mixed push, and that the installer leaves existing hooks
+  alone. Wired into CI and `release.sh`, which `gates_test.sh` now enforces.
+
+### Added
+
+- **Milestone M16 — v1.0.0.** A 1.0 is a promise that what other people built
+  against does not move without a major. Most of it is already kept and tested;
+  what is left is PQ-71, the public `pq/` API that cannot ask what the CLI can
+  ask, and PQ-78, the compatibility promise written where it can be checked.
+
+## [0.48.0] - 2026-09-17
 
 ### Added
 
@@ -39,7 +135,7 @@ fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
   changed, every certificate moving. A projection whose assumptions are not
   visible is a number nobody trusts twice.
 
-## [0.47.0] - unreleased
+## [0.47.0] - 2026-09-13
 
 ### Added
 
@@ -1597,6 +1693,8 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.49.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.49.2
+[0.49.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.49.1
 [0.29.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.2
 [0.29.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.1
 [0.29.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.0

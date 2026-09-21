@@ -60,6 +60,16 @@ check() {
 	*) echo "version.sh: \`$v\` is not X.Y.Z" >&2; exit 1 ;;
 	esac
 
+	# A section that names the version but is not dated never went through
+	# release.sh's preparation — and the date is written by the same step that
+	# rewrites `ver=unreleased` in the backlog, so an undated heading means both
+	# were skipped. Three releases shipped saying "unreleased" before anything
+	# noticed, because nothing looked past the version number (PQ-77).
+	if ! grep -qE "^## \\[$v\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}" "$changelog"; then
+		echo "version.sh: the [$v] section carries no date — run scripts/release.sh $v, which dates it and rewrites ver=unreleased in the backlog" >&2
+		exit 1
+	fi
+
 	# --points-at rather than `describe`: the question is whether *this* commit
 	# is a release, not whether one happened somewhere behind it.
 	tags=$(git tag --points-at HEAD 2>/dev/null | grep '^v' || :)

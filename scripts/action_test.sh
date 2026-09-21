@@ -86,5 +86,41 @@ expect 1 "a run step with no shell fails — composite steps require one" "$tmp/
 
 expect 2 "a missing file is a usage error" "$tmp/nope.yml"
 
+# The workflow that exercises the action, not the action itself. `uses: ./` with
+# `version: ${{ github.sha }}` installs the commit CI is running — and on a
+# `pull_request` event that is the *merge* commit, which exists only as
+# refs/pull/N/merge and which the Go module proxy cannot fetch: "invalid
+# version: unknown revision". It passed for two years because everything went
+# straight to main. The first pull request found it (PQ-77).
+wf() { # wf <file> <version expression>
+	cat > "$1" <<YML
+on:
+  push:
+  pull_request:
+jobs:
+  action:
+    steps:
+      - uses: ./
+        with:
+          targets: example.com
+          version: $2
+YML
+}
+
+expectwf() { # expectwf <exit> <name> <file>
+	got=0
+	WORKFLOW_FILE="$3" sh "$gate" check >/dev/null 2>&1 || got=$?
+	if [ "$got" = "$1" ]; then ok "$2"; else notok "$2 (exit $got, want $1)"; fi
+}
+
+wf "$tmp/wf-bare-sha.yml" '${{ github.sha }}'
+expectwf 1 "a workflow installing github.sha on a pull_request fails — that sha is the unfetchable merge commit" "$tmp/wf-bare-sha.yml"
+
+wf "$tmp/wf-head-sha.yml" '${{ github.event.pull_request.head.sha || github.sha }}'
+expectwf 0 "the head sha with a push fallback passes" "$tmp/wf-head-sha.yml"
+
+wf "$tmp/wf-tag.yml" 'v1.2.3'
+expectwf 0 "a released version passes" "$tmp/wf-tag.yml"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

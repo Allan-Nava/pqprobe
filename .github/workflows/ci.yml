@@ -180,6 +180,16 @@ jobs:
         run: ./scripts/release-notes.sh >/dev/null
       - name: The version gate itself
         run: sh scripts/version_test.sh
+      # main is protected by a GitHub ruleset; the pre-push hook is the local,
+      # offline half that says so before the network does. A clone does not
+      # carry it, so what CI can assert is that the hook still refuses the push
+      # it exists to refuse.
+      - name: The pre-push hook refuses a direct push to main
+        run: sh scripts/hooks_test.sh
+      # The fuzz gate has to tell a finding from a flake: it retries only when
+      # Go saved no failing input, and never twice.
+      - name: The fuzz gate's own retry rule
+        run: sh scripts/fuzz_test.sh
       # A stale formula is worse than a missing one: `brew install` reads
       # whatever it says, so one left at the previous version installs the old
       # binary and looks like it worked.
@@ -211,8 +221,13 @@ jobs:
   # PQ-27: the action is delivery, so it is tested the way it will be used —
   # and validated first, because actionlint reads workflows, not action
   # metadata, and the first version of this file failed to load entirely.
-  # `uses: ./` against this very commit. `version: ${{ github.sha }}` is
-  # fetchable by definition here, since CI only runs on commits GitHub has.
+  # `uses: ./` against this very commit — but *which* commit matters. On a
+  # pull_request, github.sha is the synthetic merge commit, which exists only as
+  # refs/pull/N/merge and which the Go module proxy cannot fetch ("invalid
+  # version: unknown revision"). The head sha is a real commit on a pushed
+  # branch, so it resolves; github.sha is the fallback for a push event, where
+  # there is no pull request. scripts/action.sh checks this, because the failure
+  # hid for as long as work went straight to main (PQ-77).
   action:
     runs-on: ubuntu-latest
     steps:
@@ -229,7 +244,7 @@ jobs:
         with:
           targets: example.com
           args: --timeout 15s
-          version: ${{ github.sha }}
+          version: ${{ github.event.pull_request.head.sha || github.sha }}
           exit-on: ""
       - name: The action produced findings
         env:

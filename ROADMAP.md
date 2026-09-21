@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**76 items · 71 shipped · 5 open · 15 milestones.**
+**78 items · 72 shipped · 6 open · 16 milestones.**
 
 ## At a glance
 
@@ -25,15 +25,17 @@
 | **M11** — Reproduce the failures, not only the successes | `v0.44.0` | shipped | `##########` 100% | 0 | 3 |
 | **M12** — What the audit found | `v0.44.1` | shipped | `##########` 100% | 0 | 1 |
 | **M13** — Invariants a machine can check | `v0.45.0` | shipped | `##########` 100% | 0 | 3 |
-| **M14** — The contract with machines | `v0.48.0` | **now** | `#######...` 67% | 1 | 2 |
+| **M14** — The contract with machines | `v0.48.0` | shipped | `##########` 100% | 0 | 2 |
 | **M15** — The next migration is the certificate | `v0.50.0` | next | `##........` 20% | 4 | 1 |
+| **M16** — v1.0.0 | `v1.0.0` | **now** | `###.......` 33% | 2 | 1 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
 - **PQ-73** — What signs this chain today · `high` · size `S` · probe,output (M15, target `v0.50.0`)
-- **PQ-71** — The public API can ask what the CLI can ask · `med` · size `M` · integration (M14, target `v0.48.0`)
+- **PQ-78** — The compatibility promise, written where it can be checked · `high` · size `M` · docs,project,release (M16, target `v1.0.0`)
+- **PQ-71** — The public API can ask what the CLI can ask · `med` · size `M` · integration (M16, target `v1.0.0`)
 - **PQ-74** — The headroom threshold, and what it is conditional on · `med` · size `M` · verdict,cli (M15, target `v0.50.0`)
 - **PQ-75** — Say the arithmetic once, where it can be checked · `med` · size `S` · docs,output (M15, target `v0.50.0`)
 - **PQ-76** — The profile we cannot ship yet, written down so nobody   re-proposes it · `low` · size `S` · profile,project (M15, target `v0.50.0`)
@@ -125,11 +127,11 @@ Target `v0.32.0` · shipped · 0 open · 5 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-46** — Choose the address family | high | S | probe,cli | done, unreleased |
-| **PQ-49** — The release renders its derived files in both states | high | S | release,tests | done, unreleased |
-| **PQ-45** — MySQL STARTTLS | med | M | probe | done, unreleased |
-| **PQ-47** — A prober with no route says it once | med | M | probe,verdict,output | done, unreleased |
-| **PQ-48** — Targets on stdin | low | S | inventory,ux | done, unreleased |
+| **PQ-46** — Choose the address family | high | S | probe,cli | shipped `0.30.0` |
+| **PQ-49** — The release renders its derived files in both states | high | S | release,tests | shipped `0.31.1` |
+| **PQ-45** — MySQL STARTTLS | med | M | probe | shipped `0.31.0` |
+| **PQ-47** — A prober with no route says it once | med | M | probe,verdict,output | shipped `0.32.0` |
+| **PQ-48** — Targets on stdin | low | S | inventory,ux | shipped `0.32.0` |
 
 ### M7 — Encrypted Client Hello
 
@@ -137,9 +139,9 @@ Target `v0.35.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-50** — ECH as a capability class | high | M | profile,probe | done, unreleased |
-| **PQ-51** — The config comes from DNS, not from a paste | med | L | probe,inventory | done, unreleased |
-| **PQ-52** — ECH does not decide the class | med | S | verdict,output,docs | done, unreleased |
+| **PQ-50** — ECH as a capability class | high | M | profile,probe | shipped `0.33.0` |
+| **PQ-51** — The config comes from DNS, not from a paste | med | L | probe,inventory | shipped `0.34.0` |
+| **PQ-52** — ECH does not decide the class | med | S | verdict,output,docs | shipped `0.35.0` |
 
 ### M8 — Reach the ports that are left
 
@@ -147,9 +149,9 @@ Target `v0.36.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-53** — The remaining line protocols | med | S | probe | done, unreleased |
-| **PQ-54** — LDAP StartTLS | med | M | probe | done, unreleased |
-| **PQ-55** — XMPP | low | M | probe | done, unreleased |
+| **PQ-53** — The remaining line protocols | med | S | probe | shipped `0.36.0` |
+| **PQ-54** — LDAP StartTLS | med | M | probe | shipped `0.36.0` |
+| **PQ-55** — XMPP | low | M | probe | shipped `0.36.0` |
 
 ### M9 — The edges of everyday use
 
@@ -157,9 +159,9 @@ Target `v0.38.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-56** — `--exit-on` takes a class as well as a status | high | S | cli,output | done, unreleased |
-| **PQ-57** — Completions and a man page, generated | med | M | cli,delivery,docs | done, unreleased |
-| **PQ-58** — `--dns` governs every lookup pqprobe makes | med | S | probe,inventory,cli | done, unreleased |
+| **PQ-56** — `--exit-on` takes a class as well as a status | high | S | cli,output | shipped `0.37.0` |
+| **PQ-57** — Completions and a man page, generated | med | M | cli,delivery,docs | shipped `0.38.0` |
+| **PQ-58** — `--dns` governs every lookup pqprobe makes | med | S | probe,inventory,cli | shipped `0.37.0` |
 
 ### M10 — The hybrids we do not offer, proved against stacks that are not Go
 
@@ -167,9 +169,9 @@ Target `v0.41.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-59** — The other two hybrids exist and we can negotiate them | high | M | profile,probe | done, unreleased |
-| **PQ-60** — "post-quantum, in a group your clients do not offer" | high | M | verdict,output,docs | done, unreleased |
-| **PQ-61** — An interop lab, in CI, against stacks that are not Go | high | XL | tests,probe | done, unreleased |
+| **PQ-59** — The other two hybrids exist and we can negotiate them | high | M | profile,probe | shipped `0.39.0` |
+| **PQ-60** — "post-quantum, in a group your clients do not offer" | high | M | verdict,output,docs | shipped `0.39.0` |
+| **PQ-61** — An interop lab, in CI, against stacks that are not Go | high | XL | tests,probe | shipped `0.41.0` |
 
 ### M11 — Reproduce the failures, not only the successes
 
@@ -177,9 +179,9 @@ Target `v0.44.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-62** — The wall, against a real server and a real packet filter | high | M | tests,probe | done, unreleased |
-| **PQ-63** — The plaintext negotiations, against real daemons | high | L | tests,probe | done, unreleased |
-| **PQ-64** — The other terminators, and the certificate they ask for | med | M | tests,probe | done, unreleased |
+| **PQ-62** — The wall, against a real server and a real packet filter | high | M | tests,probe | shipped `0.42.0` |
+| **PQ-63** — The plaintext negotiations, against real daemons | high | L | tests,probe | shipped `0.43.0` |
+| **PQ-64** — The other terminators, and the certificate they ask for | med | M | tests,probe | shipped `0.44.0` |
 
 ### M12 — What the audit found
 
@@ -187,7 +189,7 @@ Target `v0.44.1` · shipped · 0 open · 1 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-65** — Seven bugs, and one of them graded a healthy endpoint | high | M | probe,verdict,cli,integration | done, unreleased |
+| **PQ-65** — Seven bugs, and one of them graded a healthy endpoint | high | M | probe,verdict,cli,integration | shipped `0.44.1` |
 
 ### M13 — Invariants a machine can check
 
@@ -195,19 +197,18 @@ Target `v0.45.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-66** — Fuzz the parsers that read what a peer sent | high | M | tests,probe | done, unreleased |
-| **PQ-67** — The verdict's invariants, as properties | high | M | tests,verdict | done, unreleased |
-| **PQ-68** — Fuzz the target parser, and pin what it may never do | med | S | tests,inventory | done, unreleased |
+| **PQ-66** — Fuzz the parsers that read what a peer sent | high | M | tests,probe | shipped `0.45.0` |
+| **PQ-67** — The verdict's invariants, as properties | high | M | tests,verdict | shipped `0.45.0` |
+| **PQ-68** — Fuzz the target parser, and pin what it may never do | med | S | tests,inventory | shipped `0.45.0` |
 
 ### M14 — The contract with machines
 
-Target `v0.48.0` · **now** · 1 open · 2 shipped · `#######...` 67%
+Target `v0.48.0` · shipped · 0 open · 2 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-71** — The public API can ask what the CLI can ask | med | M | integration | open |
-| **PQ-69** — Golden files for every machine-facing output | high | M | output,tests | done, unreleased |
-| **PQ-70** — Say which contract a document speaks | high | M | output,docs,integration | done, unreleased |
+| **PQ-69** — Golden files for every machine-facing output | high | M | output,tests | shipped `0.46.0` |
+| **PQ-70** — Say which contract a document speaks | high | M | output,docs,integration | shipped `0.47.0` |
 
 ### M15 — The next migration is the certificate
 
@@ -219,22 +220,32 @@ Target `v0.50.0` · next · 4 open · 1 shipped · `##........` 20%
 | **PQ-74** — The headroom threshold, and what it is conditional on | med | M | verdict,cli | open |
 | **PQ-75** — Say the arithmetic once, where it can be checked | med | S | docs,output | open |
 | **PQ-76** — The profile we cannot ship yet, written down so nobody   re-proposes it | low | S | profile,project | open |
-| **PQ-72** — What this chain becomes, as a number | high | M | verdict,output | done, unreleased |
+| **PQ-72** — What this chain becomes, as a number | high | M | verdict,output | shipped `0.48.0` |
+
+### M16 — v1.0.0
+
+Target `v1.0.0` · **now** · 2 open · 1 shipped · `###.......` 33%
+
+| Item | Priority | Size | Labels | Status |
+|---|---|---|---|---|
+| **PQ-78** — The compatibility promise, written where it can be checked | high | M | docs,project,release | open |
+| **PQ-71** — The public API can ask what the CLI can ask | med | M | integration | open |
+| **PQ-77** — main is not pushed directly | high | M | project,release,tests | shipped `0.49.0` |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
+| `docs` | 13 | 2 |
 | `output` | 14 | 2 |
+| `project` | 9 | 2 |
 | `cli` | 13 | 1 |
-| `docs` | 12 | 1 |
 | `integration` | 6 | 1 |
 | `probe` | 29 | 1 |
 | `profile` | 8 | 1 |
-| `project` | 7 | 1 |
+| `release` | 7 | 1 |
 | `verdict` | 12 | 1 |
 | `delivery` | 7 | 0 |
 | `inventory` | 6 | 0 |
-| `release` | 5 | 0 |
-| `tests` | 13 | 0 |
+| `tests` | 14 | 0 |
 | `ux` | 2 | 0 |

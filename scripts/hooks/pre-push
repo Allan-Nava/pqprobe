@@ -1,0 +1,62 @@
+#!/bin/sh
+# pre-push — main is not pushed from a laptop (PQ-77).
+#
+# Everything that reaches main reaches it through a pull request whose CI went
+# green. Not because a direct push is dangerous in itself, but because the
+# repository's gates run *there*: the race detector, the fuzz pass, the interop
+# lab, the golden documents, the two-way flags check. A push straight to main is
+# a release whose gates ran only on the machine that was in a hurry.
+#
+# git calls this with the remote name and URL as arguments and the refs on
+# stdin, one per line:
+#
+#   <local ref> <local sha> <remote ref> <remote sha>
+#
+# A deletion arrives as the local ref "(delete)" with a zero sha, which is the
+# same push wearing a different hat and is refused the same way.
+#
+# PQPROBE_ALLOW_MAIN_PUSH=1 is the way past it. It is deliberate and loud: a
+# hook nobody can get past on the one day it matters is a hook that gets
+# deleted rather than overridden, and a deleted hook protects nothing on every
+# other day.
+
+set -eu
+
+protected=main
+blocked=0
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+	[ -n "${remote_ref:-}" ] || continue
+	case "$remote_ref" in
+	"refs/heads/$protected") blocked=1 ;;
+	esac
+done
+
+[ "$blocked" = 1 ] || exit 0
+
+if [ "${PQPROBE_ALLOW_MAIN_PUSH:-0}" = 1 ]; then
+	echo "pre-push: pushing $protected because PQPROBE_ALLOW_MAIN_PUSH=1 — the gates that run on a pull request are not running now" >&2
+	exit 0
+fi
+
+cat >&2 <<MSG
+pre-push: refusing to push $protected directly.
+
+  Everything lands on $protected through a pull request with green CI. The gates
+  that matter run there — race, fuzz, interop, the golden documents, the
+  two-way flags check — and a direct push is a release whose gates ran only on
+  this machine.
+
+  What to do instead:
+
+    git switch -c <branch>
+    git push -u origin <branch>
+    gh pr create --fill
+    gh pr checks --watch      # wait for green
+    gh pr merge --squash      # or --merge, once it is
+
+  If you really mean it (a revert that cannot wait, a repository being set up):
+
+    PQPROBE_ALLOW_MAIN_PUSH=1 git push origin $protected
+MSG
+exit 1

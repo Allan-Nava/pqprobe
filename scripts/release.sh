@@ -85,7 +85,17 @@ release_state() {
 		[ "$entries" -gt 0 ] && { echo prepare; return; }
 		echo nothing
 		;;
-	"$version") echo already-prepared ;;
+	"$version")
+		# Named but undated is not prepared: it is a section somebody wrote by
+		# hand in the shape this script produces. Reading it as prepared skips
+		# both rewrites — the date and `ver=unreleased` in the backlog — and
+		# says nothing, which is how three releases shipped saying "unreleased".
+		if grep -qE "^## \\[$version\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}" "$changelog"; then
+			echo already-prepared
+		else
+			echo prepare
+		fi
+		;;
 	*)          echo nothing ;;
 	esac
 }
@@ -158,6 +168,8 @@ sh scripts/assets_test.sh >/dev/null && echo "asset tests OK"
 sh scripts/version_test.sh >/dev/null && echo "version tests OK"
 sh scripts/contrib_test.sh >/dev/null && echo "contrib isolation OK"
 sh scripts/gates_test.sh >/dev/null && echo "gates all wired OK"
+sh scripts/hooks_test.sh >/dev/null && echo "pre-push hook OK"
+sh scripts/fuzz_test.sh >/dev/null && echo "fuzz gate OK"
 sh scripts/goreleaser_test.sh >/dev/null && echo "release config tests OK"
 ./scripts/goreleaser.sh check >/dev/null && echo "goreleaser config OK"
 sh scripts/seo_test.sh >/dev/null && echo "SEO tests OK"
@@ -186,11 +198,20 @@ trap 'rm -f "$tmp"' EXIT INT HUP TERM
 
 awk -v v="$version" -v d="$today" '
 	/^## \[Unreleased\]/ { printf "## [%s] - %s\n", v, d; next }
+	# The same section written with its version already in the heading but no
+	# date behind it. Both forms are prepared the same way, or the one this
+	# script did not expect ships undated.
+	$0 == "## [" v "] - unreleased" { printf "## [%s] - %s\n", v, d; next }
 	{ print }
 ' CHANGELOG.md > "$tmp"
 
 # The link reference goes with the other ones at the bottom of the file, newest
 # first, so the section headings stay linkable.
+# A link reference for this version may already be there — the heading and the
+# reference are written by different steps, and only one of them was skipped.
+if grep -q "^\[$version\]:" "$tmp"; then
+	mv "$tmp" CHANGELOG.md
+else
 awk -v v="$version" -v repo="https://github.com/Allan-Nava/pqprobe" '
 	!done && /^\[[0-9]+\.[0-9]+\.[0-9]+\]:/ {
 		printf "[%s]: %s/releases/tag/v%s\n", v, repo, v
@@ -199,7 +220,8 @@ awk -v v="$version" -v repo="https://github.com/Allan-Nava/pqprobe" '
 	{ print }
 	END { if (!done) printf "\n[%s]: %s/releases/tag/v%s\n", v, repo, v }
 ' "$tmp" > CHANGELOG.md
-echo "[Unreleased] is now [$version] - $today"
+fi
+echo "the newest section is now [$version] - $today"
 
 say "BACKLOG.md"
 sed "s/ver=unreleased/ver=$version/g" BACKLOG.md > "$tmp" && mv "$tmp" BACKLOG.md
@@ -248,9 +270,13 @@ echo "committed $(git rev-parse --short HEAD) and tagged $tag"
 
 cat <<MSG
 
-Not pushed — that is your call. The Release workflow runs when the tag arrives:
+Not pushed — that is your call. main is protected, so this lands through a
+pull request and the tag follows the merge:
 
-  git push origin main
-  git push origin $tag
+  git push -u origin $branch
+  gh pr create --fill
+  gh pr checks --watch
+  gh pr merge --squash
+  git push origin $tag       # the Release workflow runs when the tag arrives
 
 MSG
