@@ -65,6 +65,40 @@ if [ -s "$root/.action-expr.$$" ]; then
 fi
 rm -f "$root/.action-expr.$$"
 
+# The workflow that exercises the action (PQ-77). `uses: ./` with
+# `version: ${{ github.sha }}` installs the commit CI is running on — and on a
+# `pull_request` event that is the *merge* commit, which exists only as
+# refs/pull/N/merge. The Go module proxy cannot fetch it: "invalid version:
+# unknown revision", every time, on every pull request. It went unnoticed for as
+# long as work went straight to main, which is the shape of failure this
+# repository keeps finding: a gate that was only ever exercised on the happy
+# path.
+wf="${WORKFLOW_FILE:-}"
+if [ -z "$wf" ] && [ -z "${ACTION_FILE:-}" ]; then
+	wf="$root/.github/workflows/ci.yml"
+fi
+if [ -n "$wf" ] && [ -f "$wf" ] && grep -q 'pull_request' "$wf"; then
+	awk '
+		/^[[:space:]]*#/ { next }   # a comment explaining the rule is not a breach of it
+		/uses: \.\// { inaction = 1 }
+		inaction && /version:/ {
+			if (index($0, "github.sha") && !index($0, "pull_request.head.sha")) {
+				printf "%d: %s\n", NR, $0
+			}
+			inaction = 0
+		}
+		/^  [a-z]/ { inaction = 0 }
+	' "$wf" | while IFS= read -r line; do
+		printf '%s\n' "$line"
+	done > "$root/.action-wf.$$" 2>/dev/null || :
+	if [ -s "$root/.action-wf.$$" ]; then
+		while IFS= read -r line; do
+			err "the workflow installs github.sha, which on a pull_request is the merge commit and cannot be fetched by the module proxy — use \${{ github.event.pull_request.head.sha || github.sha }}: $line"
+		done < "$root/.action-wf.$$"
+	fi
+	rm -f "$root/.action-wf.$$"
+fi
+
 if [ "$bad" -gt 0 ]; then
 	printf '\n%d problem(s) in action.yml\n' "$bad" >&2
 	exit 1

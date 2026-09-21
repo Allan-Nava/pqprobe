@@ -144,6 +144,28 @@ got=$(state "$tmp/prepared.md" 0.2.0)
 [ "$got" = "already-prepared" ] && ok "a CHANGELOG already dated for this version is recognised, not refused" ||
 	notok "state gave \`$got\`, wanted already-prepared"
 
+# The section that *names* a version but is not dated is not prepared: it is a
+# section somebody wrote by hand in the shape release.sh produces. Reading it as
+# already-prepared is how three releases shipped saying "unreleased" and how a
+# dozen backlog items kept `ver=unreleased` after they went out — release.sh
+# skips both rewrites on that path, and nothing announced it (PQ-77).
+cat > "$tmp/undated.md" <<'MD'
+# Changelog
+
+## [0.2.0] - unreleased
+
+### Added
+
+- **A thing** (PQ-1) — in flight.
+
+## [0.1.0] - 2026-08-01
+
+First.
+MD
+got=$(state "$tmp/undated.md" 0.2.0)
+[ "$got" = "prepare" ] && ok "a section naming the version but undated still needs preparing" ||
+	notok "state gave \`$got\`, wanted prepare — an undated section is not a prepared one"
+
 got=$(state "$tmp/prepared.md" 0.3.0)
 [ "$got" = "nothing" ] && ok "a different version with nothing pending is nothing to release" ||
 	notok "state gave \`$got\`, wanted nothing"

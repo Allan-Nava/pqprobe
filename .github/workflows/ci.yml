@@ -217,8 +217,13 @@ jobs:
   # PQ-27: the action is delivery, so it is tested the way it will be used —
   # and validated first, because actionlint reads workflows, not action
   # metadata, and the first version of this file failed to load entirely.
-  # `uses: ./` against this very commit. `version: ${{ github.sha }}` is
-  # fetchable by definition here, since CI only runs on commits GitHub has.
+  # `uses: ./` against this very commit — but *which* commit matters. On a
+  # pull_request, github.sha is the synthetic merge commit, which exists only as
+  # refs/pull/N/merge and which the Go module proxy cannot fetch ("invalid
+  # version: unknown revision"). The head sha is a real commit on a pushed
+  # branch, so it resolves; github.sha is the fallback for a push event, where
+  # there is no pull request. scripts/action.sh checks this, because the failure
+  # hid for as long as work went straight to main (PQ-77).
   action:
     runs-on: ubuntu-latest
     steps:
@@ -235,7 +240,7 @@ jobs:
         with:
           targets: example.com
           args: --timeout 15s
-          version: ${{ github.sha }}
+          version: ${{ github.event.pull_request.head.sha || github.sha }}
           exit-on: ""
       - name: The action produced findings
         env:

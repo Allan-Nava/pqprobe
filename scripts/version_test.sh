@@ -69,6 +69,25 @@ expect 1 "a tag that disagrees with the CHANGELOG fails" "$tmp/mismatch"
 repo "$tmp/unreleased" Unreleased v0.2.0
 expect 1 "a CHANGELOG whose top section is Unreleased fails" "$tmp/unreleased"
 
+# A section that names a version but is not dated is a section that never went
+# through release.sh's preparation: the date is written by the same step that
+# rewrites `ver=unreleased` in the backlog, so an undated heading means both were
+# skipped. Three releases shipped that way before anything noticed (PQ-77).
+undated="$tmp/undated"
+mkdir -p "$undated"
+{
+	printf '# Changelog\n\n'
+	printf '## [0.2.0] - unreleased\n\n### Added\n\n- something.\n\n'
+	printf '## [0.0.1] - 2026-08-01\n\nFirst.\n'
+} > "$undated/CHANGELOG.md"
+git -C "$undated" init -q
+git -C "$undated" config user.email t@example.test
+git -C "$undated" config user.name test
+git -C "$undated" add -A
+git -C "$undated" commit -qm "a commit"
+git -C "$undated" tag -a v0.2.0 -m v0.2.0
+expect 1 "a section that names the version but carries no date fails" "$undated"
+
 # The tag is usually pushed a moment after the branch, and a CI job that fails
 # for that would be red on every release. --warn says it out loud and exits 0.
 repo "$tmp/warn" 0.2.0

@@ -6,7 +6,38 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
-## [0.49.0] - unreleased
+## [0.49.1] - 2026-09-21
+
+### Fixed
+
+- **The `action` job could never pass on a pull request.** It exercises the
+  composite action with `uses: ./` and `version: ${{ github.sha }}` — and on a
+  `pull_request` event that is the synthetic merge commit, which exists only as
+  refs/pull/N/merge and which the Go module proxy cannot fetch: `invalid
+  version: unknown revision`. Green for two years of pushes straight to main,
+  red on the very first pull request under the new practice. Now the head sha
+  with a push fallback, and `scripts/action.sh` refuses the bare `github.sha`
+  form so it cannot come back.
+
+- **Three releases shipped saying `unreleased`, and a dozen backlog items kept
+  `ver=unreleased` after they went out.** `release.sh` dates the section written
+  as `## [Unreleased]`; a section written as `## [X.Y.Z] - unreleased` names the
+  version, so `release_state` read it as *already prepared* and skipped the
+  preparation entirely — both the date **and** the rewrite of `ver=unreleased`
+  in the backlog, which is the same step. Nothing announced it, because nothing
+  looked past the version number: 0.47.0, 0.48.0 and 0.49.0 all went out
+  undated, and the backlog lost the shipping version of 28 items.
+
+  `release_state` now requires an actual date before calling a section prepared,
+  the dating step accepts both forms, and `version.sh check` — the gate that
+  runs in CI on every tag — fails on a section that names a version without a
+  date. The three sections are dated from their tags, and the 28 items carry the
+  release that first described them in the CHANGELOG.
+
+  Both of these are the same shape as the failure that started the practice
+  change: not a wrong answer, but a path nobody had exercised.
+
+## [0.49.0] - 2026-09-21
 
 ### Changed
 
@@ -43,12 +74,14 @@ fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
   main, the override, a mixed push, and that the installer leaves existing hooks
   alone. Wired into CI and `release.sh`, which `gates_test.sh` now enforces.
 
+### Added
+
 - **Milestone M16 — v1.0.0.** A 1.0 is a promise that what other people built
   against does not move without a major. Most of it is already kept and tested;
   what is left is PQ-71, the public `pq/` API that cannot ask what the CLI can
   ask, and PQ-78, the compatibility promise written where it can be checked.
 
-## [0.48.0] - unreleased
+## [0.48.0] - 2026-09-17
 
 ### Added
 
@@ -81,7 +114,7 @@ fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
   changed, every certificate moving. A projection whose assumptions are not
   visible is a number nobody trusts twice.
 
-## [0.47.0] - unreleased
+## [0.47.0] - 2026-09-13
 
 ### Added
 
@@ -1639,6 +1672,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.49.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.49.1
 [0.29.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.2
 [0.29.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.1
 [0.29.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.0

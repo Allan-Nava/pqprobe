@@ -85,7 +85,17 @@ release_state() {
 		[ "$entries" -gt 0 ] && { echo prepare; return; }
 		echo nothing
 		;;
-	"$version") echo already-prepared ;;
+	"$version")
+		# Named but undated is not prepared: it is a section somebody wrote by
+		# hand in the shape this script produces. Reading it as prepared skips
+		# both rewrites — the date and `ver=unreleased` in the backlog — and
+		# says nothing, which is how three releases shipped saying "unreleased".
+		if grep -qE "^## \\[$version\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}" "$changelog"; then
+			echo already-prepared
+		else
+			echo prepare
+		fi
+		;;
 	*)          echo nothing ;;
 	esac
 }
@@ -187,11 +197,20 @@ trap 'rm -f "$tmp"' EXIT INT HUP TERM
 
 awk -v v="$version" -v d="$today" '
 	/^## \[Unreleased\]/ { printf "## [%s] - %s\n", v, d; next }
+	# The same section written with its version already in the heading but no
+	# date behind it. Both forms are prepared the same way, or the one this
+	# script did not expect ships undated.
+	$0 == "## [" v "] - unreleased" { printf "## [%s] - %s\n", v, d; next }
 	{ print }
 ' CHANGELOG.md > "$tmp"
 
 # The link reference goes with the other ones at the bottom of the file, newest
 # first, so the section headings stay linkable.
+# A link reference for this version may already be there — the heading and the
+# reference are written by different steps, and only one of them was skipped.
+if grep -q "^\[$version\]:" "$tmp"; then
+	mv "$tmp" CHANGELOG.md
+else
 awk -v v="$version" -v repo="https://github.com/Allan-Nava/pqprobe" '
 	!done && /^\[[0-9]+\.[0-9]+\.[0-9]+\]:/ {
 		printf "[%s]: %s/releases/tag/v%s\n", v, repo, v
@@ -200,7 +219,8 @@ awk -v v="$version" -v repo="https://github.com/Allan-Nava/pqprobe" '
 	{ print }
 	END { if (!done) printf "\n[%s]: %s/releases/tag/v%s\n", v, repo, v }
 ' "$tmp" > CHANGELOG.md
-echo "[Unreleased] is now [$version] - $today"
+fi
+echo "the newest section is now [$version] - $today"
 
 say "BACKLOG.md"
 sed "s/ver=unreleased/ver=$version/g" BACKLOG.md > "$tmp" && mv "$tmp" BACKLOG.md

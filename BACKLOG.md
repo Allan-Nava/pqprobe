@@ -540,7 +540,7 @@ true statement.
   The X Protocol on 33060 stays out, on the same grounds MySQL itself stayed out
   of PQ-20: it is a protobuf-framed negotiation rather than this packet
   exchange, and a test asserts the spoken list so it cannot arrive by accident.
-  <!-- pq: prio=med size=M labels=probe ver=unreleased -->
+  <!-- pq: prio=med size=M labels=probe ver=0.31.0 -->
 
 - [x] **PQ-46 — Choose the address family**: `--net tcp4|tcp6`, because today
   the resolver chooses and the run does not say so. A dual-stack name that
@@ -566,7 +566,7 @@ true statement.
   choice and pqprobe says so rather than implying the endpoint was reached over
   one family. `pq.Options.Net` carries it to embedders, where an unknown family
   is an error rather than a quietly wider run.
-  <!-- pq: prio=high size=S labels=probe,cli ver=unreleased -->
+  <!-- pq: prio=high size=S labels=probe,cli ver=0.30.0 -->
 
 - [x] **PQ-47 — A prober with no route says it once**: PQ-12 already refuses to
   call an unroutable address `tls-broken`, which was the dangerous half. The
@@ -591,7 +591,7 @@ true statement.
   the finding instead of repeating "the usual cause". Verified on this machine,
   which has no IPv6 route: one line for the run, and the endpoint that failed
   for a missing AAAA record rather than a missing route kept its own hint.
-  <!-- pq: prio=med size=M labels=probe,verdict,output ver=unreleased -->
+  <!-- pq: prio=med size=M labels=probe,verdict,output ver=0.32.0 -->
 
 - [x] **PQ-49 — The release renders its derived files in both states**: two
   releases in a row committed and tagged before `seo.sh check` noticed that
@@ -612,7 +612,7 @@ true statement.
   be checked before the tag exists (`version.sh check`) behind it. Two
   structural assertions in `release_test.sh` hold both lines in place, by line
   number against the branch they must sit outside of.
-  <!-- pq: prio=high size=S labels=release,tests ver=unreleased -->
+  <!-- pq: prio=high size=S labels=release,tests ver=0.31.1 -->
 
 - [x] **PQ-48 — Targets on stdin**: `pqprobe -` reads the target list from the
   pipe, in the same forms `--inventory` already accepts. The fleet that needs
@@ -629,7 +629,7 @@ true statement.
   *value*, or `--list -` and `-` would have meant different things; and stdin is
   one stream, so two claims on it is a usage error with exit 2 rather than half
   a fleet probed and a report that looks complete.
-  <!-- pq: prio=low size=S labels=inventory,ux ver=unreleased -->
+  <!-- pq: prio=low size=S labels=inventory,ux ver=0.32.0 -->
 
 ## M7 — Encrypted Client Hello <!-- ms: target=v0.35.0 phase=shipped -->
 
@@ -672,7 +672,7 @@ look like it has.
   declined ECH, and the error text says why. The offline test builds an
   ECHConfigList by hand, wire format and all, because there is no helper for it
   anywhere and being assertable offline is the bar every profile here clears.
-  <!-- pq: prio=high size=M labels=profile,probe ver=unreleased -->
+  <!-- pq: prio=high size=M labels=profile,probe ver=0.33.0 -->
 
 - [x] **PQ-51 — The config comes from DNS, not from a paste**: pasting base64 is
   not a fleet workflow, and the ECH config lives in the HTTPS resource record
@@ -704,7 +704,7 @@ look like it has.
   Verified against real DNS: `crypto.cloudflare.com` fetched and accepted,
   1489 B → 1661 B, the same +172 bytes the pasted config produced;
   `github.com` publishes none and says so once, keeping its ordinary profiles.
-  <!-- pq: prio=med size=L labels=probe,inventory ver=unreleased -->
+  <!-- pq: prio=med size=L labels=probe,inventory ver=0.34.0 -->
 
 - [x] **PQ-52 — ECH does not decide the class**: it is findings and a hint, on
   the pattern `--per-group` established — no real client is ECH-only, so an
@@ -722,7 +722,7 @@ look like it has.
   and never grades (`ech`, `ech-reject`), the listing shows them, an unknown word
   prints both vocabularies, and a topic renders without a status because it has
   none — a grade is exactly what it is not. A test asserts no word is both.
-  <!-- pq: prio=med size=S labels=verdict,output,docs ver=unreleased -->
+  <!-- pq: prio=med size=S labels=verdict,output,docs ver=0.35.0 -->
 
 ## M8 — Reach the ports that are left <!-- ms: target=v0.36.0 phase=shipped -->
 
@@ -751,7 +751,7 @@ what their group lists look like.
   `expectFTP` is its own reader now, bounded at 100 lines, and the test server
   speaks the real banner shape rather than the one the code expected.
   Verified against a real FTPS server: `pq-blind`.
-  <!-- pq: prio=med size=S labels=probe ver=unreleased -->
+  <!-- pq: prio=med size=S labels=probe ver=0.36.0 -->
 
 - [x] **PQ-54 — LDAP StartTLS**: `--starttls ldap`, the extended operation of
   RFC 4511 §4.14 — a BER-encoded request carrying OID 1.3.6.1.4.1.1466.20037,
@@ -769,7 +769,7 @@ what their group lists look like.
   five seconds: the request's outer length was written as a constant that had
   drifted from its contents by two bytes, so the test server waited for a
   message that had already arrived in full. The lengths are arithmetic now.
-  <!-- pq: prio=med size=M labels=probe ver=unreleased -->
+  <!-- pq: prio=med size=M labels=probe ver=0.36.0 -->
 
 - [x] **PQ-55 — XMPP**: `--starttls xmpp`, the stream header and the
   `<starttls/>` of RFC 6120, on 5222. The `to=` attribute is the server name
@@ -782,7 +782,7 @@ what their group lists look like.
   answer. Bounded at 16 KB, on top of the deadline PQ-45 put on every plaintext
   negotiation. A target with no name to open a stream to is told to use the
   `address=name` form rather than being sent an empty `to=`.
-  <!-- pq: prio=low size=M labels=probe ver=unreleased -->
+  <!-- pq: prio=low size=M labels=probe ver=0.36.0 -->
 
 ## M9 — The edges of everyday use <!-- ms: target=v0.38.0 phase=shipped -->
 
@@ -803,7 +803,7 @@ is not the machine's own — is narrower than what it can say.
   scale, and letting `--exit-on pq-blind` fire on something worse would report
   two different findings under one name, which is the thing the flag was meant
   to stop.
-  <!-- pq: prio=high size=S labels=cli,output ver=unreleased -->
+  <!-- pq: prio=high size=S labels=cli,output ver=0.37.0 -->
 
 - [x] **PQ-57 — Completions and a man page, generated**: `pqprobe completion
   bash|zsh|fish` and a `pqprobe.1`, both written from the *flag set* and the
@@ -822,7 +822,7 @@ is not the machine's own — is narrower than what it can say.
   than rewording it — a second wording is a second thing to keep true — with the
   two sequences roff reads as markup escaped. Verified by rendering it with
   `man` and by sourcing the bash and zsh scripts in their own shells.
-  <!-- pq: prio=med size=M labels=cli,delivery,docs ver=unreleased -->
+  <!-- pq: prio=med size=M labels=cli,delivery,docs ver=0.38.0 -->
 
 - [x] **PQ-58 — `--dns` governs every lookup pqprobe makes**: it was introduced
   for the ECH record (PQ-51) and governs only that, so `--per-address` still
@@ -841,7 +841,7 @@ is not the machine's own — is narrower than what it can say.
   One `resolver` finding says which one answered. Verified: `--dns 1.1.1.1:53`
   resolves the fleet through it, and a dead resolver makes the dial itself fail
   rather than quietly falling back.
-  <!-- pq: prio=med size=S labels=probe,inventory,cli ver=unreleased -->
+  <!-- pq: prio=med size=S labels=probe,inventory,cli ver=0.37.0 -->
 
 ## M10 — The hybrids we do not offer, proved against stacks that are not Go <!-- ms: target=v0.41.0 phase=shipped -->
 
@@ -883,7 +883,7 @@ SecP384r1MLKEM1024  4589 (0x11ed)   the same
   this, where `--per-group` now reports `accepted: SecP256r1MLKEM768`.
   The class is still `tls-broken` there, which is PQ-60's job and deliberately
   not this one's.
-  <!-- pq: prio=high size=M labels=profile,probe ver=unreleased -->
+  <!-- pq: prio=high size=M labels=profile,probe ver=0.39.0 -->
 
 - [x] **PQ-60 — "post-quantum, in a group your clients do not offer"**: the
   sentence the report cannot say today. With PQ-59 the handshakes exist; this is
@@ -908,7 +908,7 @@ SecP384r1MLKEM1024  4589 (0x11ed)   the same
   ERROR: something *was* concluded, and ERROR is the bucket for endpoints that
   never answered. `tls-broken` also gained the pointer that would have prevented
   the whole confusion — run `--per-group` before believing it.
-  <!-- pq: prio=high size=M labels=verdict,output,docs ver=unreleased -->
+  <!-- pq: prio=high size=M labels=verdict,output,docs ver=0.39.0 -->
 
 - [x] **PQ-61 — An interop lab, in CI, against stacks that are not Go**:
   containers standing up OpenSSL 3.5 `s_server` with each hybrid on its own,
@@ -935,7 +935,7 @@ SecP384r1MLKEM1024  4589 (0x11ed)   the same
   reported failure while the tool had been right about all four — a reminder
   that a test harness is code, and that a red result is worth reading before it
   is believed.
-  <!-- pq: prio=high size=XL labels=tests,probe ver=unreleased -->
+  <!-- pq: prio=high size=XL labels=tests,probe ver=0.41.0 -->
 
 ## M11 — Reproduce the failures, not only the successes <!-- ms: target=v0.44.0 phase=shipped -->
 
@@ -968,7 +968,7 @@ the lab at the failures.
   OpenSSL, and five servers came back `tls-broken` at once. Which is never what
   five different servers do: a result that uniform is a fault in the harness, and
   reading it that way is what found both bugs.
-  <!-- pq: prio=high size=M labels=tests,probe ver=unreleased -->
+  <!-- pq: prio=high size=M labels=tests,probe ver=0.42.0 -->
 
 - [x] **PQ-63 — The plaintext negotiations, against real daemons**: Postfix,
   Dovecot, OpenLDAP, MySQL and Postgres in the lab, because every `--starttls`
@@ -993,7 +993,7 @@ the lab at the failures.
   works, but no fake would have shown it. And Dovecot 2.4 rewrote its
   configuration schema entirely, so the case is pinned to 2.3: chasing a config
   format is not what this lab is for, and the IMAP on the wire is the same.
-  <!-- pq: prio=high size=L labels=tests,probe ver=unreleased -->
+  <!-- pq: prio=high size=L labels=tests,probe ver=0.43.0 -->
 
 - [x] **PQ-64 — The other terminators, and the certificate they ask for**:
   HAProxy and Envoy, which sit in front of more origins than nginx does, plus an
@@ -1012,7 +1012,7 @@ the lab at the failures.
   and could only demonstrate against Go until now — so the case asserts the
   class *and* the finding. On TLS 1.2 the handshake fails and the class is
   `mtls-required`, which is the leg that had never met a real server.
-  <!-- pq: prio=med size=M labels=tests,probe ver=unreleased -->
+  <!-- pq: prio=med size=M labels=tests,probe ver=0.44.0 -->
 
 ## M12 — What the audit found <!-- ms: target=v0.44.1 phase=shipped -->
 
@@ -1046,7 +1046,7 @@ shaped not to see. Seven, and the same mistake three times.
   embedder's fleet check reported on nine nodes out of ten and looked complete.
   They arrive as reports with class `unreachable` now, like everything else that
   cannot be probed.
-  <!-- pq: prio=high size=M labels=probe,verdict,cli,integration ver=unreleased -->
+  <!-- pq: prio=high size=M labels=probe,verdict,cli,integration ver=0.44.1 -->
 
 ## M13 — Invariants a machine can check <!-- ms: target=v0.45.0 phase=shipped -->
 
@@ -1077,7 +1077,7 @@ that dies halfway through somebody's fleet.
   the seed corpus runs in every `go test`. About 15 million executions found no
   crash in these five, which is the answer the item was owed: the bounds checks
   hold.
-  <!-- pq: prio=high size=M labels=tests,probe ver=unreleased -->
+  <!-- pq: prio=high size=M labels=tests,probe ver=0.45.0 -->
 
 - [x] **PQ-67 — The verdict's invariants, as properties**: for *any* set of
   results — generated, not chosen — the class is one of `Classes()`, a
@@ -1094,7 +1094,7 @@ that dies halfway through somebody's fleet.
   same correction went into the ALPN pair. The failing input is committed under
   `testdata/fuzz`, so it is a plain test case from now on and needs no fuzzer to
   reproduce. Twenty-three million executions later, clean.
-  <!-- pq: prio=high size=M labels=tests,verdict ver=unreleased -->
+  <!-- pq: prio=high size=M labels=tests,verdict ver=0.45.0 -->
 
 - [x] **PQ-68 — Fuzz the target parser, and pin what it may never do**: the
   `?q=1` bug lives here — a query string contains an `=`, and reading it as a
@@ -1111,7 +1111,7 @@ that dies halfway through somebody's fleet.
   `origin.example=#0000` put `#0000` into the ClientHello as a server name: the
   same family as the `?q=1` bug, which the table case had fixed only for the URL
   form. All three are usage errors now, naming the word that caused them.
-  <!-- pq: prio=med size=S labels=tests,inventory ver=unreleased -->
+  <!-- pq: prio=med size=S labels=tests,inventory ver=0.45.0 -->
 
 ## M14 — The contract with machines <!-- ms: target=v0.48.0 phase=shipped -->
 
@@ -1139,7 +1139,7 @@ mode PQ-65 found inside the tool, one layer out.
   fail is a gate nobody knows works.
   The rule is in AGENTS.md and CLAUDE.md now: a deliberate change is
   `-update` **in the same commit**, and the diff is the review.
-  <!-- pq: prio=high size=M labels=output,tests ver=unreleased -->
+  <!-- pq: prio=high size=M labels=output,tests ver=0.46.0 -->
 
 - [x] **PQ-70 — Say which contract a document speaks**: the JSON carries the
   tool version and nothing else a consumer can branch on, and the wrapped
@@ -1159,7 +1159,7 @@ mode PQ-65 found inside the tool, one layer out.
   so a field added, renamed or removed changes the page in the same commit —
   and a field with nothing said about what it means is a failing test rather
   than an empty cell.
-  <!-- pq: prio=high size=M labels=output,docs,integration ver=unreleased -->
+  <!-- pq: prio=high size=M labels=output,docs,integration ver=0.47.0 -->
 
 
 
@@ -1203,7 +1203,7 @@ operator needs before the decision, said once, per endpoint, with its unit.
   direction, on a document that reads like a measurement. No grading: an
   endpoint that works today does not acquire a warning over a migration nobody
   has started. That is PQ-74's, with a flag to move the line.
-  <!-- pq: prio=high size=M labels=verdict,output ver=unreleased -->
+  <!-- pq: prio=high size=M labels=verdict,output ver=0.48.0 -->
 
 - [ ] **PQ-73 — What signs this chain today**: the certificates are already
   parsed and `probe.Cert` records the subject, the issuer, the dates and the
@@ -1283,7 +1283,22 @@ supposed to prevent.
   `scripts/hooks.sh check` and `scripts/hooks_test.sh` keep it honest — and the
   hook is copied rather than pointed at with `core.hooksPath`, because setting
   that would take `.git/hooks` out of service and break tooling this repository
-  did not install. <!-- pq: prio=high size=M labels=project,release,tests ver=unreleased -->
+  did not install.
+  The first pull request through the new practice immediately found a break that
+  the old one had been hiding: the `action` job installs the action with
+  `version: ${{ github.sha }}`, and on a `pull_request` event that is the
+  synthetic merge commit — refs/pull/N/merge, which the Go module proxy cannot
+  fetch. Red on every pull request, green for two years of pushes straight to
+  main. Fixed to the head sha with a push fallback, and `scripts/action.sh`
+  now refuses the bare form so it cannot come back.
+  Looking at that release surfaced a second one, older: `release.sh` dates a
+  section written `## [Unreleased]`, and a section written `## [X.Y.Z] -
+  unreleased` was read as *already prepared* — skipping both the date and the
+  `ver=0.49.1` rewrite, which are the same step. Three releases shipped
+  undated and 28 items lost their shipping version. `release_state` now requires
+  a real date, the dating step takes both forms, and `version.sh check` refuses
+  an undated section.
+  <!-- pq: prio=high size=M labels=project,release,tests ver=0.49.0 -->
 
 - [ ] **PQ-78 — The compatibility promise, written where it can be checked**:
   `docs/schema.md` says what a document contract is and when its number moves.
