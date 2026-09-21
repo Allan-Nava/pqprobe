@@ -158,6 +158,7 @@ sh scripts/assets_test.sh >/dev/null && echo "asset tests OK"
 sh scripts/version_test.sh >/dev/null && echo "version tests OK"
 sh scripts/contrib_test.sh >/dev/null && echo "contrib isolation OK"
 sh scripts/gates_test.sh >/dev/null && echo "gates all wired OK"
+sh scripts/hooks_test.sh >/dev/null && echo "pre-push hook OK"
 sh scripts/goreleaser_test.sh >/dev/null && echo "release config tests OK"
 ./scripts/goreleaser.sh check >/dev/null && echo "goreleaser config OK"
 sh scripts/seo_test.sh >/dev/null && echo "SEO tests OK"
@@ -248,9 +249,13 @@ echo "committed $(git rev-parse --short HEAD) and tagged $tag"
 
 cat <<MSG
 
-Not pushed — that is your call. The Release workflow runs when the tag arrives:
+Not pushed — that is your call. main is protected, so this lands through a
+pull request and the tag follows the merge:
 
-  git push origin main
-  git push origin $tag
+  git push -u origin $branch
+  gh pr create --fill
+  gh pr checks --watch
+  gh pr merge --squash
+  git push origin $tag       # the Release workflow runs when the tag arrives
 
 MSG

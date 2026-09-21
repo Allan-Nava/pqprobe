@@ -77,8 +77,18 @@ there is a decision, not a gap.
   The point is that `CHANGELOG.md` becomes the dated history of the *tool*
   rather than of the code, and `git log` can answer "when did this behaviour
   change?" without reading diffs.
-- **Never `git push`**, tags included — that is the maintainer's call. No
-  `Co-Authored-By` trailers.
+- **Work lands on a branch, through a pull request, with green CI.** `main` is
+  protected by a GitHub ruleset — no direct push, no force, no deletion — and a
+  `pre-push` hook says the same thing locally before the network does
+  (`scripts/hooks.sh install`, asserted by `scripts/hooks_test.sh`). The loop
+  is: branch, `scripts/release.sh <X.Y.Z> --commit`, push the **branch**, open
+  the PR, wait for the checks, merge. The gates that matter — race, fuzz,
+  interop, the golden documents, the two-way flags check — run on the pull
+  request, and a direct push is a release whose gates ran only on the machine
+  that was in a hurry.
+- **Never push `main` or a tag yourself**, even from a branch — the merge and
+  the tag are the maintainer's call, and the tag is what starts the Release
+  workflow. No `Co-Authored-By` trailers.
 
 ## Pattern for adding a profile or a class
 

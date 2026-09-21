@@ -180,6 +180,12 @@ jobs:
         run: ./scripts/release-notes.sh >/dev/null
       - name: The version gate itself
         run: sh scripts/version_test.sh
+      # main is protected by a GitHub ruleset; the pre-push hook is the local,
+      # offline half that says so before the network does. A clone does not
+      # carry it, so what CI can assert is that the hook still refuses the push
+      # it exists to refuse.
+      - name: The pre-push hook refuses a direct push to main
+        run: sh scripts/hooks_test.sh
       # A stale formula is worse than a missing one: `brew install` reads
       # whatever it says, so one left at the previous version installs the old
       # binary and looks like it worked.

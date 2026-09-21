@@ -6,6 +6,48 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.49.0] - unreleased
+
+### Changed
+
+- **`main` is no longer pushed directly (PQ-77).** Everything lands through a
+  pull request whose CI went green. Not because a direct push is dangerous in
+  itself, but because the gates that matter run *there*: the race detector, the
+  fuzz pass, the interop lab, the golden documents, the two-way flags check. A
+  push straight to main is a release whose gates ran only on the machine that
+  was in a hurry.
+
+  A GitHub ruleset on `main` is the enforcement — no direct push, no force, no
+  deletion, and the core checks required before a merge. It is the half that
+  works regardless of which machine the push comes from.
+
+### Added
+
+- **`scripts/hooks/pre-push`, and `scripts/hooks.sh` to install it.** The local
+  half: it refuses a push to `main` offline, before the network does, and says
+  what to do instead rather than only saying no. `PQPROBE_ALLOW_MAIN_PUSH=1` is
+  the way past it, deliberately explicit and loud — a hook nobody can get past
+  on the one day it matters is a hook that gets deleted rather than overridden,
+  and a deleted hook protects nothing on every other day.
+
+  The hook is **copied** into `.git/hooks` rather than pointed at with
+  `core.hooksPath`: setting that would take `.git/hooks` out of service, and
+  this repository already has hooks living there that nothing in it installed.
+  Protecting a branch by breaking somebody else's tooling is not a trade worth
+  making.
+
+- **`scripts/hooks_test.sh`**, which drives the hook the way git drives it — two
+  arguments, the refs on stdin — against a throwaway repository: a test that
+  proved the hook works by *not pushing* would pass with the hook deleted. It
+  asserts the refusal, the feature branch that must keep working, a deletion of
+  main, the override, a mixed push, and that the installer leaves existing hooks
+  alone. Wired into CI and `release.sh`, which `gates_test.sh` now enforces.
+
+- **Milestone M16 — v1.0.0.** A 1.0 is a promise that what other people built
+  against does not move without a major. Most of it is already kept and tested;
+  what is left is PQ-71, the public `pq/` API that cannot ask what the CLI can
+  ask, and PQ-78, the compatibility promise written where it can be checked.
+
 ## [0.48.0] - unreleased
 
 ### Added

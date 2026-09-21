@@ -1113,7 +1113,7 @@ that dies halfway through somebody's fleet.
   form. All three are usage errors now, naming the word that caused them.
   <!-- pq: prio=med size=S labels=tests,inventory ver=unreleased -->
 
-## M14 — The contract with machines <!-- ms: target=v0.48.0 phase=now -->
+## M14 — The contract with machines <!-- ms: target=v0.48.0 phase=shipped -->
 
 M13 pinned the invariants the tool owes *itself*. These are the ones it owes
 everything downstream: checkfleet imports `pq/`, an aggregator deduplicates on
@@ -1161,14 +1161,7 @@ mode PQ-65 found inside the tool, one layer out.
   than an empty cell.
   <!-- pq: prio=high size=M labels=output,docs,integration ver=unreleased -->
 
-- [ ] **PQ-71 — The public API can ask what the CLI can ask**: `pq.Options`
-  carries profiles, timeout, ALPN, SOCKS5, concurrency, expiry thresholds and
-  `Net` — and cannot reach a mail server, because `--starttls` never made it
-  across. Nor `--per-group`, `--size-sweep` or ECH. An embedder that wants the
-  answer for port 587 has to shell out to the binary, which is the thing `pq/`
-  exists to avoid. Whatever is added arrives with the same rule the CLI has: an
-  unknown value is an error, never a quietly different run.
-  <!-- pq: prio=med size=M labels=integration -->
+
 
 ## M15 — The next migration is the certificate <!-- ms: target=v0.50.0 phase=next -->
 
@@ -1255,3 +1248,50 @@ operator needs before the decision, said once, per endpoint, with its unit.
   explicit: when the standard library gains both, this becomes a profile, a
   class and a red test in that order. Until then this item stays open as the
   decision, not as the gap. <!-- pq: prio=low size=S labels=profile,project -->
+
+## M16 — v1.0.0 <!-- ms: target=v1.0.0 phase=now -->
+
+A 1.0 is not a feature; it is a promise that the things other people built
+against do not move without a major. Most of that promise is already kept and
+tested: the documents carry a schema number and a generated page (PQ-70), the
+golden files freeze them byte for byte (PQ-69), the flag set and `--help` check
+each other, and the classes have not changed in twenty releases.
+
+What is left is the half of the surface that is *not* the CLI. `pq/` is a public
+Go package — it is why `internal/` exists — and it cannot ask what the binary
+can ask. Declaring 1.0 with that gap would mean the first thing after the major
+is an embedder writing code around an absence, which is exactly what a major is
+supposed to prevent.
+
+- [ ] **PQ-71 — The public API can ask what the CLI can ask**: `pq.Options`
+  carries profiles, timeout, ALPN, SOCKS5, concurrency, expiry thresholds and
+  `Net` — and cannot reach a mail server, because `--starttls` never made it
+  across. Nor `--per-group`, `--size-sweep` or ECH. An embedder that wants the
+  answer for port 587 has to shell out to the binary, which is the thing `pq/`
+  exists to avoid. Whatever is added arrives with the same rule the CLI has: an
+  unknown value is an error, never a quietly different run.
+  <!-- pq: prio=med size=M labels=integration -->
+
+- [x] **PQ-77 — main is not pushed directly**: everything lands through a pull
+  request whose CI went green, because the gates that matter — race, fuzz, the
+  interop lab, the golden documents, the two-way flags check — run *there*, and
+  a direct push is a release whose gates ran only on the machine that was in a
+  hurry. A GitHub ruleset on `main` is the enforcement (no push, no force, no
+  deletion, required checks); `scripts/hooks/pre-push` is the local half that
+  says so offline, before the network does, with an override that is
+  deliberately loud. A hook is a local file and a clone does not carry it, so
+  `scripts/hooks.sh check` and `scripts/hooks_test.sh` keep it honest — and the
+  hook is copied rather than pointed at with `core.hooksPath`, because setting
+  that would take `.git/hooks` out of service and break tooling this repository
+  did not install. <!-- pq: prio=high size=M labels=project,release,tests ver=unreleased -->
+
+- [ ] **PQ-78 — The compatibility promise, written where it can be checked**:
+  `docs/schema.md` says what a document contract is and when its number moves.
+  Nothing says the same for the rest of the surface: the flags, the exit codes,
+  the class names, the check names, the `pq/` API. One page — `docs/compatibility.md`
+  — stating what a major, a minor and a patch mean for each of them, which
+  parts are explicitly *not* stable (the prose of a message, the wording of a
+  hint, anything under `internal/`), and how long a deprecated flag keeps
+  working. Generated from the flag set and `verdict.Classes()` where it can be,
+  so the promise and the code cannot drift the way the schema page cannot.
+  <!-- pq: prio=high size=M labels=docs,project,release -->
