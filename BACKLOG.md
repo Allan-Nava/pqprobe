@@ -422,6 +422,13 @@ prints what to pick up.
   application data" needed the exact clause.
   <!-- pq: prio=low size=L labels=probe ver=0.24.0 -->
 
+
+- [ ] **PQ-79 — The API table lists the fields, not only the names**: today
+  `docs/compatibility.md` lists the exported *names* of `pq/`, so PQ-71 could add
+  five fields to `pq.Options` without the page moving. Adding a field is a minor
+  and not a break, so the page was not wrong — but a field *removed* or renamed
+  is a major, and nothing would show it in a diff. Walk the struct fields too.
+  <!-- pq: prio=med size=S labels=docs,project -->
 ## M5 — Make the verdict actionable <!-- ms: target=v0.15.0 phase=shipped -->
 
 The class is the answer; these items are what an operator needs *around* it —
@@ -1163,7 +1170,7 @@ mode PQ-65 found inside the tool, one layer out.
 
 
 
-## M15 — The next migration is the certificate <!-- ms: target=v0.50.0 phase=next -->
+## M15 — The next migration is the certificate <!-- ms: target=v1.1.0 phase=now -->
 
 The key exchange migration is the one happening now, and pqprobe was built for
 it. The next one is **authentication**, and it fails in exactly the same shape
@@ -1258,7 +1265,7 @@ operator needs before the decision, said once, per endpoint, with its unit.
   class and a red test in that order. Until then this item stays open as the
   decision, not as the gap. <!-- pq: prio=low size=S labels=profile,project -->
 
-## M16 — v1.0.0 <!-- ms: target=v1.0.0 phase=now -->
+## M16 — v1.0.0 <!-- ms: target=v1.0.0 phase=shipped -->
 
 A 1.0 is not a feature; it is a promise that the things other people built
 against do not move without a major. Most of that promise is already kept and
@@ -1321,12 +1328,7 @@ supposed to prevent.
   that narrow.
   <!-- pq: prio=high size=M labels=project,release,tests ver=0.49.0 -->
 
-- [ ] **PQ-79 — The API table lists the fields, not only the names**: today
-  `docs/compatibility.md` lists the exported *names* of `pq/`, so PQ-71 could add
-  five fields to `pq.Options` without the page moving. Adding a field is a minor
-  and not a break, so the page was not wrong — but a field *removed* or renamed
-  is a major, and nothing would show it in a diff. Walk the struct fields too.
-  <!-- pq: prio=med size=S labels=docs,project -->
+
 
 - [x] **PQ-78 — The compatibility promise, written where it can be checked**:
   `docs/schema.md` says what a document contract is and when its number moves.
