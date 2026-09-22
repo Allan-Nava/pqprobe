@@ -208,6 +208,12 @@ check reporting on nine nodes out of ten while looking complete.
 `pq.Explain(class)` gives the meaning, the affected clients and the next action
 without a run.
 
+`pq.Options` asks what the CLI asks: profiles, timeout, ALPN, SOCKS5,
+concurrency, expiry thresholds, address family, SNI and default port — and
+`StartTLS` for a mail or directory server, `PerGroup`, `SizeSweep`, `ALPNCheck`
+and `ECHConfig` for the extra passes. Same rule as the command line: an unknown
+value is an error, never a quietly different run.
+
 ## Output and exit status
 
 | Flag | Output |

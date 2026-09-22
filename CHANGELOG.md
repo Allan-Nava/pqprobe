@@ -6,6 +6,35 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.52.0] - 2026-09-22
+
+### Added
+
+- **`pq.Options` can ask what the CLI can ask (PQ-71).** `StartTLS`,
+  `PerGroup`, `SizeSweep`, `ALPNCheck` and `ECHConfig`. Until now an embedder
+  who wanted the answer for port 587, or the per-group breakdown a migration is
+  planned against, had to shell out to the binary — which is the thing `pq/`
+  exists to avoid.
+
+  The extra passes are extra *profiles*, appended in the same order the CLI
+  appends them, so the binary and the library cannot dial different runs from
+  the same request. And the refusals come first, with the rule the command line
+  has: an unknown `StartTLS` protocol and a value that is not an ECHConfigList
+  are errors **before** anything is dialled. A library that quietly ignored
+  `StartTLS: "gopher"` would return a report about implicit TLS on port 587 and
+  call it an answer.
+
+  This was the last item standing between the tool and a 1.0: declaring a major
+  while the public Go API could not do what the binary does would mean the first
+  thing after it is an embedder writing code around an absence.
+
+### Changed
+
+- **The ECHConfigList validation moved to `internal/probe`** and the CLI calls
+  it, keeping only the flag name in its own error message. Two copies of a
+  validation is how a binary and its library come to disagree about what they
+  accept.
+
 ## [0.51.0] - 2026-09-22
 
 ### Added
@@ -1744,6 +1773,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.52.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.52.0
 [0.51.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.51.0
 [0.50.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.50.0
 [0.49.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.49.2

@@ -18,6 +18,7 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -1399,4 +1400,34 @@ func versionName(v uint16) string {
 	default:
 		return fmt.Sprintf("0x%04x", v)
 	}
+}
+
+// ParseECHConfigList decodes the base64 ECHConfigList an endpoint publishes as
+// the `ech=` value of its HTTPS DNS record (PQ-50), and refuses anything that
+// is not one.
+//
+// It lives here rather than in the CLI because the public API takes the same
+// value (PQ-71), and two copies of a validation is how the binary and the
+// library come to disagree about what they accept — the one thing this
+// repository treats as worse than a missing feature.
+//
+// It is checked before anything is dialled on purpose: a paste that is not a
+// config list would otherwise fail inside the handshake, where the report reads
+// as though the endpoint had done something wrong.
+func ParseECHConfigList(s string) ([]byte, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil, nil
+	}
+	raw, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("not base64: %w (it is the `ech=` value of the endpoint's HTTPS DNS record)", err)
+	}
+	if len(raw) < 4 {
+		return nil, fmt.Errorf("decodes to %d bytes, which is too short for an ECHConfigList", len(raw))
+	}
+	if n := int(raw[0])<<8 | int(raw[1]); n != len(raw)-2 {
+		return nil, fmt.Errorf("says it carries %d bytes of configs and has %d: that is not an ECHConfigList", n, len(raw)-2)
+	}
+	return raw, nil
 }
