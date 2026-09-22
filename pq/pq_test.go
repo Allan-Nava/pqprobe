@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"errors"
 	"io"
 	"math/big"
@@ -293,5 +294,143 @@ func TestProbeReportsATargetItCouldNotParse(t *testing.T) {
 	}
 	if len(bad.Findings) == 0 || bad.Findings[0].Status != "ERROR" {
 		t.Errorf("findings = %+v, want an ERROR saying why", bad.Findings)
+	}
+}
+
+// PQ-71. The CLI can reach a mail server, dial every group on its own, grow the
+// ClientHello until something stops answering, and offer an Encrypted Client
+// Hello. `pq.Options` could do none of it, so an embedder that wanted the answer
+// for port 587 had to shell out to the binary — which is the thing this package
+// exists to avoid.
+//
+// Whatever is added arrives with the rule the CLI has: an unknown value is an
+// error, never a quietly different run.
+
+// findingsWith returns every finding of that check across the reports.
+func findingsWith(reps []pq.Report, check string) []pq.Finding {
+	var out []pq.Finding
+	for _, r := range reps {
+		for _, f := range r.Findings {
+			if f.Check == check {
+				out = append(out, f)
+			}
+		}
+	}
+	return out
+}
+
+func TestProbeCanDialEveryGroupOnItsOwn(t *testing.T) {
+	addr := serve(t, &tls.Config{MinVersion: tls.VersionTLS13})
+
+	reps, err := pq.Probe(context.Background(), []string{addr}, pq.Options{Timeout: 5 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := findingsWith(reps, "groups"); len(got) != 0 {
+		t.Fatalf("a plain run should not do the per-group pass: %+v", got)
+	}
+
+	reps, err = pq.Probe(context.Background(), []string{addr}, pq.Options{Timeout: 5 * time.Second, PerGroup: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := findingsWith(reps, "groups"); len(got) == 0 {
+		t.Error("PerGroup produced no groups finding — the extra profiles never got dialled")
+	}
+}
+
+func TestProbeCanSweepTheHelloSize(t *testing.T) {
+	addr := serve(t, &tls.Config{MinVersion: tls.VersionTLS13})
+
+	reps, err := pq.Probe(context.Background(), []string{addr}, pq.Options{Timeout: 5 * time.Second, SizeSweep: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := findingsWith(reps, "size-limit"); len(got) == 0 {
+		t.Error("SizeSweep produced no size-limit finding")
+	}
+}
+
+func TestProbeCanAskWhetherALPNChangesTheAnswer(t *testing.T) {
+	addr := serve(t, &tls.Config{MinVersion: tls.VersionTLS13})
+
+	reps, err := pq.Probe(context.Background(), []string{addr}, pq.Options{Timeout: 5 * time.Second, ALPNCheck: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := findingsWith(reps, "alpn"); len(got) == 0 {
+		t.Error("ALPNCheck produced no alpn finding")
+	}
+}
+
+func TestProbeCanOfferEncryptedClientHello(t *testing.T) {
+	addr := serve(t, &tls.Config{MinVersion: tls.VersionTLS13})
+
+	// A syntactically valid ECHConfigList: the two-byte length and a body of
+	// that length. The server will not accept it, which is the answer — what is
+	// being tested is that the pass happened at all.
+	body := make([]byte, 40)
+	list := append([]byte{0, byte(len(body))}, body...)
+
+	reps, err := pq.Probe(context.Background(), []string{addr}, pq.Options{
+		Timeout: 5 * time.Second, ECHConfig: base64.StdEncoding.EncodeToString(list)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := findingsWith(reps, "ech"); len(got) == 0 {
+		t.Error("ECHConfig produced no ech finding")
+	}
+}
+
+func TestProbeRefusesAnECHConfigThatIsNotOne(t *testing.T) {
+	for _, bad := range []string{"not base64 at all!", base64.StdEncoding.EncodeToString([]byte{1})} {
+		if _, err := pq.Probe(context.Background(), []string{"127.0.0.1:1"}, pq.Options{ECHConfig: bad}); err == nil {
+			t.Errorf("an ECH config of %q was accepted", bad)
+		}
+	}
+}
+
+func TestProbeReachesAServerThroughStartTLS(t *testing.T) {
+	// Dialled at a TLS server rather than a mail server: what is being proved is
+	// that the plaintext negotiation was attempted at all — the protocols
+	// themselves are tested where they live, in internal/probe.
+	addr := serve(t, &tls.Config{MinVersion: tls.VersionTLS13})
+
+	reps, err := pq.Probe(context.Background(), []string{addr}, pq.Options{Timeout: 5 * time.Second, StartTLS: "smtp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(reps) != 1 {
+		t.Fatalf("got %d reports", len(reps))
+	}
+	// A TLS server cannot answer an EHLO, so nothing handshakes: either class is
+	// an honest "nothing to conclude here" and neither is a post-quantum grade,
+	// which is the property that matters — a run that graded this would be
+	// grading a protocol mismatch.
+	switch reps[0].Class {
+	case "unreachable", "no-tls":
+	default:
+		t.Errorf("class = %q: no handshake completed, so this must not be a grade", reps[0].Class)
+	}
+	var said bool
+	for _, f := range reps[0].Findings {
+		if strings.Contains(f.Message, "smtp") {
+			said = true
+		}
+	}
+	if !said {
+		t.Errorf("no finding mentions smtp, so the plaintext negotiation never ran: %+v", reps[0].Findings)
+	}
+}
+
+func TestProbeRefusesAnUnknownStartTLSProtocol(t *testing.T) {
+	_, err := pq.Probe(context.Background(), []string{"127.0.0.1:1"}, pq.Options{StartTLS: "gopher"})
+	if err == nil {
+		t.Fatal("an unknown --starttls protocol was accepted")
+	}
+	// The valid ones have to be in the message: an error that says only "no"
+	// costs a trip to the source.
+	if !strings.Contains(err.Error(), "smtp") {
+		t.Errorf("the error does not name the protocols it accepts: %v", err)
 	}
 }
