@@ -44,6 +44,16 @@
       "unit": "bytes"
     },
     {
+      "id": "04ecc0bb6168",
+      "severity": "ok",
+      "title": "leaf ECDSA 256 signed SHA256-RSA",
+      "detail": "origin.example: ECDSA 256, signed SHA256-RSA. This is the inventory a certificate migration is planned against, not a judgement of it — what it costs when the signature changes is the chain-projection finding",
+      "target": "origin.example:443",
+      "check": "signatures",
+      "value": 256,
+      "unit": "bits"
+    },
+    {
       "id": "83ac710cbfe6",
       "severity": "ok",
       "title": "pq-ready — post-quantum key exchange works, including for a client that requires it",
@@ -140,6 +150,16 @@
       "check": "chain-size",
       "value": 1200,
       "unit": "bytes"
+    },
+    {
+      "id": "04052f509692",
+      "severity": "ok",
+      "title": "leaf ECDSA 256 signed SHA256-RSA",
+      "detail": "origin.example: ECDSA 256, signed SHA256-RSA. This is the inventory a certificate migration is planned against, not a judgement of it — what it costs when the signature changes is the chain-projection finding",
+      "target": "wall.example:443",
+      "check": "signatures",
+      "value": 256,
+      "unit": "bits"
     },
     {
       "id": "031b7c1f2a1a",

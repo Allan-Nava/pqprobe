@@ -48,6 +48,12 @@ func goldenRun(t *testing.T) []verdict.Report {
 		// be a document nobody's golden covers.
 		KeyBytes: 91,
 		SigBytes: 71,
+		// And what signs it (PQ-73): the inventory half of the same
+		// certificate, so the golden covers a finding that exists rather than
+		// the silence of a chain with no algorithms recorded.
+		KeyAlg:  "ECDSA",
+		KeyBits: 256,
+		SigAlg:  "SHA256-RSA",
 	}}
 
 	ok := func(profile, group string, pq bool, hello int) probe.Result {

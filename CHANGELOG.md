@@ -6,6 +6,29 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.50.0] - 2026-09-22
+
+### Added
+
+- **`signatures`: what signs this chain today (PQ-73).** `chain-projection` says
+  what the chain costs once it moves; this is the inventory the move gets
+  planned against — how many endpoints are RSA-2048, how many ECDSA P-256, which
+  ones carry an intermediate from a different era than their leaf. The
+  certificates were already parsed and none of it was written down.
+
+  One finding per endpoint: the leaf's key and signature algorithm in the
+  message, every certificate in the hint, and the leaf's key size as
+  `value`/`unit` — "how many endpoints are still 2048" is the fleet question it
+  exists to answer, and it should not require parsing prose. `probe.Cert` gains
+  `key_alg`, `key_bits` and `sig_alg`.
+
+  `key_bits` is absent rather than zero for a key kind this build cannot size: a
+  made-up number in an inventory is worse than a blank. And the finding does not
+  grade — whether RSA-2048 is good enough, or SHA-1 unacceptable, is a
+  configuration opinion, and configuration opinions are `testssl.sh`'s job. This
+  records what the peer sent, because it is in hand and because it decides what
+  the chain costs when the signature changes.
+
 ## [0.49.2] - 2026-09-21
 
 ### Fixed
@@ -1693,6 +1716,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.50.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.50.0
 [0.49.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.49.2
 [0.49.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.49.1
 [0.29.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.29.2

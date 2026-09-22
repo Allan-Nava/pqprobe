@@ -98,6 +98,15 @@
     "hint": "post-quantum authentication is the next migration and it is a size problem again: an ML-DSA signature is around 3.3 KB where an ECDSA one is 64 bytes, so this chain grows by roughly 4 KB per certificate when it moves. This is the headroom you have today"
   },
   {
+    "check": "signatures",
+    "target": "origin.example:443",
+    "status": "OK",
+    "message": "leaf ECDSA 256 signed SHA256-RSA",
+    "value": 256,
+    "unit": "bits",
+    "hint": "origin.example: ECDSA 256, signed SHA256-RSA. This is the inventory a certificate migration is planned against, not a judgement of it — what it costs when the signature changes is the chain-projection finding"
+  },
+  {
     "check": "verdict",
     "target": "origin.example:443",
     "status": "OK",
@@ -145,6 +154,15 @@
     "value": 1200,
     "unit": "bytes",
     "hint": "post-quantum authentication is the next migration and it is a size problem again: an ML-DSA signature is around 3.3 KB where an ECDSA one is 64 bytes, so this chain grows by roughly 4 KB per certificate when it moves. This is the headroom you have today"
+  },
+  {
+    "check": "signatures",
+    "target": "wall.example:443",
+    "status": "OK",
+    "message": "leaf ECDSA 256 signed SHA256-RSA",
+    "value": 256,
+    "unit": "bits",
+    "hint": "origin.example: ECDSA 256, signed SHA256-RSA. This is the inventory a certificate migration is planned against, not a judgement of it — what it costs when the signature changes is the chain-projection finding"
   },
   {
     "check": "handshake",

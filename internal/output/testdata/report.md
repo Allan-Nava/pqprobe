@@ -31,6 +31,8 @@
   - per certificate under ML-DSA-65: origin.example 1200 → 6299 B. The projection replaces each certificate's public key and signature with the FIPS 204 sizes and changes nothing else, so it is what this chain weighs if all of it moves; value is the ML-DSA-65 total
 - **OK** `chain-size` — the peer sent 1 certificate(s), 1200 bytes of chain
   - post-quantum authentication is the next migration and it is a size problem again: an ML-DSA signature is around 3.3 KB where an ECDSA one is 64 bytes, so this chain grows by roughly 4 KB per certificate when it moves. This is the headroom you have today
+- **OK** `signatures` — leaf ECDSA 256 signed SHA256-RSA
+  - origin.example: ECDSA 256, signed SHA256-RSA. This is the inventory a certificate migration is planned against, not a judgement of it — what it costs when the signature changes is the chain-projection finding
 - **OK** `handshake/classic` — TLS 1.3, X25519, TLS_AES_128_GCM_SHA256, hello 285 B
 
 </details>
@@ -44,6 +46,8 @@
   - per certificate under ML-DSA-65: origin.example 1200 → 6299 B. The projection replaces each certificate's public key and signature with the FIPS 204 sizes and changes nothing else, so it is what this chain weighs if all of it moves; value is the ML-DSA-65 total
 - **OK** `chain-size` — the peer sent 1 certificate(s), 1200 bytes of chain
   - post-quantum authentication is the next migration and it is a size problem again: an ML-DSA signature is around 3.3 KB where an ECDSA one is 64 bytes, so this chain grows by roughly 4 KB per certificate when it moves. This is the headroom you have today
+- **OK** `signatures` — leaf ECDSA 256 signed SHA256-RSA
+  - origin.example: ECDSA 256, signed SHA256-RSA. This is the inventory a certificate migration is planned against, not a judgement of it — what it costs when the signature changes is the chain-projection finding
 - **OK** `verdict` — pq-ready — post-quantum key exchange works, including for a client that requires it
   - nothing to do; re-run after any TLS stack or load balancer change
 - **OK** `handshake/classic` — TLS 1.3, X25519, TLS_AES_128_GCM_SHA256, hello 285 B

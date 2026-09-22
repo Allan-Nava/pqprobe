@@ -90,6 +90,9 @@ $ pqprobe probe origin.example.com --json
 | `is_ca` | boolean | always | whether this certificate is a CA |
 | `key_bytes` | number | when set | what this certificate's subjectPublicKeyInfo weighs in the DER the peer sent — one of the two inputs to the post-quantum projection |
 | `sig_bytes` | number | when set | what this certificate's signature weighs in that same DER — the other input: an ML-DSA certificate is this certificate with those two fields replaced |
+| `key_alg` | string | when set | what kind of key this certificate carries — `RSA`, `ECDSA`, `Ed25519` — as `crypto/x509` names it |
+| `key_bits` | number | when set | how big that key is: the modulus for RSA, the curve size for ECDSA, 256 for Ed25519; absent when this build cannot work it out, never guessed |
+| `sig_alg` | string | when set | what signed this certificate, e.g. `SHA256-RSA` — recorded, not judged: whether it is good enough is a configuration opinion |
 
 ### `Finding`
 
