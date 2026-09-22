@@ -15,7 +15,7 @@
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
 | **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 16 |
-| **M4** — Later | `ongoing` | later | `##########` 100% | 0 | 7 |
+| **M4** — Later | `ongoing` | later | `#########.` 88% | 1 | 7 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 | **M6** — Reach the rest of the fleet | `v0.32.0` | shipped | `##########` 100% | 0 | 5 |
 | **M7** — Encrypted Client Hello | `v0.35.0` | shipped | `##########` 100% | 0 | 3 |
@@ -26,17 +26,16 @@
 | **M12** — What the audit found | `v0.44.1` | shipped | `##########` 100% | 0 | 1 |
 | **M13** — Invariants a machine can check | `v0.45.0` | shipped | `##########` 100% | 0 | 3 |
 | **M14** — The contract with machines | `v0.48.0` | shipped | `##########` 100% | 0 | 2 |
-| **M15** — The next migration is the certificate | `v0.50.0` | next | `####......` 40% | 3 | 2 |
-| **M16** — v1.0.0 | `v1.0.0` | **now** | `########..` 75% | 1 | 3 |
+| **M15** — The next migration is the certificate | `v1.1.0` | **now** | `####......` 40% | 3 | 2 |
+| **M16** — v1.0.0 | `v1.0.0` | shipped | `##########` 100% | 0 | 3 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-74** — The headroom threshold, and what it is conditional on · `med` · size `M` · verdict,cli (M15, target `v0.50.0`)
-- **PQ-75** — Say the arithmetic once, where it can be checked · `med` · size `S` · docs,output (M15, target `v0.50.0`)
-- **PQ-79** — The API table lists the fields, not only the names · `med` · size `S` · docs,project (M16, target `v1.0.0`)
-- **PQ-76** — The profile we cannot ship yet, written down so nobody   re-proposes it · `low` · size `S` · profile,project (M15, target `v0.50.0`)
+- **PQ-74** — The headroom threshold, and what it is conditional on · `med` · size `M` · verdict,cli (M15, target `v1.1.0`)
+- **PQ-75** — Say the arithmetic once, where it can be checked · `med` · size `S` · docs,output (M15, target `v1.1.0`)
+- **PQ-76** — The profile we cannot ship yet, written down so nobody   re-proposes it · `low` · size `S` · profile,project (M15, target `v1.1.0`)
 
 ## Milestones
 
@@ -92,10 +91,11 @@ Target `v0.23.0` · shipped · 0 open · 16 shipped · `##########` 100%
 
 ### M4 — Later
 
-Target `ongoing` · later · 0 open · 7 shipped · `##########` 100%
+Target `ongoing` · later · 1 open · 7 shipped · `#########.` 88%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
+| **PQ-79** — The API table lists the fields, not only the names | med | S | docs,project | open |
 | **PQ-10** — Real ClientHello shapes | med | XL | profile | shipped `0.25.0` |
 | **PQ-19** — QUIC | med | XL | probe | shipped `0.28.0` |
 | **PQ-37** — `--findings` non parla la forma che i tool fratelli consumano | med | M | output,integration | shipped `0.21.0` |
@@ -210,7 +210,7 @@ Target `v0.48.0` · shipped · 0 open · 2 shipped · `##########` 100%
 
 ### M15 — The next migration is the certificate
 
-Target `v0.50.0` · next · 3 open · 2 shipped · `####......` 40%
+Target `v1.1.0` · **now** · 3 open · 2 shipped · `####......` 40%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
@@ -222,11 +222,10 @@ Target `v0.50.0` · next · 3 open · 2 shipped · `####......` 40%
 
 ### M16 — v1.0.0
 
-Target `v1.0.0` · **now** · 1 open · 3 shipped · `########..` 75%
+Target `v1.0.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-79** — The API table lists the fields, not only the names | med | S | docs,project | open |
 | **PQ-77** — main is not pushed directly | high | M | project,release,tests | shipped `0.49.0` |
 | **PQ-78** — The compatibility promise, written where it can be checked | high | M | docs,project,release | shipped `0.51.0` |
 | **PQ-71** — The public API can ask what the CLI can ask | med | M | integration | shipped `0.52.0` |

@@ -6,6 +6,47 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [1.0.0] - 2026-09-22
+
+The version number is the only thing that changes here. That is the point of it.
+
+pqprobe has answered the same question since 0.1.0 — **which classes of client
+can still complete a TLS handshake with this endpoint, and how does it refuse the
+others** — and 1.0 does not add to it. What 1.0 says is that the answers now come
+in shapes somebody else can build on, and that those shapes will not move without
+a major.
+
+### What is now promised
+
+- **The documents.** `--json`, both `--findings` shapes and the Prometheus
+  textfile carry a `schema` number, and [docs/schema.md](docs/schema.md) — generated
+  from the types that render them — says what every field means, what the wrapped
+  `id` is a fingerprint of, and which parts are allowed to grow (PQ-69, PQ-70).
+- **Everything else on the surface.** [docs/compatibility.md](docs/compatibility.md),
+  generated from the code it describes, states what a major, a minor and a patch
+  mean for the 31 flags, the three exit codes, the 11 classes, the 19 checks and
+  the exported surface of `pq/` (PQ-78).
+- **The Go API.** `pq.Options` asks everything the command line asks, including
+  STARTTLS, the per-group pass, the size sweep and Encrypted Client Hello, with
+  the same rule: an unknown value is an error, never a quietly different run
+  (PQ-71).
+
+### What is deliberately still not promised
+
+The prose of a message or a hint, anything under `internal/`, `contrib/`, how
+many findings a run emits, and every measured number — those describe the
+endpoint and the network rather than this tool. Read `check`, `status`, `class`,
+`value` and `unit`, which exist so that nothing has to parse a sentence.
+
+### What has not changed, and will not
+
+Zero dependencies. No request, no application data, no credential, no
+subprocess — a handshake and a close, which is what makes it reasonable to point
+at production. A civil refusal and an abrupt one stay different things, and
+`Kind.Abrupt()` stays the only place that distinction lives. No endpoint is
+graded that nobody reached. The dialler never verifies, so a certificate problem
+can never be reported as a capability problem. Exit 0 whenever the probe ran.
+
 ## [0.52.0] - 2026-09-22
 
 ### Added
@@ -1773,6 +1814,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[1.0.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.0.0
 [0.52.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.52.0
 [0.51.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.51.0
 [0.50.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.50.0
