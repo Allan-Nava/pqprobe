@@ -74,6 +74,9 @@ var fieldMeaning = map[string]string{
 	"Cert.is_ca":      "whether this certificate is a CA",
 	"Cert.key_bytes":  "what this certificate's subjectPublicKeyInfo weighs in the DER the peer sent — one of the two inputs to the post-quantum projection",
 	"Cert.sig_bytes":  "what this certificate's signature weighs in that same DER — the other input: an ML-DSA certificate is this certificate with those two fields replaced",
+	"Cert.key_alg":    "what kind of key this certificate carries — `RSA`, `ECDSA`, `Ed25519` — as `crypto/x509` names it",
+	"Cert.key_bits":   "how big that key is: the modulus for RSA, the curve size for ECDSA, 256 for Ed25519; absent when this build cannot work it out, never guessed",
+	"Cert.sig_alg":    "what signed this certificate, e.g. `SHA256-RSA` — recorded, not judged: whether it is good enough is a configuration opinion",
 
 	// finding.Finding.
 	"Finding.check":   "which statement this is — see [Findings](findings.md) for the list",

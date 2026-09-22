@@ -1159,6 +1159,12 @@ func chainFindings(target string, results []probe.Result, opt Options) []finding
 		out = append(out, f)
 	}
 
+	// And what signs it today (PQ-73): the inventory the migration above gets
+	// planned against. Recorded, never graded.
+	if f, ok := signatureInventory(target, src); ok {
+		out = append(out, f)
+	}
+
 	if !src.ChainVerified {
 		out = append(out, finding.Finding{
 			Check: "chain", Target: target, Status: finding.WARN,

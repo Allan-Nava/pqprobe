@@ -1205,7 +1205,7 @@ operator needs before the decision, said once, per endpoint, with its unit.
   has started. That is PQ-74's, with a flag to move the line.
   <!-- pq: prio=high size=M labels=verdict,output ver=0.48.0 -->
 
-- [ ] **PQ-73 — What signs this chain today**: the certificates are already
+- [x] **PQ-73 — What signs this chain today**: the certificates are already
   parsed and `probe.Cert` records the subject, the issuer, the dates and the
   bytes — but not what signed it or with what key. A migration is planned
   against that inventory: how many endpoints are RSA-2048, how many ECDSA
@@ -1214,7 +1214,16 @@ operator needs before the decision, said once, per endpoint, with its unit.
   and say it in one finding per endpoint. This stays on the right side of the
   boundary with checkfleet: not lifecycle, not renewal, not issuer policy — what
   the peer sent, which is in hand, and which decides what the chain costs when
-  the signature changes. <!-- pq: prio=high size=S labels=probe,output -->
+  the signature changes.
+  Shipped as the `signatures` finding, one per endpoint: the leaf's key and
+  signature in the message, every certificate in the hint, and the leaf's key
+  size as `Value`/`Unit` because "how many endpoints are still RSA-2048" is the
+  fleet question it exists to answer. `probe.Cert` records `KeyAlg`, `KeyBits`
+  and `SigAlg`; `KeyBits` is left absent rather than guessed for a key kind this
+  build does not know, because a made-up number in an inventory is worse than a
+  blank. No grading, deliberately: whether RSA-2048 is good enough is a
+  configuration opinion, and those belong to testssl.sh.
+  <!-- pq: prio=high size=S labels=probe,output ver=0.50.0 -->
 
 - [ ] **PQ-74 — The headroom threshold, and what it is conditional on**: a
   projected chain that crosses roughly 14 KB no longer fits the ten-segment

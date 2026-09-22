@@ -8,6 +8,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -1742,5 +1743,74 @@ func TestTheCertificateRecordsWhatItsKeyAndSignatureWeigh(t *testing.T) {
 	if leaf.KeyBytes+leaf.SigBytes >= leaf.Bytes {
 		t.Errorf("KeyBytes+SigBytes = %d, which is not a part of a %d-byte certificate",
 			leaf.KeyBytes+leaf.SigBytes, leaf.Bytes)
+	}
+}
+
+// PQ-73. What a chain costs after the post-quantum migration is PQ-72's
+// arithmetic; what it is signed with *today* is the inventory that migration
+// gets planned against — how many endpoints are RSA-2048, how many ECDSA P-256,
+// which ones are cross-signed. The certificates were already parsed and none of
+// that was recorded.
+func TestTheCertificateRecordsWhatSignsIt(t *testing.T) {
+	cert := selfSigned(t, time.Now().Add(90*24*time.Hour))
+	tg := serveTLS(t, &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13})
+
+	res := dial(t, tg, "classic")
+	if !res.OK {
+		t.Fatalf("handshake failed: %s (%s)", res.Err, res.Kind)
+	}
+	if len(res.Chain) == 0 {
+		t.Fatal("no certificate was recorded")
+	}
+
+	leaf := res.Chain[0]
+	// The fixture is a P-256 certificate signed by its own key.
+	if leaf.KeyAlg != "ECDSA" {
+		t.Errorf("KeyAlg = %q, want ECDSA", leaf.KeyAlg)
+	}
+	if leaf.KeyBits != 256 {
+		t.Errorf("KeyBits = %d, want 256 for P-256", leaf.KeyBits)
+	}
+	// The signature algorithm is the peer's words, not ours: "ECDSA-SHA256" is
+	// what x509 calls it, and an operator greps for that string.
+	if !strings.Contains(leaf.SigAlg, "ECDSA") || !strings.Contains(leaf.SigAlg, "SHA256") {
+		t.Errorf("SigAlg = %q, want the ECDSA-SHA256 the fixture is signed with", leaf.SigAlg)
+	}
+}
+
+// An RSA certificate has to report its modulus size rather than a curve: 2048
+// against 256 is the whole point of recording the number, and a key algorithm
+// with no size is an inventory nobody can plan against.
+func TestAnRSACertificateRecordsItsModulusSize(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(2),
+		Subject:      pkix.Name{CommonName: "pqprobe-test-rsa"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(90 * 24 * time.Hour),
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tg := serveTLS(t, &tls.Config{
+		Certificates: []tls.Certificate{{Certificate: [][]byte{der}, PrivateKey: key}},
+		MinVersion:   tls.VersionTLS13,
+	})
+
+	res := dial(t, tg, "classic")
+	if !res.OK {
+		t.Fatalf("handshake failed: %s (%s)", res.Err, res.Kind)
+	}
+	leaf := res.Chain[0]
+	if leaf.KeyAlg != "RSA" {
+		t.Errorf("KeyAlg = %q, want RSA", leaf.KeyAlg)
+	}
+	if leaf.KeyBits != 2048 {
+		t.Errorf("KeyBits = %d, want the 2048-bit modulus", leaf.KeyBits)
 	}
 }

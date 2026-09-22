@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**78 items · 72 shipped · 6 open · 16 milestones.**
+**78 items · 73 shipped · 5 open · 16 milestones.**
 
 ## At a glance
 
@@ -26,14 +26,13 @@
 | **M12** — What the audit found | `v0.44.1` | shipped | `##########` 100% | 0 | 1 |
 | **M13** — Invariants a machine can check | `v0.45.0` | shipped | `##########` 100% | 0 | 3 |
 | **M14** — The contract with machines | `v0.48.0` | shipped | `##########` 100% | 0 | 2 |
-| **M15** — The next migration is the certificate | `v0.50.0` | next | `##........` 20% | 4 | 1 |
+| **M15** — The next migration is the certificate | `v0.50.0` | next | `####......` 40% | 3 | 2 |
 | **M16** — v1.0.0 | `v1.0.0` | **now** | `###.......` 33% | 2 | 1 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-73** — What signs this chain today · `high` · size `S` · probe,output (M15, target `v0.50.0`)
 - **PQ-78** — The compatibility promise, written where it can be checked · `high` · size `M` · docs,project,release (M16, target `v1.0.0`)
 - **PQ-71** — The public API can ask what the CLI can ask · `med` · size `M` · integration (M16, target `v1.0.0`)
 - **PQ-74** — The headroom threshold, and what it is conditional on · `med` · size `M` · verdict,cli (M15, target `v0.50.0`)
@@ -212,15 +211,15 @@ Target `v0.48.0` · shipped · 0 open · 2 shipped · `##########` 100%
 
 ### M15 — The next migration is the certificate
 
-Target `v0.50.0` · next · 4 open · 1 shipped · `##........` 20%
+Target `v0.50.0` · next · 3 open · 2 shipped · `####......` 40%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-73** — What signs this chain today | high | S | probe,output | open |
 | **PQ-74** — The headroom threshold, and what it is conditional on | med | M | verdict,cli | open |
 | **PQ-75** — Say the arithmetic once, where it can be checked | med | S | docs,output | open |
 | **PQ-76** — The profile we cannot ship yet, written down so nobody   re-proposes it | low | S | profile,project | open |
 | **PQ-72** — What this chain becomes, as a number | high | M | verdict,output | shipped `0.48.0` |
+| **PQ-73** — What signs this chain today | high | S | probe,output | shipped `0.50.0` |
 
 ### M16 — v1.0.0
 
@@ -237,15 +236,15 @@ Target `v1.0.0` · **now** · 2 open · 1 shipped · `###.......` 33%
 | Label | Items | Open |
 |---|---|---|
 | `docs` | 13 | 2 |
-| `output` | 14 | 2 |
 | `project` | 9 | 2 |
 | `cli` | 13 | 1 |
 | `integration` | 6 | 1 |
-| `probe` | 29 | 1 |
+| `output` | 14 | 1 |
 | `profile` | 8 | 1 |
 | `release` | 7 | 1 |
 | `verdict` | 12 | 1 |
 | `delivery` | 7 | 0 |
 | `inventory` | 6 | 0 |
+| `probe` | 29 | 0 |
 | `tests` | 14 | 0 |
 | `ux` | 2 | 0 |

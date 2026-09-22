@@ -13,6 +13,9 @@ package probe
 import (
 	"bufio"
 	"context"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -139,6 +142,14 @@ type Cert struct {
 	// in a ticket with nobody able to say where it came from.
 	KeyBytes int `json:"key_bytes,omitempty"`
 	SigBytes int `json:"sig_bytes,omitempty"`
+	// KeyAlg, KeyBits and SigAlg are the inventory a certificate migration is
+	// planned against (PQ-73): what this certificate's key is, how big, and
+	// what signed it. Recorded rather than judged — whether RSA-2048 is good
+	// enough is a configuration opinion, and configuration opinions belong to
+	// testssl.sh.
+	KeyAlg  string `json:"key_alg,omitempty"`
+	KeyBits int    `json:"key_bits,omitempty"`
+	SigAlg  string `json:"sig_alg,omitempty"`
 }
 
 // Result is one (target, profile) handshake attempt.
@@ -1229,6 +1240,9 @@ func (d Dialer) Do(ctx context.Context, t Target, p clientprofile.Profile) Resul
 			// re-encoding: the projection is about bytes on the wire.
 			KeyBytes: len(c.RawSubjectPublicKeyInfo),
 			SigBytes: len(c.Signature),
+			KeyAlg:   c.PublicKeyAlgorithm.String(),
+			KeyBits:  keyBits(c),
+			SigAlg:   c.SignatureAlgorithm.String(),
 		})
 	}
 	res.ChainVerified, res.ChainError = verifyChain(st.PeerCertificates, t.ServerName(), d.now())
@@ -1240,6 +1254,23 @@ func (d Dialer) now() time.Time {
 		return d.Now()
 	}
 	return time.Now()
+}
+
+// keyBits is the size of a certificate's public key in bits: the modulus for
+// RSA, the curve for ECDSA, and the fixed 256 for Ed25519 — the number a fleet
+// query groups by, and the one that decides what the key costs on the wire.
+// Zero when the key is of a kind this build does not know, because a made-up
+// number in an inventory is worse than a blank.
+func keyBits(c *x509.Certificate) int {
+	switch k := c.PublicKey.(type) {
+	case *rsa.PublicKey:
+		return k.N.BitLen()
+	case *ecdsa.PublicKey:
+		return k.Curve.Params().BitSize
+	case ed25519.PublicKey:
+		return 256
+	}
+	return 0
 }
 
 // verifyChain checks the certificates the peer sent against the system roots.
