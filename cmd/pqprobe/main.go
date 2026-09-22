@@ -11,7 +11,6 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
@@ -1060,20 +1059,14 @@ func echProfilesFor(ctx context.Context, w io.Writer, targets []probe.Target, at
 // thing that can be checked before anything is dialled: a paste that is not a
 // config list would otherwise fail inside the handshake, where the report reads
 // as though the endpoint had done something wrong.
+// The decoding itself lives in internal/probe, because pq.Options takes the
+// same value (PQ-71) and two copies of a validation is how a binary and its
+// library come to disagree about what they accept. What stays here is the flag
+// name in the message, which is what the person reading it typed.
 func parseECHConfig(s string) ([]byte, error) {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return nil, nil
-	}
-	raw, err := base64.StdEncoding.DecodeString(s)
+	raw, err := probe.ParseECHConfigList(s)
 	if err != nil {
-		return nil, fmt.Errorf("--ech-config is not base64: %w (it is the `ech=` value of the endpoint's HTTPS DNS record)", err)
-	}
-	if len(raw) < 4 {
-		return nil, fmt.Errorf("--ech-config decodes to %d bytes, which is too short for an ECHConfigList", len(raw))
-	}
-	if n := int(raw[0])<<8 | int(raw[1]); n != len(raw)-2 {
-		return nil, fmt.Errorf("--ech-config says it carries %d bytes of configs and has %d: that is not an ECHConfigList", n, len(raw)-2)
+		return nil, fmt.Errorf("--ech-config %w", err)
 	}
 	return raw, nil
 }

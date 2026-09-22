@@ -92,6 +92,31 @@ type Options struct {
 	// SNI overrides the server name sent to every target. Empty keeps each
 	// target's own — including the `1.2.3.4=origin.example` form.
 	SNI string
+	// StartTLS is the plaintext protocol to negotiate before the handshake:
+	// smtp, imap, postgres, mysql, ftp, nntp, ldap or xmpp. Empty means
+	// implicit TLS, which is what `host:443` and `host:465` already are. It is
+	// the only thing this package ever writes in plaintext, and it writes no
+	// mail, no query, no bind and no credential. An unknown value is an error.
+	StartTLS string
+	// PerGroup also dials each key exchange group on its own, so the answer
+	// says which groups the peer accepts alone and how it refuses the others —
+	// which is what a migration has to be planned against, rather than the
+	// single group a full offer happened to settle on.
+	PerGroup bool
+	// SizeSweep also grows the ClientHello in steps and reports the first size
+	// the peer stopped answering. A size limit is the failure post-quantum key
+	// exchange actually hits, and the number is what a vendor asks for.
+	SizeSweep bool
+	// ALPNCheck also dials with and without a protocol list, so the answer says
+	// whether offering one changes it — one fewer difference between a health
+	// check and a browser.
+	ALPNCheck bool
+	// ECHConfig is a base64 ECHConfigList — the `ech=` value of the endpoint's
+	// HTTPS DNS record — and asks whether the peer accepts Encrypted Client
+	// Hello, and what it costs on the wire. A value that is not a config list
+	// is an error before anything is dialled, rather than a handshake failure
+	// that reads as though the endpoint had done something wrong.
+	ECHConfig string
 }
 
 // Probe dials every target and returns one report each.
@@ -139,15 +164,45 @@ func Probe(ctx context.Context, targets []string, opt Options) ([]Report, error)
 		concurrency = 8
 	}
 
+	// The same refusals the CLI makes, in the same order and for the same
+	// reason (PQ-71): an unknown value is an error, never a quietly different
+	// run. A library that silently ignored `StartTLS: "gopher"` would return a
+	// report about implicit TLS on port 587 and call it an answer.
+	if !probe.ValidStartTLS(opt.StartTLS) {
+		return nil, fmt.Errorf("unknown starttls protocol %q (have: %s)",
+			opt.StartTLS, strings.Join(probe.StartTLSProtocols(), ", "))
+	}
+	echList, err := probe.ParseECHConfigList(opt.ECHConfig)
+	if err != nil {
+		return nil, fmt.Errorf("pq: ECHConfig %w", err)
+	}
+
 	if !probe.ValidNet(opt.Net) {
 		return nil, fmt.Errorf("unknown address family %q (have: %s)", opt.Net, strings.Join(probe.Nets(), ", "))
 	}
 	d := probe.Dialer{
-		Timeout: timeout,
-		ALPN:    opt.ALPN,
-		Socks5:  opt.Socks5,
-		Net:     opt.Net,
-		Confirm: !opt.NoConfirm,
+		Timeout:  timeout,
+		ALPN:     opt.ALPN,
+		StartTLS: opt.StartTLS,
+		Socks5:   opt.Socks5,
+		Net:      opt.Net,
+		Confirm:  !opt.NoConfirm,
+	}
+
+	// The extra passes are extra *profiles*, exactly as the CLI builds them —
+	// one list, appended in the same order, so the library and the binary
+	// cannot dial different runs from the same request.
+	if opt.PerGroup {
+		sel = append(sel, clientprofile.GroupProbes()...)
+	}
+	if opt.SizeSweep {
+		sel = append(sel, clientprofile.SizeProbes()...)
+	}
+	if opt.ALPNCheck {
+		sel = append(sel, clientprofile.ALPNProbe())
+	}
+	if len(echList) > 0 {
+		sel = append(sel, clientprofile.ECHProbes(echList)...)
 	}
 	vopt := verdict.DefaultOptions()
 	if opt.ExpiryWarnDays > 0 {

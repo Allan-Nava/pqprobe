@@ -1272,14 +1272,21 @@ can ask. Declaring 1.0 with that gap would mean the first thing after the major
 is an embedder writing code around an absence, which is exactly what a major is
 supposed to prevent.
 
-- [ ] **PQ-71 — The public API can ask what the CLI can ask**: `pq.Options`
+- [x] **PQ-71 — The public API can ask what the CLI can ask**: `pq.Options`
   carries profiles, timeout, ALPN, SOCKS5, concurrency, expiry thresholds and
   `Net` — and cannot reach a mail server, because `--starttls` never made it
   across. Nor `--per-group`, `--size-sweep` or ECH. An embedder that wants the
   answer for port 587 has to shell out to the binary, which is the thing `pq/`
   exists to avoid. Whatever is added arrives with the same rule the CLI has: an
   unknown value is an error, never a quietly different run.
-  <!-- pq: prio=med size=M labels=integration -->
+  Shipped: `StartTLS`, `PerGroup`, `SizeSweep`, `ALPNCheck` and `ECHConfig` on
+  `pq.Options`, refusing an unknown protocol and a config list that is not one
+  *before* anything is dialled. The extra passes are extra profiles appended in
+  the same order the CLI appends them, so the binary and the library cannot dial
+  different runs from the same request — and the ECH validation moved into
+  `internal/probe`, because two copies of it is how a binary and its library
+  come to disagree about what they accept.
+  <!-- pq: prio=med size=M labels=integration ver=0.52.0 -->
 
 - [x] **PQ-77 — main is not pushed directly**: everything lands through a pull
   request whose CI went green, because the gates that matter — race, fuzz, the
@@ -1313,6 +1320,13 @@ supposed to prevent.
   once, only when Go saved nothing, with `scripts/fuzz_test.sh` keeping the rule
   that narrow.
   <!-- pq: prio=high size=M labels=project,release,tests ver=0.49.0 -->
+
+- [ ] **PQ-79 — The API table lists the fields, not only the names**: today
+  `docs/compatibility.md` lists the exported *names* of `pq/`, so PQ-71 could add
+  five fields to `pq.Options` without the page moving. Adding a field is a minor
+  and not a break, so the page was not wrong — but a field *removed* or renamed
+  is a major, and nothing would show it in a diff. Walk the struct fields too.
+  <!-- pq: prio=med size=S labels=docs,project -->
 
 - [x] **PQ-78 — The compatibility promise, written where it can be checked**:
   `docs/schema.md` says what a document contract is and when its number moves.
