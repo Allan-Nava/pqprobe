@@ -1314,7 +1314,7 @@ supposed to prevent.
   that narrow.
   <!-- pq: prio=high size=M labels=project,release,tests ver=0.49.0 -->
 
-- [ ] **PQ-78 — The compatibility promise, written where it can be checked**:
+- [x] **PQ-78 — The compatibility promise, written where it can be checked**:
   `docs/schema.md` says what a document contract is and when its number moves.
   Nothing says the same for the rest of the surface: the flags, the exit codes,
   the class names, the check names, the `pq/` API. One page — `docs/compatibility.md`
@@ -1323,4 +1323,13 @@ supposed to prevent.
   hint, anything under `internal/`), and how long a deprecated flag keeps
   working. Generated from the flag set and `verdict.Classes()` where it can be,
   so the promise and the code cannot drift the way the schema page cannot.
-  <!-- pq: prio=high size=M labels=docs,project,release -->
+  Shipped as `docs/compatibility.md`, generated from four sources that are the
+  code rather than a copy of it: the flag set as the binary declares it,
+  `verdict.Classes()` with its descriptions, the check names read out of the two
+  places that write them — the verdict and the CLI, because a scan of the first
+  alone quietly under-promised `egress`, `resolver` and `net` — and the exported
+  surface of `pq/` walked with `go/ast`. The prose lives in the generator, so
+  half a page cannot go stale while the other half regenerates. A second gate
+  ties it to `docs/findings.md`: a check the tool emits and that page never
+  describes is a promise nobody documented.
+  <!-- pq: prio=high size=M labels=docs,project,release ver=0.51.0 -->

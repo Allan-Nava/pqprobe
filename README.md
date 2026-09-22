@@ -220,6 +220,11 @@ without a run.
 | `--textfile F` | Prometheus textfile-collector metrics, written atomically (a side output, not a renderer) |
 | `--min-severity S` | hide findings below `S`; the endpoint header stays |
 
+[docs/compatibility.md](docs/compatibility.md) says what a major, a minor and a
+patch mean for the flags, the exit status, the classes, the checks and the `pq/`
+API — and what is deliberately not stable, starting with the prose of a message.
+It is generated from the code it describes.
+
 Every document with an envelope to carry it says which contract it speaks —
 `"schema": 1` in `--json` and `--findings=wrapped`, `pqprobe_schema_version` in
 the textfile — and [docs/schema.md](docs/schema.md) says what every field means,

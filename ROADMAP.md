@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**78 items · 73 shipped · 5 open · 16 milestones.**
+**78 items · 74 shipped · 4 open · 16 milestones.**
 
 ## At a glance
 
@@ -27,13 +27,12 @@
 | **M13** — Invariants a machine can check | `v0.45.0` | shipped | `##########` 100% | 0 | 3 |
 | **M14** — The contract with machines | `v0.48.0` | shipped | `##########` 100% | 0 | 2 |
 | **M15** — The next migration is the certificate | `v0.50.0` | next | `####......` 40% | 3 | 2 |
-| **M16** — v1.0.0 | `v1.0.0` | **now** | `###.......` 33% | 2 | 1 |
+| **M16** — v1.0.0 | `v1.0.0` | **now** | `#######...` 67% | 1 | 2 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-78** — The compatibility promise, written where it can be checked · `high` · size `M` · docs,project,release (M16, target `v1.0.0`)
 - **PQ-71** — The public API can ask what the CLI can ask · `med` · size `M` · integration (M16, target `v1.0.0`)
 - **PQ-74** — The headroom threshold, and what it is conditional on · `med` · size `M` · verdict,cli (M15, target `v0.50.0`)
 - **PQ-75** — Say the arithmetic once, where it can be checked · `med` · size `S` · docs,output (M15, target `v0.50.0`)
@@ -223,28 +222,28 @@ Target `v0.50.0` · next · 3 open · 2 shipped · `####......` 40%
 
 ### M16 — v1.0.0
 
-Target `v1.0.0` · **now** · 2 open · 1 shipped · `###.......` 33%
+Target `v1.0.0` · **now** · 1 open · 2 shipped · `#######...` 67%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-78** — The compatibility promise, written where it can be checked | high | M | docs,project,release | open |
 | **PQ-71** — The public API can ask what the CLI can ask | med | M | integration | open |
 | **PQ-77** — main is not pushed directly | high | M | project,release,tests | shipped `0.49.0` |
+| **PQ-78** — The compatibility promise, written where it can be checked | high | M | docs,project,release | shipped `0.51.0` |
 
 ## By label
 
 | Label | Items | Open |
 |---|---|---|
-| `docs` | 13 | 2 |
-| `project` | 9 | 2 |
 | `cli` | 13 | 1 |
+| `docs` | 13 | 1 |
 | `integration` | 6 | 1 |
 | `output` | 14 | 1 |
 | `profile` | 8 | 1 |
-| `release` | 7 | 1 |
+| `project` | 9 | 1 |
 | `verdict` | 12 | 1 |
 | `delivery` | 7 | 0 |
 | `inventory` | 6 | 0 |
 | `probe` | 29 | 0 |
+| `release` | 7 | 0 |
 | `tests` | 14 | 0 |
 | `ux` | 2 | 0 |

@@ -6,6 +6,34 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [0.51.0] - 2026-09-22
+
+### Added
+
+- **`docs/compatibility.md`: what a major, a minor and a patch mean (PQ-78).**
+  The schema page says when a *document* contract moves. Nothing said the same
+  for the rest of the surface — the flags, the exit status, the class names, the
+  check names, the `pq/` API — and a 1.0 is exactly a promise about those.
+
+  The page is generated from the code it describes: the flag set as the binary
+  declares it, `verdict.Classes()` with their descriptions, the check names read
+  out of the two places that write them, and the exported surface of `pq/`
+  walked with `go/ast`. The prose — what a major is for, what is deliberately
+  not stable, how long a deprecated flag keeps working — lives in the generator,
+  so half the page cannot go stale while the other half regenerates.
+
+  Reading the checks from the verdict alone would have under-promised three of
+  them: `egress`, `resolver` and `net` are said once for the whole run by the
+  CLI, not by the verdict. The generator reads both places, and a second gate
+  ties the list to [docs/findings.md](docs/findings.md) — a check the tool emits
+  and that page never describes is a promise nobody documented.
+
+  What the page refuses to promise is as deliberate as what it does: the prose
+  of a message or a hint, anything under `internal/`, `contrib/`, how many
+  findings a run emits, and every measured number. A deprecated flag keeps
+  working for at least two minor releases and says so on stderr; nothing is ever
+  repurposed; an unknown value is always an error, never a quietly different run.
+
 ## [0.50.0] - 2026-09-22
 
 ### Added
@@ -1716,6 +1744,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[0.51.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.51.0
 [0.50.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.50.0
 [0.49.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.49.2
 [0.49.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.49.1
