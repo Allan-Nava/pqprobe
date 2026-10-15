@@ -9,7 +9,7 @@ WORKDIR /src
 COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /pqprobe ./cmd/pqprobe
 
-FROM alpine:3.20 AS certs
+FROM alpine:3.24 AS certs
 RUN apk add --no-cache ca-certificates
 
 FROM scratch
