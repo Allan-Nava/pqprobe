@@ -55,7 +55,7 @@ jobs:
           ref: ${{ env.TAG }}
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "1.27"
 
       - name: gofmt, vet, tests
         run: |
@@ -120,7 +120,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.26"
+          go-version: "1.27"
 
       # The notes are the CHANGELOG section, not a list of commit subjects:
       # goreleaser's own changelog is disabled in the config for that reason.
