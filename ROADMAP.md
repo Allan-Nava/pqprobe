@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**79 items · 77 shipped · 2 open · 16 milestones.**
+**79 items · 78 shipped · 1 open · 16 milestones.**
 
 ## At a glance
 
@@ -26,14 +26,14 @@
 | **M12** — What the audit found | `v0.44.1` | shipped | `##########` 100% | 0 | 1 |
 | **M13** — Invariants a machine can check | `v0.45.0` | shipped | `##########` 100% | 0 | 3 |
 | **M14** — The contract with machines | `v0.48.0` | shipped | `##########` 100% | 0 | 2 |
-| **M15** — The next migration is the certificate | `v1.1.0` | **now** | `########..` 80% | 1 | 4 |
+| **M15** — The next migration is the certificate | `v1.1.0` | shipped | `##########` 100% | 0 | 5 |
 | **M16** — v1.0.0 | `v1.0.0` | shipped | `##########` 100% | 0 | 3 |
 
 ## Next up
 
 The open items with the highest priority in the milestones that are in flight.
 
-- **PQ-76** — The profile we cannot ship yet, written down so nobody   re-proposes it · `low` · size `S` · profile,project (M15, target `v1.1.0`)
+_Nothing in flight._
 
 ## Milestones
 
@@ -208,15 +208,15 @@ Target `v0.48.0` · shipped · 0 open · 2 shipped · `##########` 100%
 
 ### M15 — The next migration is the certificate
 
-Target `v1.1.0` · **now** · 1 open · 4 shipped · `########..` 80%
+Target `v1.1.0` · shipped · 0 open · 5 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-76** — The profile we cannot ship yet, written down so nobody   re-proposes it | low | S | profile,project | open |
 | **PQ-72** — What this chain becomes, as a number | high | M | verdict,output | shipped `0.48.0` |
 | **PQ-73** — What signs this chain today | high | S | probe,output | shipped `0.50.0` |
 | **PQ-74** — The headroom threshold, and what it is conditional on | med | M | verdict,cli | shipped `1.1.0` |
 | **PQ-75** — Say the arithmetic once, where it can be checked | med | S | docs,output | shipped `1.1.1` |
+| **PQ-76** — The profile we cannot ship yet, written down so nobody   re-proposes it | low | S | profile,project,tests | shipped `1.1.2` |
 
 ### M16 — v1.0.0
 
@@ -232,16 +232,16 @@ Target `v1.0.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 | Label | Items | Open |
 |---|---|---|
-| `project` | 10 | 2 |
 | `docs` | 14 | 1 |
-| `profile` | 8 | 1 |
+| `project` | 10 | 1 |
 | `cli` | 13 | 0 |
 | `delivery` | 7 | 0 |
 | `integration` | 6 | 0 |
 | `inventory` | 6 | 0 |
 | `output` | 14 | 0 |
 | `probe` | 29 | 0 |
+| `profile` | 8 | 0 |
 | `release` | 7 | 0 |
-| `tests` | 14 | 0 |
+| `tests` | 15 | 0 |
 | `ux` | 2 | 0 |
 | `verdict` | 12 | 0 |

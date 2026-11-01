@@ -181,9 +181,25 @@ subjectPublicKeyInfo and the signature. So, per certificate:
 - **A chain that gains or loses a certificate** in the migration. That is
   somebody's decision, not arithmetic.
 - **A hybrid deployment** where some keys stay classical.
-- **Anything about whether the migration happens at all.** Nothing serves ML-DSA
-  certificates today. The projection says what *this* chain would weigh if all of
-  it moved, which is the number to plan against — not a prediction that it will.
+- **Anything about whether the migration happens at all.** No public CA issues
+  ML-DSA certificates yet. The projection says what *this* chain would weigh if
+  all of it moved, which is the number to plan against — not a prediction that it
+  will.
+
+### How close it lands
+
+Go 1.27 can serve and accept an ML-DSA certificate in a real TLS 1.3 handshake,
+so the model is not taken on trust. The same certificate template is signed two
+ways — ECDSA P-256 and ML-DSA-44 — and the projection computed from the first is
+compared against the second, which exists. It lands inside **2%**, and the
+difference is the AlgorithmIdentifier above; the signature size is not
+approximate at all, since a real ML-DSA-44 signature is exactly what the table
+says.
+
+That bound is a test and not a sentence: ` + "`TestTheProjectionMatchesARealMLDSACertificate`" + `
+holds it, so a drift in either direction fails a build rather than a plan. The
+number it measures is in the test's log rather than written here, because a
+measured value typed into a page is the drift this page exists to prevent.
 
 ### Cross-signed chains
 
@@ -217,8 +233,8 @@ path that already dislikes large flights. It is a default and not a law;
 
 ## What to do with the number today
 
-Nothing serves ML-DSA certificates yet, so the signature is not yours to choose.
-What is yours is the **length of the chain**: one intermediate fewer is the
+No public CA issues ML-DSA certificates yet, so the signature is not yours to
+choose. What is yours is the **length of the chain**: one intermediate fewer is the
 cheapest kilobytes there are, and it pays off twice — once now, in a smaller
 flight, and again at four to five times the saving after the migration.
 

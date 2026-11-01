@@ -103,10 +103,12 @@ func chainProjection(target string, src *probe.Result, headroom int) (finding.Fi
 	msg := fmt.Sprintf("signed with ML-DSA-44 this chain would be %d bytes, with ML-DSA-65 %d (%d today, ×%.1f)",
 		small, large, now, float64(large)/float64(now))
 
-	// The conditional is in the wording on purpose. Nothing serves ML-DSA
+	// The conditional is in the wording on purpose. No public CA issues ML-DSA
 	// certificates yet, so this is what the endpoint *would* have, and a
 	// sentence that said otherwise would send somebody looking for a problem
-	// that is not there today.
+	// that is not there today. (Go 1.27 can serve and accept one, which is how
+	// the projection is checked against a real certificate — but a production
+	// endpoint will not be presenting one tomorrow.)
 	st := finding.OK
 	if headroom > 0 && large > headroom {
 		st = finding.WARN
@@ -130,7 +132,7 @@ func chainProjection(target string, src *probe.Result, headroom int) (finding.Fi
 		fmt.Fprintf(&b, ". Past roughly %d bytes a server's flight no longer fits the "+
 			"ten-segment initial congestion window most stacks still ship, so the handshake "+
 			"costs a second round trip — or stops working on a path that already dislikes "+
-			"large flights. Nothing serves ML-DSA certificates yet: what is actionable today "+
+			"large flights. No public CA issues ML-DSA certificates yet, so what is actionable today "+
 			"is the length of the chain, and one intermediate fewer is the cheapest kilobytes "+
 			"there are. --cert-headroom-warn moves the line, 0 turns it off", headroom)
 	}

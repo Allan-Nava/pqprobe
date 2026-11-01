@@ -1170,7 +1170,7 @@ mode PQ-65 found inside the tool, one layer out.
 
 
 
-## M15 — The next migration is the certificate <!-- ms: target=v1.1.0 phase=now -->
+## M15 — The next migration is the certificate <!-- ms: target=v1.1.0 phase=shipped -->
 
 The key exchange migration is the one happening now, and pqprobe was built for
 it. The next one is **authentication**, and it fails in exactly the same shape
@@ -1247,8 +1247,8 @@ operator needs before the decision, said once, per endpoint, with its unit.
   means off — the reading `Timeout` and `Concurrency` already have, because a
   struct an embedder did not fill in has to mean the usual run. The message is
   worded as the condition it is ("would be"), and the hint says what is
-  actionable *today*: nothing serves ML-DSA certificates yet, so the length of
-  the chain is the only thing to shorten, and one intermediate fewer is the
+  actionable *today*: no public CA issues ML-DSA certificates yet, so the length
+  of the chain is the only thing to shorten, and one intermediate fewer is the
   cheapest kilobytes there are. The invariant has its own test — a `pq-ready`
   endpoint with a 60 KB projected chain stays `pq-ready` while the finding
   warns. <!-- pq: prio=med size=M labels=verdict,cli ver=1.1.0 -->
@@ -1269,7 +1269,7 @@ operator needs before the decision, said once, per endpoint, with its unit.
   `_test.go` so none of it is linked into the binary.
   <!-- pq: prio=med size=S labels=docs,output ver=1.1.1 -->
 
-- [ ] **PQ-76 — The profile we cannot ship yet, written down so nobody
+- [x] **PQ-76 — The profile we cannot ship yet, written down so nobody
   re-proposes it**: the obvious item here is a `pq-auth-only` profile — a client
   that offers only post-quantum signature algorithms, the authentication twin of
   `pq-only`. It is not shippable. Go's `crypto/tls` exposes no way for a client
@@ -1279,7 +1279,25 @@ operator needs before the decision, said once, per endpoint, with its unit.
   the trap the first principle in INTENT.md exists to prevent. The trigger is
   explicit: when the standard library gains both, this becomes a profile, a
   class and a red test in that order. Until then this item stays open as the
-  decision, not as the gap. <!-- pq: prio=low size=S labels=profile,project -->
+  decision, not as the gap.
+  **The premise above was wrong, and writing the trigger found it.** As of Go
+  1.27 the standard library has `crypto/mldsa`, `crypto/x509` names ML-DSA-44,
+  65 and 87, and `crypto/tls` has signature schemes for them — a Go server
+  serves such a certificate and a Go client accepts it in a real TLS 1.3
+  handshake. Both earlier checks had gone through `go doc`, which collapses a
+  constant list, so the same mistake was made twice. The remaining blocker is
+  one thing and one only: a client cannot pin the signature algorithms it
+  offers, the way `CurvePreferences` pins the groups, so the profile would fall
+  back to the toolchain's defaults and prove something different after every
+  upgrade.
+  Shipped as the tripwire that says when that changes
+  (`internal/clientprofile/pqauth_test.go`), the two halves already true
+  asserted so the reasoning cannot rot the other way, and — the part worth
+  more than the decision — the projection now **checked against a real ML-DSA
+  certificate** rather than asserted: same template signed two ways, held
+  inside 2%. Behind a `go1.27` build tag, with a `test-current` CI job so it
+  runs somewhere, because `test` is pinned to the 1.26 floor `go.mod` declares.
+  <!-- pq: prio=low size=S labels=profile,project,tests ver=1.1.2 -->
 
 ## M16 — v1.0.0 <!-- ms: target=v1.0.0 phase=shipped -->
 
