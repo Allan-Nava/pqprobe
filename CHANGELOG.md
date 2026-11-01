@@ -6,6 +6,59 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [1.1.2] - 2026-11-01
+
+### Fixed
+
+- **The 1.1.0 and 1.1.1 entries say nothing serves ML-DSA certificates. That was
+  wrong when it was written (PQ-76).** As of **Go 1.27** the standard library
+  has `crypto/mldsa`, `crypto/x509` names ML-DSA-44, 65 and 87, and `crypto/tls`
+  carries signature schemes for them — a Go server serves such a certificate and
+  a Go client accepts it, in a real TLS 1.3 handshake. Both earlier checks went
+  through `go doc`, which collapses a constant list behind `= iota ...`, so the
+  same mistake was made twice in one day.
+
+  Corrected where it was stated: the `chain-projection` hint, `docs/background.md`
+  and `docs/certificates.md` now say what is actually true — **no public CA
+  issues ML-DSA certificates yet**, so the chain in front of you will not be one
+  tomorrow. The earlier CHANGELOG entries are left as they were: this file is
+  dated history, and history gets corrected forward rather than rewritten.
+
+### Added
+
+- **The projection is now checked against a real ML-DSA certificate, not
+  asserted.** The same certificate template signed two ways — ECDSA P-256 and
+  ML-DSA-44 — with the projection computed from the first and compared against
+  the second. It lands inside 2%, and the difference is the AlgorithmIdentifier
+  the page already said was not modelled. What was a claim in a comment is now a
+  bound a build fails to hold.
+
+  The `signatures` finding is checked against one too: an ML-DSA chain is named
+  from the peer's own words, and `key_bits` stays absent, because a parameter set
+  is not a number of bits and inventing one would be the guess that finding
+  exists not to make.
+
+- **The tripwire for PQ-76.** A `pq-auth-only` profile — the authentication twin
+  of `pq-only` — needs one thing the standard library still does not have: a way
+  for a *client* to pin the signature algorithms it offers, the way
+  `CurvePreferences` pins the groups. Without it the profile would fall back to
+  the toolchain's defaults and prove something different after every upgrade,
+  which is the first principle in INTENT.md.
+
+  So the decision is written down with an alarm on it: a test that fails the day
+  `tls.Config` gains that knob, naming the next three steps. The two halves that
+  are already true are asserted as well, so the reasoning cannot rot in the other
+  direction either. An item that says "impossible" with no trigger is a decision
+  nobody revisits.
+
+- **A `test-current` CI job** running the suite on the current toolchain. `test`
+  stays pinned to the 1.26 floor `go.mod` declares — that is what somebody
+  building this with an older Go gets — and the ML-DSA tests live behind a
+  `go1.27` build tag, so without this job they would be skipped everywhere and
+  silently. A separate job rather than a matrix on `test`, because a matrix
+  renames the check to `test (1.26)` and the ruleset on main requires one called
+  `test`: that would be a required check that never reports again.
+
 ## [1.1.1] - 2026-11-01
 
 ### Added
@@ -1868,6 +1921,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[1.1.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.2
 [1.1.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.0.0

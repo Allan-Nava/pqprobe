@@ -72,6 +72,28 @@ jobs:
   # unexercised contrib directory rots — but in a job of its own, so a failure
   # in somebody else's dependency can never fail the build of the binary that
   # has none.
+  # The same suite on the current toolchain (PQ-76). `test` stays pinned to the
+  # 1.26 floor go.mod declares — that is what somebody building this with an
+  # older Go gets — and this job is where the tests behind a `go1.27` build tag
+  # run at all: crypto/mldsa arrived in 1.27, so a post-quantum *certificate* is
+  # now something the standard library can serve, and the projection is checked
+  # against a real one. A tool whose subject is what this year's clients can do
+  # cannot test only against last year's toolchain.
+  #
+  # A separate job rather than a matrix on `test`, because a matrix renames the
+  # check to `test (1.26)` and the ruleset on main requires one called `test`:
+  # that would be a required check that never reports again.
+  test-current:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "stable"
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go test -race ./...
+
   contrib:
     runs-on: ubuntu-latest
     strategy:

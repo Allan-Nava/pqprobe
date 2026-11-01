@@ -94,10 +94,14 @@ many stacks accept without special handling, and it travels in the *server's*
 direction, so the middleboxes that will object are a different set from the ones
 that object today.
 
-Nothing serves ML-DSA certificates yet, so pqprobe cannot probe them. What it
-can do is tell you the number you will be starting from, which is why the chain
-size is reported before it is a problem: shortening a chain — one intermediate
-instead of two, no unnecessary cross-signs — is a choice today and an outage
+No public CA issues ML-DSA certificates yet, so the chain in front of you will
+not be one tomorrow — but the arithmetic is no longer a guess. Go 1.27 can serve
+and accept an ML-DSA certificate in a real TLS 1.3 handshake, so pqprobe's
+projection is checked against one that exists, and held inside 2% of it. What
+the tool does today is tell you the number you will be starting from, which is
+why the chain size is reported before it is a problem: shortening a chain — one
+intermediate instead of two, no unnecessary cross-signs — is a choice today and
+an outage
 later.
 
 ## The two other states worth planning for
