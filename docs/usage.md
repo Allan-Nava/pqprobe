@@ -79,6 +79,7 @@ it is how you probe **one node** of a pool that is fronted by a single name.
 | `--findings=wrapped` | — | the wrapped object a fleet aggregator consumes, with a stable id per finding (note the `=`) |
 | `--min-severity S` | — | hide findings below `S` |
 | `--exit-on S\|class` | never | exit 1 when a finding reaches `S` — or when an endpoint lands in exactly that class |
+| `--cert-headroom-warn N` | `14000` | WARN when the post-quantum chain projection passes N bytes; `0` off |
 | `--expiry-warn N` | `21` | certificate expiry WARN threshold, days |
 | `--expiry-bad N` | `7` | certificate expiry BAD threshold, days |
 

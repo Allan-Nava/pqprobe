@@ -169,13 +169,22 @@ type Options struct {
 	// ExpiryWarnDays and ExpiryBadDays grade the leaf certificate.
 	ExpiryWarnDays int
 	ExpiryBadDays  int
+	// CertHeadroomWarn is where the post-quantum chain projection stops being
+	// a number and becomes a WARN, in bytes (PQ-74). Zero turns it off.
+	//
+	// The default is 14000: a flight past roughly that no longer fits the
+	// ten-segment initial congestion window most stacks still ship, which is
+	// where a handshake stops costing one round trip and starts costing two —
+	// or stops working, on a path that already dislikes large flights. It is a
+	// default and not a law, which is why there is a flag for it.
+	CertHeadroomWarn int
 	// Now is the clock for expiry arithmetic.
 	Now time.Time
 }
 
 // DefaultOptions are the thresholds used when a caller passes none.
 func DefaultOptions() Options {
-	return Options{ExpiryWarnDays: 21, ExpiryBadDays: 7, Now: time.Now()}
+	return Options{ExpiryWarnDays: 21, ExpiryBadDays: 7, CertHeadroomWarn: 14000, Now: time.Now()}
 }
 
 // Report is everything pqprobe concluded about one endpoint.
@@ -1155,7 +1164,7 @@ func chainFindings(target string, results []probe.Result, opt Options) []finding
 	// number rather than the prose in the hint above, because a consumer
 	// cannot threshold on prose — and silent when the sizes it is computed
 	// from were never recorded.
-	if f, ok := chainProjection(target, src); ok {
+	if f, ok := chainProjection(target, src, opt.CertHeadroomWarn); ok {
 		out = append(out, f)
 	}
 

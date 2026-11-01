@@ -78,10 +78,12 @@ func projectChain(chain []probe.Cert, p mldsaParams) (total int, per []int, ok b
 	return total, per, true
 }
 
-// chainProjection is the finding. It states a number and does not grade: an
-// endpoint that works today must not acquire a warning over a migration nobody
-// has started. The threshold, and the flag that moves it, are PQ-74's.
-func chainProjection(target string, src *probe.Result) (finding.Finding, bool) {
+// chainProjection is the finding. The threshold grades the *finding* and never
+// the endpoint (PQ-74): an endpoint whose key exchange works is pq-ready
+// whatever its certificates would weigh after a migration that has not started,
+// and turning that into a failure is how a monitoring system becomes one nobody
+// reads. headroom of zero turns the question off.
+func chainProjection(target string, src *probe.Result, headroom int) (finding.Finding, bool) {
 	small, _, ok := projectChain(src.Chain, mldsaSet("ML-DSA-44"))
 	if !ok {
 		return finding.Finding{}, false
@@ -101,6 +103,17 @@ func chainProjection(target string, src *probe.Result) (finding.Finding, bool) {
 	msg := fmt.Sprintf("signed with ML-DSA-44 this chain would be %d bytes, with ML-DSA-65 %d (%d today, ×%.1f)",
 		small, large, now, float64(large)/float64(now))
 
+	// The conditional is in the wording on purpose. Nothing serves ML-DSA
+	// certificates yet, so this is what the endpoint *would* have, and a
+	// sentence that said otherwise would send somebody looking for a problem
+	// that is not there today.
+	st := finding.OK
+	if headroom > 0 && large > headroom {
+		st = finding.WARN
+		msg = fmt.Sprintf("signed with ML-DSA-65 this chain would be %d bytes, past the %d-byte headroom (%d today, ML-DSA-44 would be %d)",
+			large, headroom, now, small)
+	}
+
 	var b strings.Builder
 	b.WriteString("per certificate under ML-DSA-65: ")
 	for i, c := range src.Chain {
@@ -113,8 +126,17 @@ func chainProjection(target string, src *probe.Result) (finding.Finding, bool) {
 		"with the FIPS 204 sizes and changes nothing else, so it is what this chain weighs " +
 		"if all of it moves; value is the ML-DSA-65 total")
 
+	if st == finding.WARN {
+		fmt.Fprintf(&b, ". Past roughly %d bytes a server's flight no longer fits the "+
+			"ten-segment initial congestion window most stacks still ship, so the handshake "+
+			"costs a second round trip — or stops working on a path that already dislikes "+
+			"large flights. Nothing serves ML-DSA certificates yet: what is actionable today "+
+			"is the length of the chain, and one intermediate fewer is the cheapest kilobytes "+
+			"there are. --cert-headroom-warn moves the line, 0 turns it off", headroom)
+	}
+
 	return finding.Finding{
-		Check: "chain-projection", Target: target, Status: finding.OK,
+		Check: "chain-projection", Target: target, Status: st,
 		Message: msg,
 		Value:   finding.Num(float64(large)), Unit: "bytes",
 		Hint: b.String(),

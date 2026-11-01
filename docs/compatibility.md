@@ -55,6 +55,7 @@ checkable.
 | `--alpn` | `—` |
 | `--alpn-check` | `false` |
 | `--baseline` | `—` |
+| `--cert-headroom-warn` | `14000` |
 | `--concurrency` | `8` |
 | `--confirm` | `true` |
 | `--dns` | `—` |

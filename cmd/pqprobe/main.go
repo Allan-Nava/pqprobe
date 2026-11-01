@@ -450,6 +450,11 @@ flags:
                            any endpoint lands in exactly that class, which is
                            what a pipeline usually means: --exit-on BAD also
                            fires on an expiring certificate (default: never)
+  --cert-headroom-warn N   WARN when the post-quantum chain projection passes N
+                           bytes — the point where a server's flight stops
+                           fitting the ten-segment initial congestion window.
+                           Conditional on a migration nobody has started, so it
+                           never changes the class (default 14000, 0 turns it off)
   --expiry-warn N          certificate expiry WARN threshold in days (default 21)
   --expiry-bad N           certificate expiry BAD threshold in days (default 7)
 
@@ -617,7 +622,7 @@ type probeFlags struct {
 	perGroup, sizeSweep, alpnCheck, perAddress    *bool
 	confirm, asMarkdown, asJSON                   *bool
 	timeout, watch                                *time.Duration
-	concurrency, expWarn, expBad                  *int
+	concurrency, expWarn, expBad, certHeadroom    *int
 	findings                                      *findingsFormat
 }
 
@@ -657,6 +662,7 @@ func newProbeFlags() (*flag.FlagSet, *probeFlags) {
 	o.exitOn = fs.String("exit-on", "", "exit 1 on this status or worse, or on this exact class")
 	o.expWarn = fs.Int("expiry-warn", 21, "certificate expiry WARN days")
 	o.expBad = fs.Int("expiry-bad", 7, "certificate expiry BAD days")
+	o.certHeadroom = fs.Int("cert-headroom-warn", 14000, "WARN when the post-quantum chain projection passes this many bytes (0 off)")
 	return fs, o
 }
 
@@ -670,6 +676,7 @@ func cmdProbe(args []string) int {
 	concurrency, textfile, watch, baseline := o.concurrency, o.textfile, o.watch, o.baseline
 	asMarkdown, asJSON, asFindings := o.asMarkdown, o.asJSON, o.findings
 	minSev, exitOn, expWarn, expBad := o.minSev, o.exitOn, o.expWarn, o.expBad
+	certHeadroom := o.certHeadroom
 	if err := fs.Parse(permute(args)); err != nil {
 		return 2
 	}
@@ -806,6 +813,7 @@ func cmdProbe(args []string) int {
 		StartTLS: *starttls, Net: *network, Resolver: probe.ResolverAt(*dns)}
 	opt := verdict.DefaultOptions()
 	opt.ExpiryWarnDays, opt.ExpiryBadDays = *expWarn, *expBad
+	opt.CertHeadroomWarn = *certHeadroom
 	opt.Now = time.Now()
 
 	// The ECH configs are looked up once, before the run: a --watch that
@@ -1179,6 +1187,7 @@ func takesValue(flagArg string) bool {
 	switch name {
 	case "profile", "inventory", "group", "list", "port", "sni", "alpn",
 		"timeout", "concurrency", "min-severity", "exit-on", "expiry-warn", "expiry-bad",
+		"cert-headroom-warn",
 		"baseline", "groups", "socks5", "watch", "textfile", "starttls", "net",
 		"ech-config", "dns":
 		return true

@@ -434,3 +434,43 @@ func TestProbeRefusesAnUnknownStartTLSProtocol(t *testing.T) {
 		t.Errorf("the error does not name the protocols it accepts: %v", err)
 	}
 }
+
+// PQ-74. The headroom threshold reaches an embedder too, with the zero value
+// meaning the default and -1 meaning off — the same reading Timeout and
+// Concurrency have, because a struct somebody did not fill in must mean "the
+// usual run".
+func TestProbeTakesTheCertificateHeadroomThreshold(t *testing.T) {
+	addr := serve(t, &tls.Config{MinVersion: tls.VersionTLS13})
+
+	// A threshold of 1 byte: whatever this chain projects to is past it.
+	reps, err := pq.Probe(context.Background(), []string{addr}, pq.Options{
+		Timeout: 5 * time.Second, CertHeadroomWarn: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var warned bool
+	for _, f := range reps[0].Findings {
+		if f.Check == "chain-projection" && f.Status == "WARN" {
+			warned = true
+		}
+	}
+	if !warned {
+		t.Errorf("a 1-byte headroom produced no warning: %+v", reps[0].Findings)
+	}
+	// And it is the finding that warns, never the endpoint.
+	if reps[0].Class == "unreachable" {
+		t.Errorf("class = %q: the threshold must not change what the endpoint is", reps[0].Class)
+	}
+
+	// Off, and the same chain is quiet.
+	reps, err = pq.Probe(context.Background(), []string{addr}, pq.Options{
+		Timeout: 5 * time.Second, CertHeadroomWarn: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range reps[0].Findings {
+		if f.Check == "chain-projection" && f.Status != "OK" {
+			t.Errorf("with the threshold off the projection still graded: %+v", f)
+		}
+	}
+}

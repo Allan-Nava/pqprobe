@@ -6,6 +6,35 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [1.1.0] - 2026-11-01
+
+### Added
+
+- **`--cert-headroom-warn`: the headroom threshold PQ-72 deliberately left out
+  (PQ-74).** A projected chain past roughly 14 KB no longer fits the ten-segment
+  initial congestion window most stacks still ship, which is where a handshake
+  stops costing one round trip and starts costing two — or stops working, on a
+  path that already dislikes large flights. Past the threshold the
+  `chain-projection` finding becomes a WARN; the default is 14000 bytes and `0`
+  turns it off, because 14 KB is a default and not a law.
+
+  `pq.Options.CertHeadroomWarn` carries it too, with the zero value meaning the
+  default and `-1` meaning off — the reading `Timeout` and `Concurrency` already
+  have, since a struct an embedder did not fill in has to mean the usual run.
+
+  Two things kept deliberately in hand. The message is worded as the condition
+  it is — *would be*, not *is* — because nothing serves ML-DSA certificates yet
+  and a sentence that said otherwise would send somebody looking for a problem
+  that is not there. And the threshold grades the **finding**, never the
+  endpoint: a `pq-ready` endpoint with a 60 KB projected chain stays `pq-ready`,
+  which has its own test, because turning a working endpoint into a failure over
+  a migration nobody has started is how a monitoring system becomes one nobody
+  reads.
+
+  What the hint says is actionable today: not the signature, which is somebody
+  else's roadmap, but the length of the chain — one intermediate fewer is the
+  cheapest kilobytes there are.
+
 ## [1.0.0] - 2026-09-22
 
 The version number is the only thing that changes here. That is the point of it.
@@ -1814,6 +1843,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[1.1.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.0.0
 [0.52.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.52.0
 [0.51.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.51.0

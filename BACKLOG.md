@@ -1232,7 +1232,7 @@ operator needs before the decision, said once, per endpoint, with its unit.
   configuration opinion, and those belong to testssl.sh.
   <!-- pq: prio=high size=S labels=probe,output ver=0.50.0 -->
 
-- [ ] **PQ-74 — The headroom threshold, and what it is conditional on**: a
+- [x] **PQ-74 — The headroom threshold, and what it is conditional on**: a
   projected chain that crosses roughly 14 KB no longer fits the ten-segment
   initial congestion window most stacks still ship, which is the point where a
   handshake stops costing one round trip and starts costing two — or stops
@@ -1242,7 +1242,16 @@ operator needs before the decision, said once, per endpoint, with its unit.
   line, because 14 KB is a default and not a law, and an operator who knows
   their path knows better. Grading stays out of the class: this must never turn
   a `pq-ready` endpoint into a failure over a migration that has not started.
-  <!-- pq: prio=med size=M labels=verdict,cli -->
+  Shipped: `--cert-headroom-warn`, default 14000 bytes, 0 off, and
+  `pq.Options.CertHeadroomWarn` where the zero value means the default and -1
+  means off — the reading `Timeout` and `Concurrency` already have, because a
+  struct an embedder did not fill in has to mean the usual run. The message is
+  worded as the condition it is ("would be"), and the hint says what is
+  actionable *today*: nothing serves ML-DSA certificates yet, so the length of
+  the chain is the only thing to shorten, and one intermediate fewer is the
+  cheapest kilobytes there are. The invariant has its own test — a `pq-ready`
+  endpoint with a 60 KB projected chain stays `pq-ready` while the finding
+  warns. <!-- pq: prio=med size=M labels=verdict,cli ver=1.1.0 -->
 
 - [ ] **PQ-75 — Say the arithmetic once, where it can be checked**: one page —
   `docs/certificates.md` — with the sizes the projection uses, where they come
