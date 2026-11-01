@@ -87,6 +87,11 @@ type Options struct {
 	// ExpiryWarnDays and ExpiryBadDays grade the leaf certificate. Zero means
 	// 21 and 7.
 	ExpiryWarnDays, ExpiryBadDays int
+	// CertHeadroomWarn is where the post-quantum chain projection becomes a
+	// WARN, in bytes. Zero means the default 14000; -1 turns it off. It grades
+	// the finding and never the endpoint: a working endpoint does not become a
+	// failure over a migration that has not started.
+	CertHeadroomWarn int
 	// DefaultPort for targets written without one. Empty means 443.
 	DefaultPort string
 	// SNI overrides the server name sent to every target. Empty keeps each
@@ -210,6 +215,15 @@ func Probe(ctx context.Context, targets []string, opt Options) ([]Report, error)
 	}
 	if opt.ExpiryBadDays > 0 {
 		vopt.ExpiryBadDays = opt.ExpiryBadDays
+	}
+	// -1 rather than 0 for "off", because the zero value of a struct an
+	// embedder did not fill in has to mean the default — the same reason
+	// Timeout and Concurrency read that way.
+	switch {
+	case opt.CertHeadroomWarn > 0:
+		vopt.CertHeadroomWarn = opt.CertHeadroomWarn
+	case opt.CertHeadroomWarn < 0:
+		vopt.CertHeadroomWarn = 0
 	}
 	vopt.Now = time.Now()
 

@@ -83,18 +83,93 @@ func TestTheSmallerParameterSetIsProjectedToo(t *testing.T) {
 	}
 }
 
-// PQ-72 is measurement, not grading. A projection is not a probe: an endpoint
-// that works today must not acquire a WARN over a migration nobody has started.
-// The threshold is PQ-74's, and it arrives with a flag to move it.
-func TestTheProjectionDoesNotGradeTheEndpoint(t *testing.T) {
+// PQ-74. The threshold PQ-72 deliberately left out. A projected chain past
+// roughly 14 KB no longer fits the ten-segment initial congestion window most
+// stacks still ship, which is where a handshake stops costing one round trip and
+// starts costing two — or stops working, on a path that already dislikes large
+// flights.
+func TestTheProjectionWarnsWhenTheHeadroomIsGone(t *testing.T) {
 	r := projectable()
 	r.Chain[1].Bytes = 6000
 	r.ChainBytes = 7000
+	// leaf 6099 + intermediate 11099 = 17198, past the 14000-byte default.
 	rep := Evaluate("h:443", []probe.Result{r}, opts())
 
 	f := find(t, rep, "chain-projection")
+	if f.Status != finding.WARN {
+		t.Errorf("status = %s, want WARN: 17198 projected bytes is past the headroom", f.Status)
+	}
+	// Worded as the conditional it is, or it reads as a problem the endpoint
+	// has today rather than one it would have after a migration nobody has
+	// started.
+	if !strings.Contains(f.Message, "would") {
+		t.Errorf("message = %q: a projection has to be worded as a condition", f.Message)
+	}
+	if !strings.Contains(f.Message+f.Hint, "14000") {
+		t.Errorf("neither message nor hint names the threshold: %s / %s", f.Message, f.Hint)
+	}
+}
+
+// An ordinary chain stays quiet. A WARN on every endpoint is a WARN nobody
+// reads, and most chains today project to well under the line.
+func TestTheProjectionStaysQuietWithHeadroomLeft(t *testing.T) {
+	rep := Evaluate("h:443", []probe.Result{projectable()}, opts())
+	f := find(t, rep, "chain-projection")
 	if f.Status != finding.OK {
-		t.Errorf("status = %s: the projection states a number, it does not grade", f.Status)
+		t.Errorf("status = %s, want OK: 12698 projected bytes still fits", f.Status)
+	}
+}
+
+// 14 KB is a default, not a law: an operator who knows their path knows better,
+// and zero turns the threshold off for somebody who does not want the question
+// asked at all.
+func TestTheHeadroomThresholdCanBeMovedOrTurnedOff(t *testing.T) {
+	tight := opts()
+	tight.CertHeadroomWarn = 5000
+	f := find(t, Evaluate("h:443", []probe.Result{projectable()}, tight), "chain-projection")
+	if f.Status != finding.WARN {
+		t.Errorf("status = %s with a 5000-byte threshold, want WARN", f.Status)
+	}
+	if !strings.Contains(f.Message+f.Hint, "5000") {
+		t.Errorf("the finding names the default rather than the threshold in force: %s / %s", f.Message, f.Hint)
+	}
+
+	off := opts()
+	off.CertHeadroomWarn = 0
+	r := projectable()
+	r.Chain[1].Bytes = 60000
+	r.ChainBytes = 61000
+	f = find(t, Evaluate("h:443", []probe.Result{r}, off), "chain-projection")
+	if f.Status != finding.OK {
+		t.Errorf("status = %s with the threshold off, want OK", f.Status)
+	}
+}
+
+// The invariant PQ-72 stated and PQ-74 must not break: the threshold grades the
+// *finding*, never the endpoint. An endpoint whose post-quantum key exchange
+// works is pq-ready whatever its certificates would weigh after a migration
+// that has not started — turning that into a failure is how a monitoring system
+// becomes one nobody reads.
+func TestTheHeadroomWarningNeverChangesTheClass(t *testing.T) {
+	healthy := []probe.Result{
+		ok("classic", "TLS 1.3", "X25519", false),
+		ok("pq-preferred", "TLS 1.3", "X25519MLKEM768", true),
+		ok("pq-only", "TLS 1.3", "X25519MLKEM768", true),
+	}
+	for i := range healthy {
+		healthy[i].ChainVerified = true
+		healthy[i].PeerChainLen = 2
+		healthy[i].Chain = projectable().Chain
+		healthy[i].Chain[1].Bytes = 60000
+		healthy[i].ChainBytes = 61000
+	}
+
+	rep := Evaluate("h:443", healthy, opts())
+	if rep.Class != PQReady {
+		t.Errorf("class = %s, want pq-ready: the projection must not grade the endpoint", rep.Class)
+	}
+	if f := find(t, rep, "chain-projection"); f.Status != finding.WARN {
+		t.Errorf("the finding itself should still warn: %s", f.Status)
 	}
 }
 

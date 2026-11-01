@@ -26,7 +26,7 @@ not an endpoint that passed, and an operator has to see it first.
 | `expiry` | `host:port` | days to leaf expiry (`--expiry-warn`, `--expiry-bad`) |
 | `chain` | `host:port` | chain does not verify, or the peer sent the leaf alone |
 | `chain-size` | `host:port` | what the chain costs on the wire, and the headroom it leaves for post-quantum certificates |
-| `chain-projection` | `host:port` | what that same chain would weigh signed with ML-DSA-44 and ML-DSA-65, computed per certificate from the key and signature the peer sent |
+| `chain-projection` | `host:port` | what that same chain would weigh signed with ML-DSA-44 and ML-DSA-65, computed per certificate from the key and signature the peer sent — a WARN past `--cert-headroom-warn`, and never a change of class |
 | `signatures` | `host:port` | what signs this chain today: the key type and size of every certificate and the algorithm it was signed with — recorded, never graded |
 | `client-auth` | `host:port` | the peer requested a client certificate: this endpoint is mutual TLS |
 | `ech` | `host:port` | with `--ech-config`: whether the peer accepted Encrypted Client Hello, and what it costs on the wire |
