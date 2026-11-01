@@ -6,6 +6,31 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [1.1.1] - 2026-11-01
+
+### Added
+
+- **`docs/certificates.md`: the projection's arithmetic, where it can be checked
+  (PQ-75).** `chain-projection` reports a number computed from FIPS 204
+  parameter sets; until now the only published explanation was "roughly 4 KB per
+  certificate" in the background page, and *roughly* is exactly what a planner
+  cannot use.
+
+  The page is generated from `mldsaSets` — the same table the code computes
+  with — so the sizes on it cannot drift from the sizes in a finding. The worked
+  example goes further: it is produced by calling `chainProjection` itself, so
+  the page cannot state an arithmetic the code does not perform. One test
+  asserts the total the page prints is the total the finding carries; another
+  that every parameter set in the table is described, because a size that turns
+  up in a message with nowhere to look it up is the same gap one level down.
+
+  It also draws the boundary this milestone kept having to restate: the
+  **ClientHello** is the client→server size problem (`--size-sweep`,
+  `hello_bytes`) and the **certificate flight** is the server→client one
+  (`chain-projection`, `--cert-headroom-warn`). They fail for the same reason in
+  opposite directions, and conflating them is how somebody shortens a
+  certificate chain to fix a ClientHello problem.
+
 ## [1.1.0] - 2026-11-01
 
 ### Added
@@ -1843,6 +1868,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[1.1.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.0.0
 [0.52.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v0.52.0

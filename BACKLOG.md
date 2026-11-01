@@ -1253,14 +1253,21 @@ operator needs before the decision, said once, per endpoint, with its unit.
   endpoint with a 60 KB projected chain stays `pq-ready` while the finding
   warns. <!-- pq: prio=med size=M labels=verdict,cli ver=1.1.0 -->
 
-- [ ] **PQ-75 — Say the arithmetic once, where it can be checked**: one page —
+- [x] **PQ-75 — Say the arithmetic once, where it can be checked**: one page —
   `docs/certificates.md` — with the sizes the projection uses, where they come
   from (FIPS 204 parameter sets, not a blog post), what a cross-signed chain
   does to the total, and why the server flight is the half of the handshake this
   milestone is about while `--size-sweep` is about the other. The numbers live
   in one table that the code reads from, or the page and the constant drift
   apart the way the schema page would have without a generator.
-  <!-- pq: prio=med size=S labels=docs,output -->
+  Shipped as `docs/certificates.md`, generated from `mldsaSets` — and the worked
+  example is produced by calling `chainProjection` itself, so the page cannot
+  state an arithmetic the code does not perform. A test asserts the total the
+  page prints is the one the finding carries, and another that every parameter
+  set in the table is described: a size that appears in a message with nowhere
+  to look it up is the same gap one level down. The generator lives in a
+  `_test.go` so none of it is linked into the binary.
+  <!-- pq: prio=med size=S labels=docs,output ver=1.1.1 -->
 
 - [ ] **PQ-76 — The profile we cannot ship yet, written down so nobody
   re-proposes it**: the obvious item here is a `pq-auth-only` profile — a client

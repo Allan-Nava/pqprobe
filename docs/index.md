@@ -16,6 +16,8 @@ that reads well inside the repository.
 - [Findings](findings.md) — every check, status and class
 - [Document schema](schema.md) — the JSON, wrapped and Prometheus shapes a
   machine reads, field by field
+- [Certificates](certificates.md) — the next migration and its arithmetic, with
+  the FIPS 204 sizes the projection actually uses
 - [Compatibility](compatibility.md) — what a major, a minor and a patch mean
   for the flags, the classes, the checks and the Go API
 - [Background](background.md) — why an endpoint can be up for `curl` and down
