@@ -4,8 +4,11 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Allan-Nava/pqprobe/pq"
 )
 
 // PQ-78. `docs/schema.md` says what a document contract is and when its number
@@ -81,6 +84,44 @@ func TestTheApiListIsTheApi(t *testing.T) {
 		}
 		if !found {
 			t.Errorf("pq.%s is part of the public surface and the generator did not see it", want)
+		}
+	}
+}
+
+// PQ-79. The page listed the exported *names* of pq/, so PQ-71 could add five
+// fields to pq.Options without the page moving. Adding one is a minor, so it was
+// not wrong; but a field removed, renamed or retyped is a major, and nothing
+// would have shown it in a diff. So every exported field of every exported
+// struct is a row, with its type. The fields are read here with reflect, not
+// with the generator's parser, so a generator that skips one cannot agree with
+// itself.
+func TestTheApiTableListsEveryStructFieldWithItsType(t *testing.T) {
+	page, err := compatPage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range []any{pq.Finding{}, pq.Report{}, pq.Explanation{}, pq.Options{}} {
+		typ := reflect.TypeOf(v)
+		for i := 0; i < typ.NumField(); i++ {
+			f := typ.Field(i)
+			if !f.IsExported() {
+				continue
+			}
+			name := "`" + typ.Name() + "." + f.Name + "`"
+			row := ""
+			for _, line := range strings.Split(page, "\n") {
+				if strings.HasPrefix(line, "| field | "+name+" |") {
+					row = line
+					break
+				}
+			}
+			if row == "" {
+				t.Errorf("pq.%s.%s is part of the public surface and the API table has no row for it", typ.Name(), f.Name)
+				continue
+			}
+			if cols := strings.Split(row, "|"); len(cols) < 5 || strings.Trim(strings.TrimSpace(cols[3]), "`") == "" {
+				t.Errorf("the row for pq.%s.%s carries no type: %q", typ.Name(), f.Name, row)
+			}
 		}
 	}
 }

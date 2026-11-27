@@ -6,6 +6,18 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [1.1.3] - 2026-11-27
+
+### Changed
+
+- **The compatibility page lists the fields of `pq/`, with their types
+  (PQ-79).** The Go API table named the exported functions and types but not
+  the fields of the structs, so PQ-71 could add five fields to `pq.Options`
+  without the page moving — and a field removed, renamed or retyped, which is a
+  major for an embedder, would not have moved it either. Every exported field is
+  now a row, `Options.Timeout` · `time.Duration`, and a test reads the structs
+  with `reflect` to assert the table has a row and a type for each one.
+
 ## [1.1.2] - 2026-11-27
 
 ### Fixed
@@ -1880,6 +1892,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[1.1.3]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.3
 [1.1.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.2
 [1.1.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.0

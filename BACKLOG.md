@@ -432,12 +432,16 @@ prints what to pick up.
   (comments stripped) and on a `brew.yml` that loses either leg — the check
   PQ-41 described for `macos-13` had gone with the formula it lived next to.
   <!-- pq: prio=high size=S labels=delivery,tests ver=1.1.2 -->
-- [ ] **PQ-79 — The API table lists the fields, not only the names**: today
+- [x] **PQ-79 — The API table lists the fields, not only the names**: today
   `docs/compatibility.md` lists the exported *names* of `pq/`, so PQ-71 could add
   five fields to `pq.Options` without the page moving. Adding a field is a minor
   and not a break, so the page was not wrong — but a field *removed* or renamed
   is a major, and nothing would show it in a diff. Walk the struct fields too.
-  <!-- pq: prio=med size=S labels=docs,project -->
+  Done: every exported field of every exported struct in `pq/` is a row of the
+  table with its type as declared (a retyped field breaks an embedder too), and
+  a test reads the fields with `reflect` — not with the generator's parser — so
+  a generator that skips one cannot agree with itself.
+  <!-- pq: prio=med size=S labels=docs,project ver=1.1.3 -->
 ## M5 — Make the verdict actionable <!-- ms: target=v0.15.0 phase=shipped -->
 
 The class is the answer; these items are what an operator needs *around* it —
