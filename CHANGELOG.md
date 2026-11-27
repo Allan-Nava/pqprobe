@@ -6,6 +6,18 @@ All notable changes to pqprobe are recorded here. The format is
 with its own section; `minor` for new profiles, checks or flags, `patch` for
 fixes. Items reference their `PQ-n` id in [BACKLOG.md](BACKLOG.md).
 
+## [1.1.2] - 2026-11-27
+
+### Fixed
+
+- **The Homebrew check tries Apple Silicon again (PQ-80).** GitHub retired the
+  `macos-14` runner image, and a job that asks for a retired image is not
+  failed but cancelled, next to an Intel leg that stays green: from 2026-11-09
+  the weekly run of `brew.yml` looked healthy and never installed the cask on
+  arm64. The leg runs on `macos-15`, and `scripts/goreleaser_test.sh` fails on
+  any workflow that asks for a retired macOS image, or on a `brew.yml` without
+  both an arm64 and an Intel leg.
+
 ## [1.1.1] - 2026-11-01
 
 ### Added
@@ -1868,6 +1880,7 @@ post-quantum-capable one, from a single static binary.
 - **Exit 0 whenever the probe ran** (PQ-8) — findings are output, not an error.
   `--exit-on S` opts into exit 1; a usage error is exit 2.
 
+[1.1.2]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.2
 [1.1.1]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Allan-Nava/pqprobe/releases/tag/v1.0.0
