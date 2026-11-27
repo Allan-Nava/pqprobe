@@ -105,5 +105,38 @@ else
 	notok "the workflow never passes HOMEBREW_TAP_GITHUB_TOKEN"
 fi
 
+printf '\nthe runners:\n'
+
+# PQ-80. A macOS image GitHub has retired does not fail the job that asks for it,
+# it takes the job away: `macos-13` queued forever (PQ-41), `macos-14` is
+# cancelled at once with "The configuration 'macos-14-arm64-us-default' is not
+# supported". Either way the Apple Silicon leg of brew.yml verified nothing for
+# three weeks while the run looked like the Intel leg's success. Every workflow,
+# comments stripped, so the comment that explains a retired label is not read
+# as a request for it.
+retired="macos-13 macos-14"
+asked=0
+for wf in "$root"/.github/workflows/*.yml; do
+	body=$(sed 's/#.*$//' "$wf")
+	for label in $retired; do
+		if printf '%s\n' "$body" | grep -Eq "(^|[^a-z0-9-])$label([^a-z0-9-]|$)"; then
+			notok "$(basename "$wf") asks for $label, a retired runner image"
+			asked=$((asked + 1))
+		fi
+	done
+done
+[ "$asked" -eq 0 ] && ok "no workflow asks for a retired macOS image ($retired)"
+brew_body=$(sed 's/#.*$//' "$root/.github/workflows/brew.yml")
+if printf '%s\n' "$brew_body" | grep -Eq "macos-[0-9]+([^a-z0-9-]|$)"; then
+	ok "brew.yml keeps an Apple Silicon leg"
+else
+	notok "brew.yml has no arm64 macOS leg: the cask is only tried on Intel"
+fi
+if printf '%s\n' "$brew_body" | grep -q "macos-[0-9]*-intel"; then
+	ok "brew.yml keeps an Intel leg"
+else
+	notok "brew.yml has no Intel macOS leg"
+fi
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

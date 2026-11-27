@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**79 items · 77 shipped · 2 open · 16 milestones.**
+**80 items · 78 shipped · 2 open · 16 milestones.**
 
 ## At a glance
 
@@ -15,7 +15,7 @@
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
 | **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 16 |
-| **M4** — Later | `ongoing` | later | `#########.` 88% | 1 | 7 |
+| **M4** — Later | `ongoing` | later | `#########.` 89% | 1 | 8 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 | **M6** — Reach the rest of the fleet | `v0.32.0` | shipped | `##########` 100% | 0 | 5 |
 | **M7** — Encrypted Client Hello | `v0.35.0` | shipped | `##########` 100% | 0 | 3 |
@@ -89,11 +89,12 @@ Target `v0.23.0` · shipped · 0 open · 16 shipped · `##########` 100%
 
 ### M4 — Later
 
-Target `ongoing` · later · 1 open · 7 shipped · `#########.` 88%
+Target `ongoing` · later · 1 open · 8 shipped · `#########.` 89%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
 | **PQ-79** — The API table lists the fields, not only the names | med | S | docs,project | open |
+| **PQ-80** — The Apple Silicon leg of the Homebrew check, back on a runner that   exists | high | S | delivery,tests | shipped `1.1.2` |
 | **PQ-10** — Real ClientHello shapes | med | XL | profile | shipped `0.25.0` |
 | **PQ-19** — QUIC | med | XL | probe | shipped `0.28.0` |
 | **PQ-37** — `--findings` non parla la forma che i tool fratelli consumano | med | M | output,integration | shipped `0.21.0` |
@@ -236,12 +237,12 @@ Target `v1.0.0` · shipped · 0 open · 3 shipped · `##########` 100%
 | `docs` | 14 | 1 |
 | `profile` | 8 | 1 |
 | `cli` | 13 | 0 |
-| `delivery` | 7 | 0 |
+| `delivery` | 8 | 0 |
 | `integration` | 6 | 0 |
 | `inventory` | 6 | 0 |
 | `output` | 14 | 0 |
 | `probe` | 29 | 0 |
 | `release` | 7 | 0 |
-| `tests` | 14 | 0 |
+| `tests` | 15 | 0 |
 | `ux` | 2 | 0 |
 | `verdict` | 12 | 0 |

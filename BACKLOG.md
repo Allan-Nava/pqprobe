@@ -423,6 +423,15 @@ prints what to pick up.
   <!-- pq: prio=low size=L labels=probe ver=0.24.0 -->
 
 
+- [x] **PQ-80 — The Apple Silicon leg of the Homebrew check, back on a runner that
+  exists**: GitHub retired `macos-14`, and a job asking for it is cancelled at once
+  ("The configuration 'macos-14-arm64-us-default' is not supported") while the
+  Intel leg goes green beside it, so from 2026-11-09 `brew.yml` looked fine and
+  never installed the cask on arm64. The leg is `macos-15`, and
+  `scripts/goreleaser_test.sh` now fails on a retired label in any workflow
+  (comments stripped) and on a `brew.yml` that loses either leg — the check
+  PQ-41 described for `macos-13` had gone with the formula it lived next to.
+  <!-- pq: prio=high size=S labels=delivery,tests ver=1.1.2 -->
 - [ ] **PQ-79 — The API table lists the fields, not only the names**: today
   `docs/compatibility.md` lists the exported *names* of `pq/`, so PQ-71 could add
   five fields to `pq.Options` without the page moving. Adding a field is a minor
