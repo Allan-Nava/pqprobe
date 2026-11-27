@@ -6,7 +6,7 @@
 > of truth for planned work. Regenerate it with `scripts/backlog.sh roadmap`
 > after editing the backlog — CI fails when the two disagree.
 
-**80 items · 78 shipped · 2 open · 16 milestones.**
+**80 items · 79 shipped · 1 open · 16 milestones.**
 
 ## At a glance
 
@@ -15,7 +15,7 @@
 | **M1** — Tell the two refusals apart | `v0.1.0` | shipped | `##########` 100% | 0 | 8 |
 | **M2** — Say it more precisely | `v0.18.0` | shipped | `##########` 100% | 0 | 5 |
 | **M3** — Fit the toolchain | `v0.23.0` | shipped | `##########` 100% | 0 | 16 |
-| **M4** — Later | `ongoing` | later | `#########.` 89% | 1 | 8 |
+| **M4** — Later | `ongoing` | later | `##########` 100% | 0 | 9 |
 | **M5** — Make the verdict actionable | `v0.15.0` | shipped | `##########` 100% | 0 | 8 |
 | **M6** — Reach the rest of the fleet | `v0.32.0` | shipped | `##########` 100% | 0 | 5 |
 | **M7** — Encrypted Client Hello | `v0.35.0` | shipped | `##########` 100% | 0 | 3 |
@@ -89,16 +89,16 @@ Target `v0.23.0` · shipped · 0 open · 16 shipped · `##########` 100%
 
 ### M4 — Later
 
-Target `ongoing` · later · 1 open · 8 shipped · `#########.` 89%
+Target `ongoing` · later · 0 open · 9 shipped · `##########` 100%
 
 | Item | Priority | Size | Labels | Status |
 |---|---|---|---|---|
-| **PQ-79** — The API table lists the fields, not only the names | med | S | docs,project | open |
 | **PQ-80** — The Apple Silicon leg of the Homebrew check, back on a runner that   exists | high | S | delivery,tests | shipped `1.1.2` |
 | **PQ-10** — Real ClientHello shapes | med | XL | profile | shipped `0.25.0` |
 | **PQ-19** — QUIC | med | XL | probe | shipped `0.28.0` |
 | **PQ-37** — `--findings` non parla la forma che i tool fratelli consumano | med | M | output,integration | shipped `0.21.0` |
 | **PQ-44** — What the chain costs today | med | M | verdict,docs | shipped `0.29.0` |
+| **PQ-79** — The API table lists the fields, not only the names | med | S | docs,project | shipped `1.1.3` |
 | **PQ-18** — Beyond key exchange | low | L | profile | shipped `0.29.1` |
 | **PQ-20** — Non-HTTPS ports | low | L | probe | shipped `0.24.0` |
 | **PQ-38** — `version` non è incorporabile | low | S | cli,ux | shipped `0.20.0` |
@@ -233,11 +233,11 @@ Target `v1.0.0` · shipped · 0 open · 3 shipped · `##########` 100%
 
 | Label | Items | Open |
 |---|---|---|
-| `project` | 10 | 2 |
-| `docs` | 14 | 1 |
 | `profile` | 8 | 1 |
+| `project` | 10 | 1 |
 | `cli` | 13 | 0 |
 | `delivery` | 8 | 0 |
+| `docs` | 14 | 0 |
 | `integration` | 6 | 0 |
 | `inventory` | 6 | 0 |
 | `output` | 14 | 0 |

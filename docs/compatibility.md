@@ -124,18 +124,52 @@ meaning; new ones arrive in a minor release.
 
 ## The Go API — `pq/`
 
-| Kind | Name |
-|---|---|
-| func | `Classes` |
-| func | `Classify` |
-| func | `Describe` |
-| func | `Explain` |
-| type | `Explanation` |
-| type | `Finding` |
-| type | `Options` |
-| func | `Probe` |
-| type | `Report` |
+| Kind | Name | Type |
+|---|---|---|
+| func | `Classes` | — |
+| func | `Classify` | — |
+| func | `Describe` | — |
+| func | `Explain` | — |
+| type | `Explanation` | — |
+| field | `Explanation.Action` | `string` |
+| field | `Explanation.Affected` | `string` |
+| field | `Explanation.Class` | `string` |
+| field | `Explanation.Meaning` | `string` |
+| field | `Explanation.Status` | `string` |
+| type | `Finding` | — |
+| field | `Finding.Check` | `string` |
+| field | `Finding.Hint` | `string` |
+| field | `Finding.Message` | `string` |
+| field | `Finding.Status` | `string` |
+| field | `Finding.Target` | `string` |
+| field | `Finding.Unit` | `string` |
+| field | `Finding.Value` | `*float64` |
+| type | `Options` | — |
+| field | `Options.ALPN` | `[]string` |
+| field | `Options.ALPNCheck` | `bool` |
+| field | `Options.CertHeadroomWarn` | `int` |
+| field | `Options.Concurrency` | `int` |
+| field | `Options.DefaultPort` | `string` |
+| field | `Options.ECHConfig` | `string` |
+| field | `Options.ExpiryBadDays` | `int` |
+| field | `Options.ExpiryWarnDays` | `int` |
+| field | `Options.Net` | `string` |
+| field | `Options.NoConfirm` | `bool` |
+| field | `Options.PerGroup` | `bool` |
+| field | `Options.Profiles` | `[]string` |
+| field | `Options.SNI` | `string` |
+| field | `Options.SizeSweep` | `bool` |
+| field | `Options.Socks5` | `string` |
+| field | `Options.StartTLS` | `string` |
+| field | `Options.Timeout` | `time.Duration` |
+| func | `Probe` | — |
+| type | `Report` | — |
+| field | `Report.Class` | `string` |
+| field | `Report.Findings` | `[]Finding` |
+| field | `Report.Target` | `string` |
+| field | `Report.Worst` | `string` |
 
-Struct fields are part of this surface too: a field removed or renamed is a
-major, a field added is a minor. `pq/` never exposes anything from `internal/`,
-which is what lets the inside move while this stays still.
+Struct fields are part of this surface, each with its type: a field removed,
+renamed or retyped is a major, a field added is a minor, and either shows in
+this table's diff. `pq/` never exposes anything from `internal/`, which is what
+lets the inside move while this stays still.

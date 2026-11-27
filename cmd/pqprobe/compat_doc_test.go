@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,8 +22,9 @@ import (
 // feature, and nothing in the shipped binary should walk its own source.
 
 type apiName struct {
-	Kind string // func, type, const, var, method
-	Name string
+	Kind string // func, type, const, var, method, field
+	Name string // a field is Type.Field
+	Type string // a field's type as declared; empty for the rest
 }
 
 // compatFlags is the flag set the binary declares, which is the definition of
@@ -120,18 +122,38 @@ func compatAPI() []apiName {
 				if decl.Recv != nil {
 					kind = "method"
 				}
-				out = append(out, apiName{kind, decl.Name.Name})
+				out = append(out, apiName{Kind: kind, Name: decl.Name.Name})
 			case *ast.GenDecl:
 				for _, spec := range decl.Specs {
 					switch sp := spec.(type) {
 					case *ast.TypeSpec:
-						if sp.Name.IsExported() {
-							out = append(out, apiName{"type", sp.Name.Name})
+						if !sp.Name.IsExported() {
+							continue
+						}
+						out = append(out, apiName{Kind: "type", Name: sp.Name.Name})
+						// PQ-79: the fields are the surface too. A field removed,
+						// renamed or retyped breaks an embedder as surely as a
+						// removed function, so each one is a row with its type.
+						st, ok := sp.Type.(*ast.StructType)
+						if !ok {
+							continue
+						}
+						for _, f := range st.Fields.List {
+							typ := types.ExprString(f.Type)
+							names := f.Names
+							if len(names) == 0 { // embedded: the field is named after its type
+								names = []*ast.Ident{ast.NewIdent(strings.TrimPrefix(typ, "*"))}
+							}
+							for _, id := range names {
+								if id.IsExported() {
+									out = append(out, apiName{Kind: "field", Name: sp.Name.Name + "." + id.Name, Type: typ})
+								}
+							}
 						}
 					case *ast.ValueSpec:
 						for _, id := range sp.Names {
 							if id.IsExported() {
-								out = append(out, apiName{strings.ToLower(decl.Tok.String()), id.Name})
+								out = append(out, apiName{Kind: strings.ToLower(decl.Tok.String()), Name: id.Name})
 							}
 						}
 					}
@@ -246,14 +268,19 @@ checkable.
 	fmt.Fprintf(&b, "\n\nWhat each one says is in [Findings](findings.md). A name here keeps its\nmeaning; new ones arrive in a minor release.\n")
 
 	fmt.Fprintf(&b, "\n## The Go API — `pq/`\n\n")
-	fmt.Fprintln(&b, "| Kind | Name |")
-	fmt.Fprintln(&b, "|---|---|")
+	fmt.Fprintln(&b, "| Kind | Name | Type |")
+	fmt.Fprintln(&b, "|---|---|---|")
 	for _, n := range compatAPI() {
-		fmt.Fprintf(&b, "| %s | `%s` |\n", n.Kind, n.Name)
+		typ := "—"
+		if n.Type != "" {
+			typ = "`" + n.Type + "`"
+		}
+		fmt.Fprintf(&b, "| %s | `%s` | %s |\n", n.Kind, n.Name, typ)
 	}
-	fmt.Fprintln(&b, "\nStruct fields are part of this surface too: a field removed or renamed is a")
-	fmt.Fprintln(&b, "major, a field added is a minor. `pq/` never exposes anything from `internal/`,")
-	fmt.Fprintln(&b, "which is what lets the inside move while this stays still.")
+	fmt.Fprintln(&b, "\nStruct fields are part of this surface, each with its type: a field removed,")
+	fmt.Fprintln(&b, "renamed or retyped is a major, a field added is a minor, and either shows in")
+	fmt.Fprintln(&b, "this table's diff. `pq/` never exposes anything from `internal/`, which is what")
+	fmt.Fprintln(&b, "lets the inside move while this stays still.")
 
 	return b.String(), nil
 }
